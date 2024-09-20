@@ -1,5 +1,9 @@
 <template>
     <div class="container">
+        <div class="card-caption-1" style="max-width: min(60vw, 1000px); margin: 0 auto; word-wrap: break-word;">
+            {{ $t('features.title') }}
+        </div>
+        <br />
         <div class="card-container">
             <div class="row">
                 <div class="item">
@@ -23,7 +27,7 @@
             </div>
         </div>
         <br />
-        <div class="card-vaption-1" style="max-width: min(60vw, 1000px); margin: 0 auto; word-wrap: break-word;">
+        <div class="card-vaption-2" style="max-width: min(60vw, 1000px); margin: 0 auto; word-wrap: break-word;">
 
         </div>
     </div>
@@ -64,8 +68,7 @@
     margin: 0;
     padding: 20px;
     border-radius: 12px;
-    background: #99949411;
-
+    background: #848e9716;
 }
 
 .card-caption-1 {

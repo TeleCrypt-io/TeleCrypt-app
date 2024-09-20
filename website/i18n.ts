@@ -6,11 +6,18 @@ export default createI18n({
     locale: 'en',
     messages: {
         en: {
+            app: {
+                theme: {
+                    light: "light",
+                    dark: "dark",
+                },
+            },
             hero: {
                 caption3: 'A robust and secure\ncross platform messenger\nutilizing the\nMatrix protocol.',
                 getTammy: 'Get Tammy',
             },
             features: {
+                title: 'Why choose Tammy?',
                 card1: {
                     title: 'FAST',
                     details: 'A messenger that feels like a native app on desktop and mobile by building on Compose Multiplatform.',
@@ -28,13 +35,38 @@ export default createI18n({
                     details: 'Developers can start with an out of the box working messenger that can be modified to their requirements.',
                 },
             },
+            downloads: {
+                title: 'Get Tammy for Desktop or Mobile',
+                button: {
+                    download: 'DOWNLOAD',
+                    soon: 'SOON..',
+                    open: 'OPEN',
+                },
+            },
+            imprint: {
+                openSource: {
+                    title: '',
+                    description: '',
+                },
+                contactUs: {
+                    title: '',
+                    description: '',
+                },
+            },
         },
         de: {
+            app: {
+                theme: {
+                    light: "hell",
+                    dark: "dunkel",
+                },
+            },
             hero: {
                 caption3: 'Ein robuster und sicherer\ncross-platform Messenger, der auf dem\nMatrix-Protocol aufbaut.',
                 getTammy: 'Hol\' dir Tammy',
             },
             features: {
+                title: 'Weshalb Tammy?',
                 card1: {
                     title: 'SCHNELL',
                     details: 'Ein sich nativ anfühlender Messenger ob auf Desktop oder Mobil durch das Aufbauen auf Compose Multiplatform.',
@@ -50,6 +82,14 @@ export default createI18n({
                 card4: {
                     title: 'ANPASSBAR',
                     details: 'Entwickler können sofort mit einem Funktionierenden Projekt starten und es deren Anforderungen anpassen.',
+                },
+            },
+            downloads: {
+                title: 'Hole Tammy für Desktop oder Mobile',
+                button: {
+                    download: 'DOWNLOAD',
+                    soon: 'BALD..',
+                    open: 'ÖFFNEN',
                 },
             },
         }

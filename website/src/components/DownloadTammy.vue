@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <div class="card-caption-1">Get Tammy for Desktop or Mobile</div>
+        <div class="card-caption-1">{{ $t('downloads.title') }}</div>
         <div class="card-container">
             <div class="row">
                 <div class="item">
@@ -8,7 +8,7 @@
                     <div class="card-caption-2">MacOS</div>
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadMacos" disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -18,7 +18,7 @@
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadWindows"
                             disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -27,7 +27,7 @@
                     <div class="card-caption-2">Linux</div>
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadLinux" disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -38,7 +38,7 @@
                     <div class="card-caption-2">iOS</div>
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadIos" disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -48,7 +48,7 @@
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadAndroid"
                             disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -57,7 +57,7 @@
                     <div class="card-caption-2">Web</div>
                     <div class="button">
                         <v-btn class="getTammyButton" rounded="xl" size="x-large" block @click="downloadWeb" disabled>
-                            DOWNLOAD
+                            {{ $t('downloads.button.soon') }}
                         </v-btn>
                     </div>
                 </div>
@@ -68,7 +68,7 @@
 
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import platformLinux from '../assets/platform-linux.png'
 import platformMacos from '../assets/platform-macos.png'
 import platformWindows from '../assets/platform-windows.png'
@@ -139,7 +139,7 @@ const iconTint = computed(() => (!!theme.global.current.value.dark) ? 1 : 0)
     margin: 0;
     padding: 20px;
     border-radius: 12px;
-    background: #99949411;
+    background: #848e9716;
 
     .card-caption-2 {
         font-size: 1.2em;
