@@ -45,12 +45,14 @@ export default createI18n({
             },
             imprint: {
                 openSource: {
-                    title: '',
+                    title: 'Tammy is Open Source',
                     description: '',
+                    button: 'Tammy on Gitlab',
                 },
                 contactUs: {
-                    title: '',
+                    title: 'Contact Us',
                     description: '',
+                    button: 'Send a Request',
                 },
             },
         },
@@ -90,6 +92,18 @@ export default createI18n({
                     download: 'DOWNLOAD',
                     soon: 'BALD..',
                     open: 'ÖFFNEN',
+                },
+            },
+            imprint: {
+                openSource: {
+                    title: 'Tammy ist Open Source',
+                    description: '',
+                    button: 'Tammy auf Gitlab',
+                },
+                contactUs: {
+                    title: 'Kontakt aufnehmen',
+                    description: '',
+                    button: 'Anfrage senden',
                 },
             },
         }

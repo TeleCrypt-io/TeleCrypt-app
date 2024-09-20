@@ -1,7 +1,7 @@
 <template>
     <div class="container">
         <img src="../assets/icon-gitlab.png" class="product-icon" />
-        <div class="card-caption-1">Tammy is open source</div>
+        <div class="card-caption-1">{{ $t('imprint.openSource.title') }}</div>
         <div class="card-caption-2">
             Tammy is built on <a href="https://trixnity.gitlab.io/trixnity/">Trixnity</a> and <a
                 href="https://matrix.org/">Matrix</a> and so is the code base of Tammy open.
@@ -9,14 +9,14 @@
         <br />
         <div class="button">
             <v-btn rounded="xl" size="x-large" block @click="onSource">
-                Tammy on Gitlab
+                {{ $t('imprint.openSource.button') }}
             </v-btn>
         </div>
         <br />
         <br />
         <br />
         <img src="../assets/icon-tammy.png" class="product-icon" />
-        <div class="card-caption-1">Contact Us</div>
+        <div class="card-caption-1">{{ $t('imprint.contactUs.title') }}</div>
         <div class="card-caption-2">
             If you have questions, feedback or want to work with us to realize your own project,
             you can contact us via <a>kontakt@connect2x.de</a>
@@ -24,7 +24,7 @@
         <br />
         <div class="button">
             <v-btn rounded="xl" size="x-large" block @click="onContact">
-                Send a Request
+                {{ $t('imprint.contactUs.button') }}
             </v-btn>
         </div>
         <div class="imprint-container">
