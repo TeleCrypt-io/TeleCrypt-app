@@ -10,6 +10,7 @@ stages:
   - changelog
   - binaries
   - release
+  - website
 
 variables:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -123,3 +124,18 @@ release-win:
   script:
     - lftp -e "open sftp://connect2x.de; user $SSH_USER $RELEASE_SSH_PASSWORD; mirror -X .* -X .*/ --reverse --verbose compose-app/build/msix/ www/; bye"
     - lftp -e "open sftp://connect2x.de; user $SSH_USER $RELEASE_SSH_PASSWORD; mirror -X .* -X .*/ --reverse --verbose compose-app/build/version/ www/; bye"
+
+pages:
+  stage: website
+  image: node:lts
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - *if-release
+  script:
+    - cd website
+    - npm install --force
+    - npm run build
+    - mv ./dist ../public
+  artifacts:
+    paths:
+      - public
