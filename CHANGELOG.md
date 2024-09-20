@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Landing Page
+- Landing Page with Imprint
 - White labelled client for Trixnity Messenger Compose UI
 
 ### Changed
