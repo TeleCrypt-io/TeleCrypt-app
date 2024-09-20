@@ -1,0 +1,34 @@
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns="https://tony19.github.io/logback-android/xml"
+               xsi:schemaLocation="https://tony19.github.io/logback-android/xml https://cdn.jsdelivr.net/gh/tony19/logback-android/logback.xsd">
+
+    <property name="LOG_DIR" value="/data/data/de.connect2x.messenger/files"/>
+
+    <appender name="logcat" class="ch.qos.logback.classic.android.LogcatAppender">
+        <withJansi>true</withJansi>
+        <encoder>
+            <pattern>[%thread] %msg%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/messenger.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/messenger.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>64MB</totalSizeCap>
+        </rollingPolicy>
+        <!-- encoders are assigned the type
+             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="net.folivo.trixnity" level="DEBUG"/>
+    <logger name="de.connect2x" level="DEBUG"/>
+
+    <root level="INFO">
+        <appender-ref ref="logcat"/>
+        <appender-ref ref="file"/>
+    </root>
+</configuration>

@@ -1,0 +1,32 @@
+<!-- make logo with color: https://stackoverflow.com/questions/47385095/change-android-small-notification-icon-color-depending-on-context -->
+<vector android:height="128dp" android:viewportHeight="1000"
+        android:viewportWidth="1000" android:width="128dp"
+        xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android">
+    <group>
+        <clip-path
+                android:pathData="m546.18,25.28c-25.08,-25.09 -66.15,-25.09 -91.23,0l-428.74,428.74c-25.09,25.08 -25.09,66.15 0,91.23l428.74,428.74c25.09,25.08 66.15,25.08 91.23,0l428.74,-428.74c25.08,-25.08 25.08,-66.13 0,-91.23z"/>
+    </group>
+    <group>
+        <clip-path
+                android:pathData="m546.18,25.28c-25.08,-25.09 -66.15,-25.09 -91.23,0l-428.74,428.74c-25.09,25.08 -25.09,66.15 0,91.23l428.74,428.74c25.09,25.08 66.15,25.08 91.23,0l428.74,-428.74c25.08,-25.08 25.08,-66.13 0,-91.23z"/>
+        <path android:pathData="m-145.13,-145.44l1290.13,0l-71.35,608.96 -1197.46,-0.12z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:endX="499.93488"
+                          android:endY="-145.44313" android:startX="499.93488"
+                          android:startY="1144.6891" android:type="linear">
+                    <item android:color="#EEFFFFFF" android:offset="0"/>
+                    <item android:color="#FFFFFFFF" android:offset="1"/>
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+    <group>
+        <clip-path
+                android:pathData="m546.18,25.28c-25.08,-25.09 -66.15,-25.09 -91.23,0l-428.74,428.74c-25.09,25.08 -25.09,66.15 0,91.23l428.74,428.74c25.09,25.08 66.15,25.08 91.23,0l428.74,-428.74c25.08,-25.08 25.08,-66.13 0,-91.23z"/>
+        <path android:fillColor="#EEFFFFFF" android:pathData="m-157.24,538.46 l1323.86,1.24 -0.9,470.91l-1329.41,0z"/>
+    </group>
+    <group>
+        <clip-path
+                android:pathData="m546.18,25.28c-25.08,-25.09 -66.15,-25.09 -91.23,0l-428.74,428.74c-25.09,25.08 -25.09,66.15 0,91.23l428.74,428.74c25.09,25.08 66.15,25.08 91.23,0l428.74,-428.74c25.08,-25.08 25.08,-66.13 0,-91.23z"/>
+    </group>
+</vector>
