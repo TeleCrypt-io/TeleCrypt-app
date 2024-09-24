@@ -20,4 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Licenses not loaded
+- Fix broken Android manifest referencing non-existant broadcast receiver
+
 ### Security

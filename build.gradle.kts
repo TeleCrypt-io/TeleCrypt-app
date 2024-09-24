@@ -1,6 +1,7 @@
 import com.mikepenz.aboutlibraries.plugin.AboutLibrariesTask
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.cli.common.isWindows
+import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
 import org.jetbrains.kotlin.incremental.createDirectory
 
 plugins {
@@ -27,34 +28,47 @@ val version = libs.versions.tammy.get()
 val appName = libs.versions.appName.get()
 val appNameCleaned = appName.replace("[-.\\s]".toRegex(), "").lowercase()
 
-val generatedSrc = layout.buildDirectory.dir("generated-src/kotlin/")
-
 enum class BuildFlavor { PROD, DEV }
 
 val buildFlavor = BuildFlavor.valueOf(System.getenv("BUILD_FLAVOR") ?: if (isCI) "PROD" else "DEV")
 
-val buildConfigGenerator by tasks.registering(Sync::class) {
-    from(
-        resources.text.fromString(
+val licensesDir = layout.buildDirectory.dir("generated").get().dir("aboutLibraries").asFile
+val licenses by tasks.registering(AboutLibrariesTask::class) {
+    resultDirectory = licensesDir
+    dependsOn("collectDependencies")
+}
+
+val buildConfigGenerator by tasks.registering {
+    val licencesFile = licensesDir.resolve("aboutlibraries.json")
+    val generatedSrc = layout.buildDirectory.dir("generated-src/kotlin/")
+    inputs.file(licencesFile)
+    val outputFile = generatedSrc.get()
+        .dir("de/connect2x/$appNameCleaned")
+        .file("BuildConfig.kt")
+    outputFile.asFile.ensureParentDirsCreated()
+    doLast {
+        val licencesString = licencesFile.readText()
+        val quotes = "\"\"\""
+        val buildConfigString =
             """
             package de.connect2x.$appNameCleaned
             
             object BuildConfig {
                 const val version = "$version"
                 val flavor = Flavor.valueOf("$buildFlavor")
-                val appName = "$appName"
-                val appNameCleaned = "$appNameCleaned"
+                const val appName = "$appName"
+                const val appNameCleaned = "$appNameCleaned"
+                val licenses = $quotes$licencesString$quotes
             }
             
             enum class Flavor { PROD, DEV }
         """.trimIndent()
-        )
-    ) {
-        rename { "BuildConfig.kt" }
-        into("de/connect2x/$appNameCleaned")
+        outputFile.asFile.writeText(buildConfigString)
     }
-    into(generatedSrc)
+    outputs.dirs(generatedSrc)
+    dependsOn(licenses)
 }
+
 
 kotlin {
     val kotlinJvmTarget = libs.versions.jvmTarget.get()
@@ -87,7 +101,7 @@ kotlin {
                 implementation(libs.messenger.compose.view)
                 implementation(compose.components.resources)
             }
-            kotlin.srcDir(buildConfigGenerator.map { it.destinationDir })
+            kotlin.srcDir(buildConfigGenerator.map { it.outputs })
         }
         val desktopMain by getting {
             dependencies {
@@ -226,171 +240,4 @@ android {
             }
         }
     }
-}
-
-// aboutlibraries.json ########################################
-val licenses by tasks.registering(AboutLibrariesTask::class) {
-    resultDirectory = layout.projectDirectory.dir("src").dir("commonMain").dir("composeResources").dir("files").asFile
-    dependsOn("collectDependencies")
-}
-
-tasks.findByName("copyNonXmlValueResourcesForCommonMain")
-    ?.dependsOn(licenses)
-
-// MSIX ########################################### TODO move to open source plugin
-
-val appDescription = "Matrix Client"
-val appPackage = "de.connect2x.$appNameCleaned"
-val msixFileName = "$appName-${version}.msix"
-val publisherName = "connect2x GmbH"
-val publisherCN = "CN=connect2x GmbH, O=connect2x GmbH, L=Dippoldiswalde, S=Saxony, C=DE"
-
-val urlSchema = appNameCleaned
-val logoFileName = "logo.png"
-val logo44FileName = "logo_44.png"
-val logo155FileName = "logo_155.png"
-
-val distributionDir: Provider<Directory> =
-    compose.desktop.nativeApplication.distributions.outputBaseDir
-        .map { it.dir("main").dir("app") }
-val msixBuildDir: File = layout.buildDirectory.dir("msix").get().asFile.apply { createDirectory() }
-
-val createMsixManifest by tasks.registering {
-    group = "release"
-    doLast {
-        distributionDir.get().dir(appName).file("AppxManifest.xml").asFile.apply {
-            createNewFile()
-            writeText(
-                """
-                <?xml version="1.0" encoding="utf-8"?>
-                <Package
-                  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-                  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-                  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
-                  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-                  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-                  IgnorableNamespaces="uap10 rescap">
-                  <Identity Name="$appPackage" Publisher="$publisherCN" Version="$version" ProcessorArchitecture="x64" />
-                  <Properties>
-                    <DisplayName>$appName</DisplayName>
-                    <PublisherDisplayName>$publisherName</PublisherDisplayName>
-                    <Description>$appDescription</Description>
-                    <Logo>$logoFileName</Logo>
-                    <uap10:PackageIntegrity>
-                      <uap10:Content Enforcement="on" />
-                    </uap10:PackageIntegrity>
-                  </Properties>
-                  <Resources>
-                    <Resource Language="de-de" />
-                  </Resources>
-                  <Dependencies>
-                    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22000.1" />
-                  </Dependencies>
-                  <Capabilities>
-                    <rescap:Capability Name="runFullTrust" />
-                  </Capabilities>
-                  <Applications>
-                    <Application
-                      Id="$appPackage"
-                      Executable="$appName.exe"
-                      EntryPoint="Windows.FullTrustApplication">
-                      <uap:VisualElements DisplayName="$appName" Description="$appDescription"	Square150x150Logo="$logo155FileName"
-                         Square44x44Logo="$logo44FileName" BackgroundColor="white" />
-                      <Extensions>
-                        <uap:Extension Category="windows.protocol">
-                          <uap:Protocol Name="$urlSchema" />
-                        </uap:Extension>
-                      </Extensions>
-                    </Application>
-                  </Applications>
-                </Package>
-                """.trimIndent()
-            )
-        }
-    }
-    dependsOn(tasks.getByName("createDistributable"))
-    onlyIf { isWindows }
-}
-
-val createMsixAppinstaller by tasks.registering {
-    group = "release"
-    doLast {
-        val msixBaseUrl = requireNotNull(System.getenv("MSIX_BASE_URL"))
-        val appinstallerFileName = "$appName.appinstaller"
-        msixBuildDir.resolve(appinstallerFileName).apply {
-            createNewFile()
-            writeText(
-                """
-                <?xml version="1.0" encoding="utf-8"?>
-                <AppInstaller
-                    xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
-                    Version="$version"
-                    Uri="$msixBaseUrl/$appinstallerFileName">
-                    <MainPackage
-                        Name="$appPackage"
-                        Publisher="$publisherCN"
-                        Version="$version"
-                        ProcessorArchitecture="x64"
-                        Uri="$msixBaseUrl/$msixFileName" />
-                    <UpdateSettings>
-                        <OnLaunch 
-                            HoursBetweenUpdateChecks="12"
-                            UpdateBlocksActivation="true"
-                            ShowPrompt="true" />
-                        <ForceUpdateFromAnyVersion>false</ForceUpdateFromAnyVersion>
-                        <AutomaticBackgroundTask />
-                    </UpdateSettings>
-                </AppInstaller>
-                """.trimIndent()
-            )
-        }
-    }
-    onlyIf { isWindows && isCI }
-}
-
-val copyMsixLogos by tasks.registering(Copy::class) {
-    group = "release"
-    from(projectDir.resolve("src").resolve("desktopMain").resolve("resources")) {
-        include(logoFileName, logo44FileName, logo155FileName)
-    }
-    into(distributionDir.get().dir(appName).asFile)
-    dependsOn(tasks.getByName("createDistributable"))
-    onlyIf { isWindows }
-}
-
-val msixPack by tasks.registering(Exec::class) {
-    group = "release"
-    workingDir(msixBuildDir)
-    executable = "makeappx.exe"
-    args(
-        "pack",
-        "/o", // always overwrite destination
-        "/d", distributionDir.get().dir(appName).asFile.absolutePath, // source
-        "/p", msixFileName, // destination
-    )
-    dependsOn(tasks.getByName("createDistributable"), createMsixManifest, copyMsixLogos)
-    onlyIf { isWindows }
-}
-
-val msixSign by tasks.registering(Exec::class) {
-    group = "release"
-    workingDir(msixBuildDir)
-    executable = "signtool.exe"
-    args(
-        "sign",
-        "/debug",
-        "/fd", "sha256", // signature digest algorithm
-        "/tr", System.getenv("CODE_SIGNING_TIMESTAMP_SERVER") ?: "", // timestamp server
-        "/td", "sha256", // timestamp digest algorithm
-        "/sha1", System.getenv("CODE_SIGNING_THUMBPRINT") ?: "", // key selection
-        msixFileName
-    )
-    dependsOn(msixPack)
-    onlyIf { isWindows }
-}
-
-val packageMsix by tasks.registering {
-    group = "release"
-    dependsOn(msixPack, msixSign, createMsixAppinstaller)
-    onlyIf { isWindows }
 }

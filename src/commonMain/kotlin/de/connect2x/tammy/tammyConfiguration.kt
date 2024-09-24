@@ -19,6 +19,7 @@ fun tammyConfiguration(): MatrixMultiMessengerConfiguration.() -> Unit = {
     packageName = "de.connect2x.${BuildConfig.appNameCleaned}"
     privacyInfoUrl = "https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger"
     imprintUrl = "https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger"
+    licenses = BuildConfig.licenses
     sendLogsEmailAddress = "error-reports@connect2x.de"
     urlProtocol = BuildConfig.appNameCleaned
     pushUrl = "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify" // TODOlogo change
