@@ -37,7 +37,7 @@ val appName = "Tammy"
 val appNameCleaned = appName.replace("[-.\\s]".toRegex(), "").lowercase()
 
 val distributionDir: Provider<Directory> =
-    compose.desktop.nativeApplication.distributions.outputBaseDir.map { it.dir("main") }
+    compose.desktop.nativeApplication.distributions.outputBaseDir.map { it.dir("main-release") }
 val appDistributionDir: Provider<Directory> = distributionDir.map { it.dir("app") }
 
 val os: DefaultOperatingSystem =
@@ -57,10 +57,10 @@ val buildConfigGenerator by tasks.registering {
     val licencesFile = licensesDir.resolve("aboutlibraries.json")
     val generatedSrc = layout.buildDirectory.dir("generated-src/kotlin/")
     inputs.file(licencesFile)
-    val outputFile = generatedSrc.get()
-        .dir("de/connect2x/$appNameCleaned")
-        .file("BuildConfig.kt")
     doLast {
+        val outputFile = generatedSrc.get()
+            .dir("de/connect2x/$appNameCleaned")
+            .file("BuildConfig.kt")
         val licencesString = licencesFile.readText()
         val quotes = "\"\"\""
         val buildConfigString =
