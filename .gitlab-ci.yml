@@ -15,6 +15,8 @@ stages:
 variables:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
   GRADLE_USER_HOME: $CI_PROJECT_DIR/.gradle
+  KONAN_DATA_DIR: $CI_PROJECT_DIR/.konan
+  KOTLIN_DATA_DIR: $CI_PROJECT_DIR/.kotlin
   BUILD_LINUX_IMAGE_NAME: registry.gitlab.com/trixnity/trixnity/trixnity-build-linux:latest
 
 .if-merge-request: &if-merge-request
@@ -33,9 +35,23 @@ variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
 
-.build-cache: &build-cache
+.build-cache-linux: &build-cache-linux
   paths:
     - $GRADLE_USER_HOME
+    - $KONAN_DATA_DIR
+    - $KOTLIN_DATA_DIR
+
+.build-cache-mac: &build-cache-mac
+  paths:
+    - $GRADLE_USER_HOME
+    - $KONAN_DATA_DIR
+    - $KOTLIN_DATA_DIR
+
+.build-cache-windows: &build-cache-windows
+  paths:
+    - $GRADLE_USER_HOME
+    - $KONAN_DATA_DIR
+    - $KOTLIN_DATA_DIR
 
 .artifact-reports: &artifact-reports
   name: reports
@@ -66,7 +82,7 @@ binaries-linux:
   tags: [ "saas-linux-large-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME
   variables: *docker-variables
-  cache: *build-cache
+  cache: *build-cache-linux
   rules:
     - *if-main
   artifacts:
@@ -87,7 +103,7 @@ binaries-linux:
 binaries-win:
   stage: binaries
   tags: [ "connect2x-win" ]
-  cache: *build-cache
+  cache: *build-cache-windows
   rules:
     - *if-main
   artifacts:
@@ -104,7 +120,7 @@ binaries-win:
 binaries-mac:
   stage: binaries
   tags: [ "connect2x-mac" ]
-  cache: *build-cache
+  cache: *build-cache-mac
   rules:
     - *if-main
   artifacts:
@@ -123,6 +139,7 @@ release:
   tags: [ "saas-linux-small-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME
   variables: *docker-variables
+  cache: *build-cache-linux
   rules:
     - *if-release
   artifacts:
@@ -133,6 +150,23 @@ release:
   script:
     - ./gradlew
       createGitLabRelease
+      --stacktrace
+
+distribution-links:
+  stage: website
+  tags: [ "saas-linux-small-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME
+  variables: *docker-variables
+  cache: *build-cache-linux
+  rules:
+    - *if-main
+  artifacts:
+    name: pages
+    when: on_success
+    paths:
+      - "public/"
+  script:
+    - ./gradlew
       createGitLabPagesFiles
       --stacktrace
 
@@ -141,6 +175,7 @@ pages:
   image: node:lts
   rules:
     - *if-main
+  needs: [ "distribution-links" ]
   script:
     - cd website
     - npm install --force
