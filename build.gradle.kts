@@ -454,7 +454,7 @@ val packageReleasePlatformZip by tasks.creating(Zip::class) {
 
     archiveFileName = platformZipDistribution.fileName
     destinationDirectory = zipDistributionDir
-    dependsOn(platformZipDistribution.tasks)
+    dependsOn(platformZipDistribution.tasks, copyMsixLogos) // copyMsixLogos because of implicit dependency
 }
 
 val uploadPlatformZipDistributable by tasks.registering {
