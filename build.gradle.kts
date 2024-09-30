@@ -292,7 +292,7 @@ val distributions = listOf(
     Distribution("msi", "Windows", "packageReleaseMsi"),
     Distribution("msix", "Windows", "packageReleaseMsix", "notarizeReleaseMsix"),
     Distribution("zip", "Windows", "createReleaseDistributable"),
-    Distribution("zip", "Web", "packageReleaseWebZip"),
+    Distribution("zip", "Web", "webBrowserDistribution"),
 )
 
 // #####################################################################################################################
@@ -408,7 +408,7 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
         msixFileName
     )
     dependsOn(packageReleaseMsix)
-    onlyIf { os.isWindows }
+    onlyIf { os.isWindows && isRelease }
 }
 
 // #####################################################################################################################
