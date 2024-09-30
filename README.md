@@ -34,4 +34,7 @@ This does not include default GitLab environment variables that are used.
 
 - MSIX_CODE_SIGNING_TIMESTAMP_SERVER: timestamp server for MSIX signing
 - MSIX_CODE_SIGNING_THUMBPRINT: thumbprint of certificate that should be used for MSIX signing
-- // FIXME android
+- ANDROID_RELEASE_STORE_FILE_BASE64
+- ANDROID_RELEASE_STORE_PASSWORD
+- ANDROID_RELEASE_KEY_ALIAS
+- ANDROID_RELEASE_KEY_PASSWORD
