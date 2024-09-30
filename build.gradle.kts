@@ -172,6 +172,7 @@ composeCompiler {
 compose {
     desktop {
         application {
+            from(kotlin.targets["desktop"])
             mainClass = "de.connect2x.$appNameCleaned.desktop.MainKt"
             jvmArgs("-Xmx2G")
 
