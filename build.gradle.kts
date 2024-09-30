@@ -323,7 +323,7 @@ val distributions = listOf(
 
 val appDescription = "Matrix Messenger Client"
 val appPackage = "de.connect2x.timmy"
-val msixFileName = "$appName-$appVersion.msix"
+val misxDistribution = distributions.first { it.type == "msix" && it.platform == "Windows" }
 val publisherName = "connect2x GmbH"
 val publisherCN = "CN=connect2x GmbH, O=connect2x GmbH, L=Dippoldiswalde, S=Saxony, C=DE"
 
@@ -388,7 +388,7 @@ val createMsixManifest by tasks.registering {
             )
         }
     }
-    dependsOn(tasks.getByName("createReleaseDistributable"))
+    dependsOn(misxDistribution.tasks)
     onlyIf { os.isWindows }
 }
 
@@ -397,7 +397,7 @@ val copyMsixLogos by tasks.registering(Copy::class) {
         include(logoFileName, logo44FileName, logo155FileName)
     }
     into(appDistributionDir.get().dir(appName).asFile)
-    dependsOn("createReleaseDistributable")
+    dependsOn(misxDistribution.tasks)
     onlyIf { os.isWindows }
 }
 
@@ -409,9 +409,9 @@ val packageReleaseMsix by tasks.registering(Exec::class) {
         "pack",
         "/o", // always overwrite destination
         "/d", appDistributionDir.get().dir(appName).asFile.absolutePath, // source
-        "/p", msixFileName, // destination
+        "/p", misxDistribution.originalFileName, // destination
     )
-    dependsOn("createReleaseDistributable", createMsixManifest, copyMsixLogos)
+    dependsOn(misxDistribution.tasks, createMsixManifest, copyMsixLogos)
     onlyIf { os.isWindows }
 }
 
@@ -426,7 +426,7 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
         "/tr", System.getenv("MSIX_CODE_SIGNING_TIMESTAMP_SERVER") ?: "", // timestamp server
         "/td", "sha256", // timestamp digest algorithm
         "/sha1", System.getenv("MSIX_CODE_SIGNING_THUMBPRINT") ?: "", // key selection
-        msixFileName
+        misxDistribution.originalFileName
     )
     dependsOn(packageReleaseMsix)
     onlyIf { os.isWindows && isRelease }
