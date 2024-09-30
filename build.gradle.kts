@@ -437,12 +437,13 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
 // #####################################################################################################################
 
 val projectUrl = "${System.getenv("CI_API_V4_URL")}/projects/${System.getenv("CI_PROJECT_ID")}"
-val packageRegistryUrl = "$projectUrl/packages/generic"
+fun packageRegistryUrl(packageName: String, version: String, fileName: String) =
+    "$projectUrl/packages/generic/$packageName/$version/$fileName"
 
 fun uploadToPackageRegistry(filePath: Path, packageName: String, fileName: String) {
     val httpClient = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder()
-        .uri(URI.create("$packageRegistryUrl/$packageName/$appVersion/$fileName"))
+        .uri(URI.create(packageRegistryUrl(packageName, appVersion, fileName)))
         .header("Content-Type", "application/octet-stream")
         .headers("JOB-TOKEN", System.getenv("CI_JOB_TOKEN"))
         .PUT(HttpRequest.BodyPublishers.ofFile(filePath))
@@ -570,7 +571,13 @@ fun getReleasedFileUrl(distribution: Distribution) =
 val createGitLabPagesRedirects by tasks.registering {
     doLast {
         fun redirect(distribution: Distribution) =
-            "/${distribution.fileNameWithoutVersion} $packageRegistryUrl/${distribution.fileNameReleased} 302"
+            "/${distribution.fileNameWithoutVersion} ${
+                packageRegistryUrl(
+                    distribution.fileNameWithoutVersion,
+                    appReleasedVersion,
+                    distribution.fileNameReleased
+                )
+            } 302"
 
         publicDir.get()
             .resolve("_redirects")
@@ -630,7 +637,13 @@ val createGitLabRelease by tasks.registering {
             """
                 {
                     "name": "${distribution.fileName}",
-                    "url": "$packageRegistryUrl/${distribution.fileName}"
+                    "url": "${
+                packageRegistryUrl(
+                    distribution.fileNameWithoutVersion,
+                    appReleasedVersion,
+                    distribution.fileNameReleased
+                )
+            }"
                 }
             """.trimIndent()
 
