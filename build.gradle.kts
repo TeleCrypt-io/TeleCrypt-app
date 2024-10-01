@@ -305,7 +305,7 @@ class Distribution(
     val fileNameWithoutVersion = "$appName-$platform.$type"
 }
 
-// TODO deeplink support is missing for: deb, rpm, Linux-zip, exe, mis, Windows-zip, Web-zip
+// TODO deeplink support is missing for: deb, rpm, Linux-zip, exe, msi, Windows-zip, Web-zip
 val distributions = listOf(
     Distribution(
         "aab", "Android",
