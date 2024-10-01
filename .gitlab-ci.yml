@@ -87,11 +87,10 @@ binaries-linux:
     - *if-main
   artifacts:
     name: binaries
-    when: always
+    when: on_success
     paths:
       - "build/outputs/bundle/release"
       - "build/compose/binaries"
-      - "build/compose"
   script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
     - ./gradlew
