@@ -2,9 +2,9 @@
 kotlin = "2.0.10" # https://github.com/JetBrains/kotlin/releases
 
 jvmTarget = "17"
-androidCompileSDK = "34"
+androidCompileSDK = "35"
 androidMinimalSDK = "28"
-androidTargetSDK = "34"
+androidTargetSDK = "35"
 appVersion = "1.0.0" # the version used for release or dev builds
 appVersionCode = "1" # the version used for Android release or dev builds
 appReleasedVersion = "1.0.0" # the version used on the website

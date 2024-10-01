@@ -310,7 +310,7 @@ val distributions = listOf(
     Distribution(
         "aab", "Android",
         listOf("bundleRelease"),
-        "$appName-$rawAppVersion-release.aab"
+        "$appName-$appVersion-release.aab"
     ),
     Distribution(
         "deb", "Linux",
@@ -533,7 +533,7 @@ val uploadAndroidDistributable by tasks.registering {
     doLast {
         uploadToPackageRegistry(
             layout.buildDirectory.get()
-                .file("outputs/bundle/release/$appName-$rawAppVersion-release.aab").asFile.toPath(),
+                .file("outputs/bundle/release/${thisDistribution.originalFileName}").asFile.toPath(),
             thisDistribution.fileNameWithoutVersion,
             thisDistribution.fileName
         )
