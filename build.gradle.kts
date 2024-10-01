@@ -40,7 +40,7 @@ version = appVersion
 
 val distributionDir: Provider<Directory> =
     compose.desktop.nativeApplication.distributions.outputBaseDir.map { it.dir("main-release") }
-val appDistributionDir: Provider<Directory> = distributionDir.map { it.dir("app") }
+val appDistributionDir: Provider<Directory> = distributionDir.map { it.dir("app/$appName") }
 
 val os: DefaultOperatingSystem =
     org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.getCurrentOperatingSystem()
@@ -307,18 +307,56 @@ class Distribution(
 
 // TODO deeplink support is missing for: deb, rpm, Linux-zip, exe, mis, Windows-zip, Web-zip
 val distributions = listOf(
-    Distribution("aab", "Android", listOf("bundleRelease"), "$appName-$rawAppVersion-release.aab"),
-    Distribution("deb", "Linux", listOf("packageReleaseDeb"), "${appNameCleaned}_${rawAppVersion}_amd64.deb"),
-    Distribution("rpm", "Linux", listOf("packageReleaseRpm"), "$appNameCleaned-$rawAppVersion-1.x86_64.rpm"),
-    Distribution("zip", "Linux", listOf("createReleaseDistributable")),
-    Distribution("dmg", "Mac", listOf("packageReleaseDmg")),
-    Distribution("pkg", "Mac", listOf("packageReleasePkg")),
-    Distribution("zip", "Mac", listOf("createReleaseDistributable")),
-    Distribution("exe", "Windows", listOf("packageReleaseExe")),
-    Distribution("msi", "Windows", listOf("packageReleaseMsi")),
-    Distribution("msix", "Windows", listOf("packageReleaseMsix", "notarizeReleaseMsix")),
-    Distribution("zip", "Windows", listOf("createReleaseDistributable")),
-    Distribution("zip", "Web", listOf("webBrowserDistribution")),
+    Distribution(
+        "aab", "Android",
+        listOf("bundleRelease"),
+        "$appName-$rawAppVersion-release.aab"
+    ),
+    Distribution(
+        "deb", "Linux",
+        listOf("packageReleaseDeb"),
+        "${appNameCleaned}_${rawAppVersion}_amd64.deb"
+    ),
+    Distribution(
+        "rpm", "Linux",
+        listOf("packageReleaseRpm"),
+        "$appNameCleaned-$rawAppVersion-1.x86_64.rpm"
+    ),
+    Distribution(
+        "zip", "Linux",
+        listOf("createReleaseDistributable")
+    ),
+    Distribution(
+        "dmg", "Mac",
+        listOf("packageReleaseDmg")
+    ),
+    Distribution(
+        "pkg", "Mac", listOf("packageReleasePkg")
+    ),
+    Distribution(
+        "zip", "Mac",
+        listOf("createReleaseDistributable")
+    ),
+    Distribution(
+        "exe", "Windows",
+        listOf("packageReleaseExe")
+    ),
+    Distribution(
+        "msi", "Windows",
+        listOf("packageReleaseMsi")
+    ),
+    Distribution(
+        "msix", "Windows",
+        listOf("packageReleaseMsix", "notarizeReleaseMsix")
+    ),
+    Distribution(
+        "zip", "Windows",
+        listOf("createReleaseDistributable")
+    ),
+    Distribution(
+        "zip", "Web",
+        listOf("webBrowserDistribution")
+    ),
 )
 
 // #####################################################################################################################
@@ -342,7 +380,7 @@ val msixDistributionDir: Provider<Directory> =
 
 val createMsixManifest by tasks.registering {
     doLast {
-        appDistributionDir.get().dir(appName).file("AppxManifest.xml").asFile.apply {
+        appDistributionDir.get().file("AppxManifest.xml").asFile.apply {
             createNewFile()
             writeText(
                 """
@@ -400,7 +438,7 @@ val copyMsixLogos by tasks.registering(Copy::class) {
     from(projectDir.resolve("src").resolve("desktopMain").resolve("resources")) {
         include(logoFileName, logo44FileName, logo155FileName)
     }
-    into(appDistributionDir.get().dir(appName).asFile)
+    into(appDistributionDir.get().asFile)
     dependsOn("createReleaseDistributable")
     onlyIf { os.isWindows }
 }
@@ -412,7 +450,7 @@ val packageReleaseMsix by tasks.registering(Exec::class) {
     args(
         "pack",
         "/o", // always overwrite destination
-        "/d", appDistributionDir.get().dir(appName).asFile.absolutePath, // source
+        "/d", appDistributionDir.get().asFile.absolutePath, // source
         "/p", misxDistribution.originalFileName, // destination
     )
     dependsOn("createReleaseDistributable", createMsixManifest, copyMsixLogos)
