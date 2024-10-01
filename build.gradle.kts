@@ -193,6 +193,9 @@ compose {
                 packageVersion = rawAppVersion
                 licenseFile.set(project.file("LICENSE"))
 
+                linux {
+                    iconFile.set(project.file("src/desktopMain/resources/logo.png"))
+                }
                 windows {
                     menu = true
                     iconFile.set(project.file("src/desktopMain/resources/logo.ico"))
@@ -302,6 +305,7 @@ class Distribution(
     val fileNameWithoutVersion = "$appName-$platform.$type"
 }
 
+// TODO deeplink support is missing for: deb, rpm, Linux-zip, exe, mis, Windows-zip, Web-zip
 val distributions = listOf(
     Distribution("aab", "Android", listOf("bundleRelease"), "$appName-$rawAppVersion-release.aab"),
     Distribution("deb", "Linux", listOf("packageReleaseDeb"), "${appNameCleaned}_${rawAppVersion}_amd64.deb"),
