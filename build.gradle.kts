@@ -294,27 +294,27 @@ android {
 class Distribution(
     val type: String,
     val platform: String,
-    vararg val tasks: String,
+    val tasks: List<String>,
+    val originalFileName: String = "$appName-$rawAppVersion.$type",
 ) {
     val fileName = "$appName-$platform-$appVersion.$type"
-    val originalFileName = "$appName-$rawAppVersion.$type"
     val fileNameReleased = "$appName-$platform-$appReleasedVersion.$type"
     val fileNameWithoutVersion = "$appName-$platform.$type"
 }
 
 val distributions = listOf(
-    Distribution("aab", "Android", "bundleRelease"),
-    Distribution("deb", "Linux", "packageReleaseDeb"),
-    Distribution("rpm", "Linux", "packageReleaseRpm"),
-    Distribution("zip", "Linux", "createReleaseDistributable"),
-    Distribution("dmg", "Mac", "packageReleaseDmg"),
-    Distribution("pkg", "Mac", "packageReleasePkg"),
-    Distribution("zip", "Mac", "createReleaseDistributable"),
-    Distribution("exe", "Windows", "packageReleaseExe"),
-    Distribution("msi", "Windows", "packageReleaseMsi"),
-    Distribution("msix", "Windows", "packageReleaseMsix", "notarizeReleaseMsix"),
-    Distribution("zip", "Windows", "createReleaseDistributable"),
-    Distribution("zip", "Web", "webBrowserDistribution"),
+    Distribution("aab", "Android", listOf("bundleRelease"), "$appName-$rawAppVersion-release.aab"),
+    Distribution("deb", "Linux", listOf("packageReleaseDeb"), "${appNameCleaned}_${rawAppVersion}_amd64.deb "),
+    Distribution("rpm", "Linux", listOf("packageReleaseRpm"), "$appNameCleaned-$rawAppVersion-1.x86_64.rpm"),
+    Distribution("zip", "Linux", listOf("createReleaseDistributable")),
+    Distribution("dmg", "Mac", listOf("packageReleaseDmg")),
+    Distribution("pkg", "Mac", listOf("packageReleasePkg")),
+    Distribution("zip", "Mac", listOf("createReleaseDistributable")),
+    Distribution("exe", "Windows", listOf("packageReleaseExe")),
+    Distribution("msi", "Windows", listOf("packageReleaseMsi")),
+    Distribution("msix", "Windows", listOf("packageReleaseMsix", "notarizeReleaseMsix")),
+    Distribution("zip", "Windows", listOf("createReleaseDistributable")),
+    Distribution("zip", "Web", listOf("webBrowserDistribution")),
 )
 
 // #####################################################################################################################
@@ -489,12 +489,7 @@ val uploadAndroidDistributable by tasks.registering {
     group = "release"
     val thisDistribution = distributions.first { it.type == "aab" && it.platform == "Android" }
     doLast {
-        uploadToPackageRegistry(
-            layout.buildDirectory.get()
-                .file("outputs/bundle/release/$appName-$rawAppVersion-release.aab").asFile.toPath(),
-            thisDistribution.fileNameWithoutVersion,
-            thisDistribution.fileName
-        )
+        uploadDistributableToPackageRegistry(thisDistribution)
     }
     dependsOn(thisDistribution.tasks)
 }
@@ -592,7 +587,7 @@ val createGitLabPagesMsixAppinstaller by tasks.registering {
     doLast {
         val msixBaseUrl = "https://tammy.connect2x.de"
         val appinstallerFileName = "$appName.appinstaller"
-        val uri = getReleasedFileUrl(Distribution("msix", "Windows"))
+        val uri = getReleasedFileUrl(Distribution("msix", "Windows", listOf()))
         publicDir.get()
             .resolve(appinstallerFileName)
             .apply {
