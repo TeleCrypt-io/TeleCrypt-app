@@ -294,7 +294,7 @@ android {
     }
 }
 
-class Distribution(
+data class Distribution(
     val type: String,
     val platform: String,
     val tasks: List<String>,
@@ -662,9 +662,27 @@ val createGitLabPagesMsixAppinstaller by tasks.registering {
     }
 }
 
+val downloadReleasedWebAppZip = layout.buildDirectory.map { it.dir("tmp").file(webZipDistribution.fileNameReleased) }
+val downloadReleasedWebApp by tasks.registering(de.undercouch.gradle.tasks.download.Download::class) {
+    src(
+        packageRegistryUrl(
+            webZipDistribution.fileNameWithoutVersion,
+            appReleasedVersion,
+            webZipDistribution.fileNameReleased
+        )
+    )
+    dest(downloadReleasedWebAppZip)
+}
+
+val createGitLabReleasedWebApp by tasks.registering(Copy::class) {
+    from(zipTree(downloadReleasedWebAppZip))
+    into(publicDir.get().resolve(publicDir.get().resolve("app")))
+    dependsOn(downloadReleasedWebApp)
+}
+
 val createGitLabPagesFiles by tasks.registering {
     group = "release"
-    dependsOn(createGitLabPagesRedirects, createGitLabPagesMsixAppinstaller)
+    dependsOn(createGitLabPagesRedirects, createGitLabPagesMsixAppinstaller, createGitLabReleasedWebApp)
 }
 
 val createGitLabRelease by tasks.registering {

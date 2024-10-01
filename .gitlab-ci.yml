@@ -145,11 +145,6 @@ release:
   cache: *build-cache-linux
   rules:
     - *if-release
-  artifacts:
-    name: pages
-    when: on_success
-    paths:
-      - "public/"
   script:
     - ./gradlew
       createGitLabRelease
