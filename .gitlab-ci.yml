@@ -35,7 +35,19 @@ variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
 
+.build-cache-android: &build-cache-android
+  paths:
+    - $GRADLE_USER_HOME
+    - $KONAN_DATA_DIR
+    - $KOTLIN_DATA_DIR
+
 .build-cache-linux: &build-cache-linux
+  paths:
+    - $GRADLE_USER_HOME
+    - $KONAN_DATA_DIR
+    - $KOTLIN_DATA_DIR
+
+.build-cache-web: &build-cache-web
   paths:
     - $GRADLE_USER_HOME
     - $KONAN_DATA_DIR
@@ -52,13 +64,6 @@ variables:
     - $GRADLE_USER_HOME
     - $KONAN_DATA_DIR
     - $KOTLIN_DATA_DIR
-
-.artifact-reports: &artifact-reports
-  name: reports
-  when: always
-  paths: [ "**/build/reports" ]
-  reports:
-    junit: "**/build/test-results/**/TEST-*.xml"
 
 changelog:
   stage: changelog
@@ -77,9 +82,29 @@ changelog:
         exit 1
       fi
 
+binaries-android:
+  stage: binaries
+  tags: [ "saas-linux-medium-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME
+  variables: *docker-variables
+  cache: *build-cache-android
+  rules:
+    - *if-main
+  artifacts:
+    name: binaries
+    when: always
+    expire_in: 1 day
+    paths:
+      - "build/outputs/bundle/release"
+  script:
+    - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
+    - ./gradlew
+      uploadAndroidDistributable
+      --stacktrace
+
 binaries-linux:
   stage: binaries
-  tags: [ "saas-linux-large-amd64" ]
+  tags: [ "saas-linux-medium-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME
   variables: *docker-variables
   cache: *build-cache-linux
@@ -90,15 +115,30 @@ binaries-linux:
     when: always
     expire_in: 1 day
     paths:
-      - "build/outputs/bundle/release"
       - "build/compose"
   script:
-    - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
     - ./gradlew
       uploadPlatformZipDistributable
-      uploadWebZipDistributable
       uploadLinuxDistributable
-      uploadAndroidDistributable
+      --stacktrace
+
+binaries-web:
+  stage: binaries
+  tags: [ "saas-linux-medium-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME
+  variables: *docker-variables
+  cache: *build-cache-web
+  rules:
+    - *if-main
+  artifacts:
+    name: binaries
+    when: always
+    expire_in: 1 day
+    paths:
+      - "build/compose"
+  script:
+    - ./gradlew
+      uploadWebZipDistributable
       --stacktrace
 
 binaries-win:
@@ -155,7 +195,7 @@ pages:
   tags: [ "saas-linux-small-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME
   variables: *docker-variables
-  cache: *build-cache-linux
+  cache: *build-cache-web
   rules:
     - *if-main
   artifacts:
