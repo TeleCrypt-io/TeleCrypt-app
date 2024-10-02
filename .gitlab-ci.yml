@@ -190,6 +190,7 @@ release:
       createGitLabRelease
       --stacktrace
 
+# TODO should be if-release
 pages:
   stage: website
   tags: [ "saas-linux-small-amd64" ]
