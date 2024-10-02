@@ -31,7 +31,6 @@ repositories {
 
 val rawAppVersion = libs.versions.appVersion.get()
 val appVersion = withVersionSuffix(rawAppVersion)
-val appReleasedVersion = libs.versions.appReleasedVersion.get()
 val appName = "Tammy"
 val appNameCleaned = appName.replace("[-.\\s]".toRegex(), "").lowercase()
 
@@ -301,7 +300,6 @@ data class Distribution(
     val originalFileName: String = "$appName-$rawAppVersion.$type",
 ) {
     val fileName = "$appName-$platform-$appVersion.$type"
-    val fileNameReleased = "$appName-$platform-$appReleasedVersion.$type"
     val fileNameWithoutVersion = "$appName-$platform.$type"
 }
 
@@ -602,7 +600,7 @@ val uploadWindowsDistributable by tasks.registering {
 val publicDir = provider { layout.projectDirectory.asFile.resolve("public").also { it.createDirectory() } }
 
 fun getReleasedFileUrl(distribution: Distribution) =
-    "https://gitlab.com/connect2x/tammy/-/releases/$appReleasedVersion/downloads/${distribution.fileNameReleased}"
+    "https://gitlab.com/connect2x/tammy/-/releases/$appVersion/downloads/${distribution.fileName}"
 
 val createGitLabPagesRedirects by tasks.registering {
     doLast {
@@ -610,8 +608,8 @@ val createGitLabPagesRedirects by tasks.registering {
             "/${distribution.fileNameWithoutVersion} ${
                 packageRegistryUrl(
                     distribution.fileNameWithoutVersion,
-                    appReleasedVersion,
-                    distribution.fileNameReleased
+                    appVersion,
+                    distribution.fileName
                 )
             } 302"
 
@@ -643,12 +641,12 @@ val createGitLabPagesMsixAppinstaller by tasks.registering {
                         <?xml version="1.0" encoding="utf-8"?>
                         <AppInstaller
                             xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
-                            Version="${appReleasedVersion.toMsix()}"
+                            Version="${appVersion.toMsix()}"
                             Uri="$msixBaseUrl/$appinstallerFileName">
                             <MainPackage
                                 Name="$appPackage"
                                 Publisher="$publisherCN"
-                                Version="${appReleasedVersion.toMsix()}"
+                                Version="${appVersion.toMsix()}"
                                 ProcessorArchitecture="x64"
                                 Uri="$uri" />
                             <UpdateSettings>
@@ -687,8 +685,8 @@ val createGitLabRelease by tasks.registering {
                     "url": "${
                 packageRegistryUrl(
                     distribution.fileNameWithoutVersion,
-                    appReleasedVersion,
-                    distribution.fileNameReleased
+                    appVersion,
+                    distribution.fileName
                 )
             }"
                 }

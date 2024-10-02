@@ -190,7 +190,6 @@ release:
       createGitLabRelease
       --stacktrace
 
-# TODO should be if-release
 pages:
   stage: website
   tags: [ "saas-linux-small-amd64" ]
@@ -198,7 +197,7 @@ pages:
   variables: *docker-variables
   cache: *build-cache-web
   rules:
-    - *if-main
+    - *if-release
   artifacts:
     paths:
       - "public/"
