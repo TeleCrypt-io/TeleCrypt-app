@@ -28,6 +28,11 @@ To create a release, you need to create a version-tag of the form `v1.2.3` in Gi
 `gradle/lib.versions.toml`. This will trigger a pipeline creating all distributions, uploading them into package
 registry and linking them in a newly created GitLab release.
 
+## Fastlane
+
+When running locally, you must set `TAMMY_BUILD_FLAVOR` to `PROD` (e.g. by prepending `TAMMY_BUILD_FLAVOR=PROD` to each
+command).
+
 ## Important environment variables
 
 This does not include default GitLab environment variables that are used.

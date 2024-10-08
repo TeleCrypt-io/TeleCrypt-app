@@ -20,3 +20,5 @@ out/
 app-data/
 .kotlin
 local.properties
+
+service-account.json

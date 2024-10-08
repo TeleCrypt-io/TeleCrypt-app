@@ -8,11 +8,11 @@ androidTargetSDK = "35"
 appVersion = "1.0.0" # the version used for release or dev builds
 appVersionCode = "1" # the version used for Android release or dev builds
 
-trixnityMessenger = "2.2.3-DEV-23374364" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "2.2.3-LOCAL" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.5.2" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.2" # https://firebase.google.com/support/release-notes/android
-composeMultiplatform = "1.7.0-beta02" # https://github.com/JetBrains/compose-multiplatform/releases
+composeMultiplatform = "1.7.0-rc01" # https://github.com/JetBrains/compose-multiplatform/releases
 aboutLibraries = "11.2.1" # https://github.com/mikepenz/AboutLibraries/releases
 downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-download-task/releases
 copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-plugin/releases
@@ -25,7 +25,11 @@ logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
 workManager = "2.9.1" # https://developer.android.com/jetpack/androidx/releases/work
 liveData = "2.8.6" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 appcompat = "1.7.0" # https://developer.android.com/jetpack/androidx/releases/appcompat
-firebase = "33.3.0" # https://firebase.google.com/support/release-notes/android
+firebase = "33.4.0" # https://firebase.google.com/support/release-notes/android
+
+okio = "3.9.1" # https://square.github.io/okio/changelog
+screengrab = "2.1.1"
+composeUiTest = "1.7.3"
 
 [libraries]
 trixnity-messenger = { module = "de.connect2x:trixnity-messenger", version.ref = "trixnityMessenger" }
@@ -42,6 +46,11 @@ firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "fir
 firebase-messaging-ktx = { module = "com.google.firebase:firebase-messaging-ktx", version = "" }
 
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
+
+okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
+screengrab = { module = "tools.fastlane:screengrab", version.ref = "screengrab" }
+androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "composeUiTest" }
+androidx-ui-test-junit4-android = { module = "androidx.compose.ui:ui-test-junit4-android", version.ref = "composeUiTest" }
 
 [bundles]
 android-common = ["androidx-appcompat", "androidx-work-runtime-ktx", "androidx-lifecycle-livedata-ktx", "androidx-activity-compose", "logback-android"]

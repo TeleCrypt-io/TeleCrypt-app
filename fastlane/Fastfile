@@ -1,0 +1,66 @@
+# This file contains the fastlane.tools configuration
+# You can find the documentation at https://docs.fastlane.tools
+#
+# For a list of all available actions, check out
+#
+#     https://docs.fastlane.tools/actions
+#
+# For a list of all available plugins, check out
+#
+#     https://docs.fastlane.tools/plugins/available-plugins
+#
+
+# Uncomment the line if you want fastlane to automatically update itself
+# update_fastlane
+
+default_platform(:android)
+
+platform :android do
+    lane :screenshots do
+        gradle(
+            task: 'clean'
+        )
+        build_android_app(
+            task: 'assemble',
+            build_type: 'Debug'
+        )
+        build_android_app(
+            task: 'assemble',
+            build_type: 'AndroidTest'
+        )
+        capture_android_screenshots(
+            locales: ["en-US"],
+            clear_previous_screenshots: true,
+            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
+            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
+            device_type: "phone",
+            specific_device: "emulator-5558"
+        )
+        capture_android_screenshots(
+            locales: ["en-US"],
+            clear_previous_screenshots: true,
+            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
+            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
+            device_type: "sevenInch",
+            specific_device: "emulator-5556"
+        )
+        capture_android_screenshots(
+            locales: ["en-US"],
+            clear_previous_screenshots: true,
+            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
+            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
+            device_type: "tenInch",
+            specific_device: "emulator-5554"
+        )
+    end
+
+    lane :beta do
+        gradle(task: 'bundle', build_type: 'Release')
+        upload_to_play_store(track: 'beta')
+    end
+
+    lane :deploy do
+        gradle(task: 'bundle', build_type: 'Release')
+        upload_to_play_store
+    end
+end

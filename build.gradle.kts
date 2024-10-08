@@ -1,7 +1,9 @@
 import com.mikepenz.aboutlibraries.plugin.AboutLibrariesTask
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.incremental.createDirectory
 import java.net.URI
@@ -97,7 +99,10 @@ tasks.named("prepareKotlinIdeaImport") {
 
 kotlin {
     val kotlinJvmTarget = libs.versions.jvmTarget.get()
-    androidTarget()
+    androidTarget {
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
+    }
     jvmToolchain(JavaLanguageVersion.of(kotlinJvmTarget).asInt())
     jvm("desktop") {
         compilations.all {
@@ -156,12 +161,27 @@ kotlin {
                 implementation(libs.firebase.messaging.ktx)
             }
         }
+
         val webMain by getting {
             dependencies {
                 implementation(npm("copy-webpack-plugin", libs.versions.copyWebpackPlugin.get()))
             }
         }
+        commonTest {
+            dependencies {
+                implementation(kotlin("test"))
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.uiTest)
+                implementation(libs.okio.fakefilesystem)
+            }
+        }
     }
+}
+
+dependencies {
+    androidTestImplementation(libs.screengrab)
+    androidTestImplementation(libs.androidx.ui.test.junit4.android)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
 
 composeCompiler {
@@ -236,9 +256,10 @@ android {
         versionCode = libs.versions.appVersionCode.get().toInt()
         versionName = appVersion
         applicationId = "de.connect2x.${appNameCleaned}"
-        setProperty("archivesBaseName", "${appName}-${appVersion}")
+        setProperty("archivesBaseName", appName)
         resValue("string", "app_name", appName)
         resValue("string", "scheme", appNameCleaned)
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -308,7 +329,12 @@ val distributions = listOf(
     Distribution(
         "aab", "Android",
         listOf("bundleRelease"),
-        "$appName-$appVersion-release.aab"
+        "$appName-release.aab"
+    ),
+    Distribution(
+        "apk", "Android",
+        listOf("assembleRelease"),
+        "$appName-release.apk"
     ),
     Distribution(
         "deb", "Linux",
@@ -527,16 +553,23 @@ val uploadPlatformZipDistributable by tasks.registering {
 
 val uploadAndroidDistributable by tasks.registering {
     group = "release"
-    val thisDistribution = distributions.first { it.type == "aab" && it.platform == "Android" }
+    val aabDistribution = distributions.first { it.type == "aab" && it.platform == "Android" }
+    val apkDistribution = distributions.first { it.type == "apk" && it.platform == "Android" }
     doLast {
         uploadToPackageRegistry(
             layout.buildDirectory.get()
-                .file("outputs/bundle/release/${thisDistribution.originalFileName}").asFile.toPath(),
-            thisDistribution.fileNameWithoutVersion,
-            thisDistribution.fileName
+                .file("outputs/bundle/release/${aabDistribution.originalFileName}").asFile.toPath(),
+            aabDistribution.fileNameWithoutVersion,
+            aabDistribution.fileName
+        )
+        uploadToPackageRegistry(
+            layout.buildDirectory.get()
+                .file("outputs/apk/release/${apkDistribution.originalFileName}").asFile.toPath(),
+            apkDistribution.fileNameWithoutVersion,
+            apkDistribution.fileName
         )
     }
-    dependsOn.addAll(thisDistribution.tasks)
+    dependsOn.addAll(aabDistribution.tasks)
 }
 
 val uploadLinuxDistributable by tasks.registering {
