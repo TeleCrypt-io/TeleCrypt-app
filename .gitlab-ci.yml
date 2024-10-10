@@ -178,6 +178,7 @@ release:playstore-beta:
       - "build/outputs/bundle"
       - "build/outputs/apk"
       - "fastlane/metadata/android"
+      - "emulator_logs"
   before_script:
     - apt install -y ruby ruby-dev
     - gem install fastlane
