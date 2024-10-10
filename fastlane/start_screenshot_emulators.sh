@@ -16,13 +16,14 @@ emulator -avd Nexus_10 -port 5558 -no-window -no-audio -no-accel -prop persist.s
 wait_for_emulator() {
     local adb_port=$1
     local sec=0
+    local timeout=300
 
     adb -s "emulator-${adb_port}" wait-for-device
     adb -s "emulator-${adb_port}" devices
 
     while true; do
-        if [[ $sec -ge $TIMEOUT ]]; then
-            echo "Timeout (${TIMEOUT} seconds) reached - Failed to start emulator on port ${adb_port}"
+        if [[ $sec -ge $timeout ]]; then
+            echo "Timeout (${timeout} seconds) reached - Failed to start emulator on port ${adb_port}"
             exit 1
         fi
         out=$(adb -s "emulator-${adb_port}" shell getprop init.svc.bootanim 2>&1 | grep -v '^\*')
@@ -44,9 +45,8 @@ wait_for_emulator() {
 }
 
 echo "wait for emulators to fully start"
-wait_for_emulator 5554 &
-wait_for_emulator 5556 &
-wait_for_emulator 5558 &
+wait_for_emulator 5554
+wait_for_emulator 5556
+wait_for_emulator 5558
 
-wait
 echo "All emulators are ready."
