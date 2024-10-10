@@ -570,6 +570,7 @@ val uploadAndroidDistributable by tasks.registering {
         )
     }
     dependsOn.addAll(aabDistribution.tasks)
+    dependsOn.addAll(apkDistribution.tasks)
 }
 
 val uploadLinuxDistributable by tasks.registering {
