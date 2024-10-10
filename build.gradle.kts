@@ -253,7 +253,7 @@ android {
     defaultConfig {
         minSdk = libs.versions.androidMinimalSDK.get().toInt()
         targetSdk = libs.versions.androidTargetSDK.get().toInt()
-        versionCode = libs.versions.appVersionCode.get().toInt()
+        versionCode = System.getenv("CI_PIPELINE_IID")?.toInt() ?: 1
         versionName = appVersion
         applicationId = "de.connect2x.${appNameCleaned}"
         setProperty("archivesBaseName", appName)
