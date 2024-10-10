@@ -9,7 +9,7 @@ avdmanager create avd -n Nexus_10 -k "system-images;android-${ANDROID_PLATFORM};
 
 echo "start emulators"
 mkdir "emulator_logs"
-emulator -avd Nexus_5 -port 5554 -no-window -no-audio -no-boot-anim -no-accel --verbose >> emulator_logs/nexus_5.log 2>&1 &
+emulator -avd Nexus_5 -port 5554 -no-window -no-audio -no-boot-anim -no-accel -verbose >> emulator_logs/nexus_5.log 2>&1 &
 emulator -avd Nexus_7 -port 5556 -no-window -no-audio -no-boot-anim -no-accel >> emulator_logs/nexus_7.log 2>&1 &
 emulator -avd Nexus_10 -port 5558 -no-window -no-audio -no-boot-anim -no-accel -prop persist.sys.orientation=landscape >> emulator_logs/nexus_10.log 2>&1 &
 
