@@ -7,10 +7,10 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
 stages:
-  - changelog
-  - binaries
+  #- changelog
+  #- binaries
   - release
-  - website
+  #- website
 
 variables:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -83,7 +83,7 @@ changelog:
         exit 1
       fi
 
-binaries-android:
+binaries:android:
   stage: binaries
   tags: [ "saas-linux-medium-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_EMULATOR
@@ -96,16 +96,16 @@ binaries-android:
     when: always
     expire_in: 1 day
     paths:
-      - "build/outputs/bundle/release"
+      - "build/outputs/bundle"
+      - "build/outputs/apk"
   script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
-    - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > SERVICE_ACCOUNT_JSON_FILE
-    - ./fastlane/start_screenshot_emulators.sh
     - ./gradlew
       uploadAndroidDistributable
       --stacktrace
 
-binaries-linux:
+
+binaries:linux:
   stage: binaries
   tags: [ "saas-linux-medium-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
@@ -125,7 +125,7 @@ binaries-linux:
       uploadLinuxDistributable
       --stacktrace
 
-binaries-web:
+binaries:web:
   stage: binaries
   tags: [ "saas-linux-medium-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
@@ -144,7 +144,7 @@ binaries-web:
       uploadWebZipDistributable
       --stacktrace
 
-binaries-win:
+binaries:win:
   stage: binaries
   tags: [ "connect2x-win" ]
   cache: *build-cache-windows
@@ -162,7 +162,7 @@ binaries-win:
       uploadWindowsDistributable
       --stacktrace
 
-binaries-mac:
+binaries:mac:
   stage: binaries
   tags: [ "connect2x-mac" ]
   cache: *build-cache-mac
@@ -180,7 +180,59 @@ binaries-mac:
       uploadMacDistributable
       --stacktrace
 
-release:
+release:playstore-beta:
+  stage: release
+  tags: [ "saas-linux-medium-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME_EMULATOR
+  variables: *docker-variables
+  cache: *build-cache-android
+  rules:
+    - *if-main
+  artifacts:
+    name: binaries
+    when: always
+    expire_in: 1 day
+    paths:
+      - "build/outputs/bundle"
+      - "build/outputs/apk"
+      - "fastlane/metadata/android"
+  before_script:
+    - apt install -y ruby ruby-dev
+    - gem install fastlane
+  script:
+    - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
+    - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > SERVICE_ACCOUNT_JSON_FILE
+    - ./fastlane/start_screenshot_emulators.sh
+    - fastlane android screenshots
+    - fastlane android releaseBeta
+
+release:playstore:
+  stage: release
+  tags: [ "saas-linux-medium-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME_EMULATOR
+  variables: *docker-variables
+  cache: *build-cache-android
+  rules:
+    - *if-release
+  artifacts:
+    name: binaries
+    when: always
+    expire_in: 1 day
+    paths:
+      - "build/outputs/bundle"
+      - "build/outputs/apk"
+      - "fastlane/metadata/android"
+  before_script:
+    - apt install -y ruby ruby-dev
+    - gem install fastlane
+  script:
+    - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
+    - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > SERVICE_ACCOUNT_JSON_FILE
+    - ./fastlane/start_screenshot_emulators.sh
+    - fastlane android screenshots
+    - fastlane android release
+
+release:gitlab:
   stage: release
   tags: [ "saas-linux-small-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
@@ -194,7 +246,7 @@ release:
       --stacktrace
 
 pages:
-  stage: website
+  stage: release
   tags: [ "saas-linux-small-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   variables: *docker-variables

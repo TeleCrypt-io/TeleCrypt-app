@@ -1,0 +1,3 @@
+Tammy ist der schnelle, einfache und sichere Matrix-basierte Messenger, auf den du gewartet hast. Dank der Ende-zu-Ende-Verschlüsselung sind deine Unterhaltungen absolut privat und sicher. Das schlanke Design von Tammy sorgt für schnelles Messaging und reibungslose Leistung.
+
+Tammy nutzt Matrix und bietet dadurch dezentrale Kommunikation, sodass Sie nicht an einen einzelnen Server gebunden sind. Bleiben Sie geräteübergreifend in Verbindung, treten Sie öffentlichen Räumen bei und seien Sie unabhängig von proprietärer Software, da Tammy Open Source ist.
