@@ -397,7 +397,8 @@ val logoFileName = "logo.png"
 val logo44FileName = "logo_44.png"
 val logo155FileName = "logo_155.png"
 
-fun String.toMsix() = split(".").map { it.toInt() }.let { (major, minor, patch) -> "$major.0.$minor.$patch" }
+fun String.toMsix() =
+    substringBefore("-").split(".").map { it.toInt() }.let { (major, minor, patch) -> "$major.0.$minor.$patch" }
 
 val msixDistributionDir: Provider<Directory> =
     distributionDir.map { it.dir("msix").also { it.asFile.createDirectory() } }

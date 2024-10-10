@@ -28,26 +28,29 @@ platform :android do
         capture_android_screenshots(
             locales: ["en-US"],
             clear_previous_screenshots: true,
+            skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
             tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
             device_type: "phone",
-            specific_device: "emulator-5554"
+            specific_device: "emulator-5564"
         )
         capture_android_screenshots(
             locales: ["en-US"],
             clear_previous_screenshots: true,
+            skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
             tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
             device_type: "sevenInch",
-            specific_device: "emulator-5556"
+            specific_device: "emulator-5566"
         )
         capture_android_screenshots(
             locales: ["en-US"],
             clear_previous_screenshots: true,
+            skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
             tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
             device_type: "tenInch",
-            specific_device: "emulator-5558"
+            specific_device: "emulator-5568"
         )
     end
 

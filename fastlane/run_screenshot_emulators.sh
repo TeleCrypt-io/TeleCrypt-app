@@ -3,15 +3,15 @@
 ANDROID_PLATFORM=${ANDROID_PLATFORM:-35}
 
 echo "create emulators"
-avdmanager create avd -n Nexus_5 -k "system-images;android-${ANDROID_PLATFORM};google_apis;x86_64" -d "Nexus 5"
-avdmanager create avd -n Nexus_7 -k "system-images;android-${ANDROID_PLATFORM};google_apis;x86_64" -d "Nexus 7"
-avdmanager create avd -n Nexus_10 -k "system-images;android-${ANDROID_PLATFORM};google_apis;x86_64" -d "Nexus 10"
+avdmanager create avd -n Screenshot_Nexus_5 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 5"
+avdmanager create avd -n Screenshot_Nexus_7 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 7"
+avdmanager create avd -n Screenshot_Nexus_10 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 10"
 
 echo "start emulators"
 mkdir "emulator_logs"
-emulator -avd Nexus_5 -port 5554 -no-window -no-audio -no-boot-anim >> emulator_logs/nexus_5.log 2>&1 &
-emulator -avd Nexus_7 -port 5556 -no-window -no-audio -no-boot-anim >> emulator_logs/nexus_7.log 2>&1 &
-emulator -avd Nexus_10 -port 5558 -no-window -no-audio -no-boot-anim -prop persist.sys.orientation=landscape >> emulator_logs/nexus_10.log 2>&1 &
+emulator -avd Screenshot_Nexus_5 -port 5564 -no-window -no-audio -no-boot-anim &
+emulator -avd Screenshot_Nexus_7 -port 5566 -no-window -no-audio -no-boot-anim &
+emulator -avd Screenshot_Nexus_10 -port 5568 -no-window -no-audio -no-boot-anim -prop persist.sys.orientation=landscape &
 
 explain() {
 	if [[ "$1" =~ "not found" ]]; then
@@ -28,7 +28,7 @@ explain() {
 wait_for_emulator() {
     local adb_port=$1
     local sec=0
-    local timeout=300
+    local timeout=120
 
     adb -s "emulator-${adb_port}" wait-for-device
     adb -s "emulator-${adb_port}" devices
@@ -57,13 +57,14 @@ wait_for_emulator() {
 }
 
 echo "wait for emulators to fully start"
-wait_for_emulator 5554
-wait_for_emulator 5556
-wait_for_emulator 5558
+wait_for_emulator 5564
+wait_for_emulator 5566
+wait_for_emulator 5568
 
-echo "unlock emulator screens"
-adb -s "emulator-5554" shell input keyevent 82
-adb -s "emulator-5556" shell input keyevent 82
-adb -s "emulator-5558" shell input keyevent 82
+#echo "unlock emulator screens"
+#adb -s "emulator-5554" shell input keyevent 82
+#adb -s "emulator-5556" shell input keyevent 82
+#adb -s "emulator-5558" shell input keyevent 82
 
 echo "All emulators are ready."
+wait

@@ -164,7 +164,7 @@ variables:
 
 release:playstore-beta:
   stage: release
-  tags: [ "connect2x-linux" ]
+  tags: [ "saas-linux-medium-amd64" ]
   image: $BUILD_LINUX_IMAGE_NAME_FASTLANE
   variables: *docker-variables
   cache: *build-cache-android
@@ -181,9 +181,7 @@ release:playstore-beta:
       - "emulator_logs"
   script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
-    - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > SERVICE_ACCOUNT_JSON_FILE
-    - ./fastlane/start_screenshot_emulators.sh
-    - fastlane android screenshots
+    - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > service-account.json
     - fastlane android releaseBeta
 
 release:playstore:
@@ -205,8 +203,6 @@ release:playstore:
   script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > $ANDROID_RELEASE_STORE_FILE
     - echo $SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > SERVICE_ACCOUNT_JSON_FILE
-    - ./fastlane/start_screenshot_emulators.sh
-    - fastlane android screenshots
     - fastlane android release
 
 release:gitlab:

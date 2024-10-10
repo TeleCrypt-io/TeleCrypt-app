@@ -46,6 +46,7 @@ import de.connect2x.trixnity.messenger.viewmodel.verification.SelfVerificationRo
 import de.connect2x.trixnity.messenger.viewmodel.verification.VerificationRouter
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
 import net.folivo.trixnity.client.key.UserTrustLevel
 import net.folivo.trixnity.core.model.EventId
 import net.folivo.trixnity.core.model.RoomId
@@ -440,28 +441,28 @@ class TimelineViewModelMock : TimelineViewModel {
                     formattedTime = "08:12",
                     isByMe = true,
                     showSender = false
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
                     "Oh right, I almost forgot about that.",
                     formattedTime = "08:37",
                     isByMe = false,
                     showSender = true
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
                     "Is everything already organized, or can I still help with something?",
                     formattedTime = "08:38",
                     isByMe = false,
                     showSender = false
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
                     "Well, everyone is welcome to bring cake or other treats.",
                     formattedTime = "08:43",
                     isByMe = false,
                     showSender = true
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Michael", UserId("michael", "server")),
                     "Great, then I'll bring my famous strawberry cake again.",
@@ -472,7 +473,7 @@ class TimelineViewModelMock : TimelineViewModel {
                         UserInfoElement("Henry", UserId("henry", "server")),
                         "Well, everyone is welcome to bring cake or other treats.",
                     )
-                ),
+                ) to mapOf(),
                 ImageMessageViewModelMock(
                     UserInfoElement("Michael", UserId("michael", "server")),
                     resource("strawberrycake.png"),
@@ -481,14 +482,14 @@ class TimelineViewModelMock : TimelineViewModel {
                     formattedTime = "08:50",
                     isByMe = false,
                     showSender = false
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tina", UserId("tina", "server")),
                     "😋\nDoes anyone have ideas on what we should play?",
                     formattedTime = "08:43",
                     isByMe = false,
                     showSender = true
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tammy", UserId("tammy", "server")),
                     "Oh, I have a lot of options here. But since we are quite a few people, some games won't work. " +
@@ -496,22 +497,22 @@ class TimelineViewModelMock : TimelineViewModel {
                     formattedTime = "08:49",
                     isByMe = true,
                     showSender = false
-                ),
+                ) to mapOf("👍" to 3, "🫠" to 1),
                 TextMessageViewModelMock(
                     UserInfoElement("Michael", UserId("michael", "server")),
                     "Oh, very cool. I'm really looking forward to it!",
                     formattedTime = "08:50",
                     isByMe = false,
                     showSender = true
-                ),
+                ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tammy", UserId("tammy", "server")),
                     "Alright, see you next week at the latest!",
                     formattedTime = "09:01",
                     isByMe = true,
                     showSender = false
-                ),
-            ).mapIndexed { index, vm -> TimelineElementHolderViewModelMock(index.toString(), vm) }
+                ) to mapOf(),
+            ).mapIndexed { index, vm -> TimelineElementHolderViewModelMock(index.toString(), vm.first, vm.second) }
         )
     override val scrollTo: Flow<String> = timelineElementHolderViewModels.map { it.last().key }
     override val windowIsFocused: MutableStateFlow<Boolean> = MutableStateFlow(true)
@@ -579,7 +580,8 @@ class InputAreaViewModelModelMock : InputAreaViewModel {
 
 class TimelineElementHolderViewModelMock(
     override val key: String,
-    timelineElementViewModel: BaseTimelineElementViewModel
+    timelineElementViewModel: BaseTimelineElementViewModel,
+    reactions: Map<String, Int> = mapOf(),
 ) : TimelineElementHolderViewModel {
     override val eventId: EventId = EventId(key)
     override val canBeEdited: StateFlow<Boolean> = MutableStateFlow(false)
@@ -603,6 +605,24 @@ class TimelineElementHolderViewModelMock(
     override val showLoadingIndicatorBefore: StateFlow<Boolean> = MutableStateFlow(false)
     override val timelineElementViewModel: StateFlow<BaseTimelineElementViewModel?> =
         MutableStateFlow(timelineElementViewModel)
+    override val reactionsOpen: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    override val reactions: StateFlow<Map<String, Set<TimelineElementHolderViewModel.ReactionEvent>>> =
+        MutableStateFlow(
+            reactions.mapValues { (_, number) ->
+                buildSet {
+                    repeat(number) {
+                        add(
+                            TimelineElementHolderViewModel.ReactionEvent(
+                                EventId(number.toString()),
+                                UserInfoElement(number.toString(), UserId(number.toString(), "server")),
+                                false,
+                                Clock.System.now()
+                            )
+                        )
+                    }
+                }
+            }
+        )
 
     override fun edit() {}
     override fun endEdit() {}
@@ -611,6 +631,8 @@ class TimelineElementHolderViewModelMock(
     override fun redact() {}
     override fun replyTo() {}
     override fun reportTo() {}
+    override fun addReaction(reaction: String) {}
+    override fun removeReaction(reaction: TimelineElementHolderViewModel.ReactionEvent) {}
 }
 
 class TextMessageViewModelMock(

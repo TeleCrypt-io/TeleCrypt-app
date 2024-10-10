@@ -33,6 +33,34 @@ registry and linking them in a newly created GitLab release.
 When running locally, you must set `TAMMY_BUILD_FLAVOR` to `PROD` (e.g. by prepending `TAMMY_BUILD_FLAVOR=PROD` to each
 command).
 
+### Create screenshots
+
+Create new screenshots for the App.
+
+When using a Mac, you may do first (this needs Android SDK command line tools to be installed):
+
+```bash
+export PATH="$PATH:$HOME/Library/Android/sdk/emulator:$HOME/Library/Android/sdk/tools:$HOME/Library/Android/sdk/cmdline-tools/latest/bin/"
+```
+
+After that you can start the emulators:
+
+```bash
+./fastlane/run_screenshot_emulators.sh
+```
+
+And create screenshots:
+
+```bash
+TAMMY_BUILD_FLAVOR=PROD fastlane android screenshots
+```
+
+After that you can stop the first script and delete the emulators:
+
+```bash
+./fastlane/delete_screenshot_emulators.sh
+```
+
 ## Important environment variables
 
 This does not include default GitLab environment variables that are used.

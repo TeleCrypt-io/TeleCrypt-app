@@ -7,7 +7,7 @@ androidMinimalSDK = "28"
 androidTargetSDK = "34"
 appVersion = "1.0.0" # the version used for release or dev builds
 
-trixnityMessenger = "2.2.3-DEV-24409252" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "2.2.3-DEV-24499668" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.5.2" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.2" # https://firebase.google.com/support/release-notes/android
