@@ -9,9 +9,9 @@ avdmanager create avd -n Nexus_10 -k "system-images;android-${ANDROID_PLATFORM};
 
 echo "start emulators"
 mkdir "emulator_logs"
-emulator -avd Nexus_5 -port 5554 -no-window -no-audio -no-boot-anim -no-accel -verbose >> emulator_logs/nexus_5.log 2>&1 &
-emulator -avd Nexus_7 -port 5556 -no-window -no-audio -no-boot-anim -no-accel >> emulator_logs/nexus_7.log 2>&1 &
-emulator -avd Nexus_10 -port 5558 -no-window -no-audio -no-boot-anim -no-accel -prop persist.sys.orientation=landscape >> emulator_logs/nexus_10.log 2>&1 &
+emulator -avd Nexus_5 -port 5554 -no-window -no-audio -no-boot-anim >> emulator_logs/nexus_5.log 2>&1 &
+emulator -avd Nexus_7 -port 5556 -no-window -no-audio -no-boot-anim >> emulator_logs/nexus_7.log 2>&1 &
+emulator -avd Nexus_10 -port 5558 -no-window -no-audio -no-boot-anim -prop persist.sys.orientation=landscape >> emulator_logs/nexus_10.log 2>&1 &
 
 explain() {
 	if [[ "$1" =~ "not found" ]]; then
@@ -60,5 +60,10 @@ echo "wait for emulators to fully start"
 wait_for_emulator 5554
 wait_for_emulator 5556
 wait_for_emulator 5558
+
+echo "unlock emulator screens"
+adb -s "emulator-5554" shell input keyevent 82
+adb -s "emulator-5556" shell input keyevent 82
+adb -s "emulator-5558" shell input keyevent 82
 
 echo "All emulators are ready."

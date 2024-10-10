@@ -164,7 +164,7 @@ variables:
 
 release:playstore-beta:
   stage: release
-  tags: [ "saas-linux-medium-amd64" ]
+  tags: [ "connect2x-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_FASTLANE
   variables: *docker-variables
   cache: *build-cache-android
