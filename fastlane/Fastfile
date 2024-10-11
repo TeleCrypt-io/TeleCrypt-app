@@ -26,7 +26,7 @@ platform :android do
             build_type: 'AndroidTest'
         )
         capture_android_screenshots(
-            locales: ["en-US"],
+            locales: ["en-US", "de-DE"],
             clear_previous_screenshots: true,
             skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
@@ -35,7 +35,7 @@ platform :android do
             specific_device: "emulator-5564"
         )
         capture_android_screenshots(
-            locales: ["en-US"],
+            locales: ["en-US", "de-DE"],
             clear_previous_screenshots: true,
             skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
@@ -44,7 +44,7 @@ platform :android do
             specific_device: "emulator-5566"
         )
         capture_android_screenshots(
-            locales: ["en-US"],
+            locales: ["en-US", "de-DE"],
             clear_previous_screenshots: true,
             skip_open_summary: true,
             app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",

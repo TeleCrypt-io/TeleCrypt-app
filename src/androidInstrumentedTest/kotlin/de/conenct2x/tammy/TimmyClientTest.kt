@@ -1,6 +1,7 @@
 package de.conenct2x.tammy
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +59,7 @@ import net.folivo.trixnity.utils.nextString
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
+import org.junit.Rule
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import tools.fastlane.screengrab.Screengrab
@@ -65,6 +67,9 @@ import tools.fastlane.screengrab.cleanstatusbar.BluetoothState
 import tools.fastlane.screengrab.cleanstatusbar.CleanStatusBar
 import tools.fastlane.screengrab.cleanstatusbar.IconVisibility
 import tools.fastlane.screengrab.cleanstatusbar.MobileDataType
+import tools.fastlane.screengrab.locale.LocaleTestRule
+import tools.fastlane.screengrab.locale.LocaleUtil
+import java.util.*
 import kotlin.random.Random
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -74,6 +79,10 @@ val MAX_WIDTH = 1600.dp
 
 @OptIn(ExperimentalTestApi::class)
 class TimmyClientTest {
+
+    @Rule
+    @JvmField
+    val localeTestRule = LocaleTestRule()
 
     @BeforeTest
     fun before() {
@@ -118,8 +127,9 @@ class TimmyClientTest {
             )
         }.koin
         di.get<MatrixMessengerSettingsHolder>().init()
-        val mainViewModel = MockMainViewModel()
 
+        val mainViewModel =
+            MockMainViewModel(LocaleUtil.localeFromString(LocaleUtil.getTestLocale().substringBefore("-")))
         runComposeUiTest {
             setContent {
                 //val activity = LocalView.current.context as ComponentActivity
@@ -203,7 +213,9 @@ class TimmyClientTest {
 
 val selectedRoom = RoomId("!selected")
 
-class MockMainViewModel : MainViewModel {
+class MockMainViewModel(
+    locale: Locale,
+) : MainViewModel {
     override val isSinglePane: MutableStateFlow<Boolean> = MutableStateFlow(true)
     override val showRoom: MutableStateFlow<Boolean> = MutableStateFlow(false)
     override val selectedRoomId: MutableStateFlow<RoomId?> = MutableStateFlow(selectedRoom)
@@ -221,12 +233,17 @@ class MockMainViewModel : MainViewModel {
         MutableValue(ChildStack(InitialSyncRouter.Config.None, InitialSyncRouter.Wrapper.None))
 
     override val roomListRouterStack: Value<ChildStack<RoomListRouter.Config, RoomListRouter.Wrapper>> =
-        MutableValue(ChildStack(RoomListRouter.Config.RoomList, RoomListRouter.Wrapper.List(RoomListViewModelMock())))
+        MutableValue(
+            ChildStack(
+                RoomListRouter.Config.RoomList,
+                RoomListRouter.Wrapper.List(RoomListViewModelMock(locale))
+            )
+        )
     override val roomRouterStack: Value<ChildStack<RoomRouter.Config, RoomRouter.Wrapper>> =
         MutableValue(
             ChildStack(
                 RoomRouter.Config.View(UserId("tammy", "server"), selectedRoom.full),
-                RoomRouter.Wrapper.View(RoomViewModelMock())
+                RoomRouter.Wrapper.View(RoomViewModelMock(locale))
             )
         )
 
@@ -252,7 +269,9 @@ class MockMainViewModel : MainViewModel {
     override fun start() {}
 }
 
-class RoomListViewModelMock : RoomListViewModel {
+class RoomListViewModelMock(
+    locale: Locale,
+) : RoomListViewModel {
     override val accountViewModel: AccountViewModel = AccountViewModelMock()
     override val activeSpace: MutableStateFlow<RoomId?> = MutableStateFlow(null)
     override val allSyncError: StateFlow<Boolean> = MutableStateFlow(false)
@@ -276,32 +295,100 @@ class RoomListViewModelMock : RoomListViewModel {
                 null,
                 inviterUserInfo = UserInfoElement("Timmy", UserId("tammy", "server"), "T", null)
             ),
-            RoomListElementMock("Tommy", resource("user1.png"), "19:59", "Great :-)", unreadMessages = 1),
-            RoomListElementMock("Mommy", resource("user2.png"), "17:44", "Thank you honey."),
-            RoomListElementMock("Bob", resource("user3.png"), "17:10", "🥰", unreadMessages = 3),
-            RoomListElementMock("Frank", resource("user4.png"), "16:52", "Then let's just try it out ☺️"),
             RoomListElementMock(
-                "Board Games Night",
+                "Tommy", resource("user1.png"), "19:59",
+                mapOf(
+                    Locale.ENGLISH to "Great :-)",
+                    Locale.GERMAN to "Super :-)",
+                )[locale] ?: "???", unreadMessages = 1
+            ),
+            RoomListElementMock(
+                mapOf(
+                    Locale.ENGLISH to "Mommy",
+                    Locale.GERMAN to "Mama",
+                )[locale] ?: "???",
+                resource("user2.png"), "17:44",
+                mapOf(
+                    Locale.ENGLISH to "Thank you honey.",
+                    Locale.GERMAN to "Danke liebes.",
+                )[locale] ?: "???"
+            ),
+            RoomListElementMock("Bob", resource("user3.png"), "17:10", "🥰", unreadMessages = 3),
+            RoomListElementMock(
+                "Frank", resource("user4.png"), "16:52",
+                mapOf(
+                    Locale.ENGLISH to "Then let's just try it out ☺️",
+                    Locale.GERMAN to "Na dann einfach probieren ☺️",
+                )[locale] ?: "???"
+            ),
+            RoomListElementMock(
+                mapOf(
+                    Locale.ENGLISH to "Board Games Night",
+                    Locale.GERMAN to "Brettspielnacht",
+                )[locale] ?: "???",
                 resource("boardgame.png"),
                 "16:44",
-                "You: Alright, see you next week at the latest!",
+                mapOf(
+                    Locale.ENGLISH to "You: Alright, see you next week at the latest!",
+                    Locale.GERMAN to "Du: Alles klar, dann bis spätestens nächste Woche!",
+                )[locale] ?: "???",
                 isDirect = false,
             ),
-            RoomListElementMock("Family", resource("family.png"), "11:30", "Michael: That was fun!", isDirect = false),
+            RoomListElementMock(
+                mapOf(
+                    Locale.ENGLISH to "Family",
+                    Locale.GERMAN to "Familie",
+                )[locale] ?: "???", resource("family.png"), "11:30",
+                mapOf(
+                    Locale.ENGLISH to "Michael: That was fun!",
+                    Locale.GERMAN to "Michael: Das hat Spaß gemacht!",
+                )[locale] ?: "???",
+                isDirect = false
+            ),
             RoomListElementMock("Luna", resource("user5.png"), "11:12", "Sent an image."),
             RoomListElementMock(
-                "Movie Maniacs",
+                mapOf(
+                    Locale.ENGLISH to "Movie Maniacs",
+                    Locale.GERMAN to "Filmfans",
+                )[locale] ?: "???",
                 resource("movie.png"),
                 "11:11",
-                "Benedict: Best movie ever 👍",
+                mapOf(
+                    Locale.ENGLISH to "Benedict: Best movie ever 👍",
+                    Locale.GERMAN to "Benedict: Bester Film überhaupt 👍",
+                )[locale] ?: "???",
                 isDirect = false,
                 isEncrypted = false,
                 isPublic = true
             ),
-            RoomListElementMock("Lilly", resource("user6.png"), "07:16", "Oh yeah. I understand..."),
-            RoomListElementMock("Nina", resource("user7.png"), "12.06.2024", "Until then 🎸"),
-            RoomListElementMock("Bruno", resource("user8.png"), "12.06.2024", "I like that idea 😀"),
-            RoomListElementMock("Felicitas", resource("user11.png"), "13.06.2024", "Have a nice week!"),
+            RoomListElementMock(
+                "Lilly", resource("user6.png"), "07:16",
+                mapOf(
+                    Locale.ENGLISH to "Oh yeah. I understand...",
+                    Locale.GERMAN to "Oh ja. Kann ich verstehen...",
+                )[locale] ?: "???",
+            ),
+            RoomListElementMock(
+                "Nina", resource("user7.png"), "12.06.2024",
+                mapOf(
+                    Locale.ENGLISH to "Until then 🎸",
+                    Locale.GERMAN to "Bis dahin 🎸",
+                )[locale] ?: "???",
+            ),
+            RoomListElementMock(
+                "Bruno", resource("user8.png"), "12.06.2024",
+                mapOf(
+                    Locale.ENGLISH to "I like that idea 😀",
+                    Locale.GERMAN to "Ich mag die Idee 😀",
+                )[locale] ?: "???",
+            ),
+            RoomListElementMock(
+                "Felicitas", resource("user11.png"), "13.06.2024",
+                mapOf(
+                    Locale.ENGLISH to "Have a nice week!",
+                    Locale.GERMAN to "Schöne Woche noch!",
+                )[locale] ?: "???",
+            ),
         )
     )
 
@@ -400,7 +487,7 @@ class RoomListElementViewModelMock(
     override fun rejectInvitationAndBlockInviter() {}
 }
 
-class RoomViewModelMock : RoomViewModel {
+class RoomViewModelMock(locale: Locale) : RoomViewModel {
     override val isShowSettings: StateFlow<Boolean> = MutableStateFlow(false)
     override val isTwoPane: StateFlow<Boolean> = MutableStateFlow(false)
     override val settingsStack: Value<ChildStack<SettingsRouter.Config, SettingsRouter.Wrapper>> =
@@ -409,7 +496,7 @@ class RoomViewModelMock : RoomViewModel {
         MutableValue(
             ChildStack(
                 TimelineRouter.Config.View(selectedRoom.full),
-                TimelineRouter.Wrapper.View(TimelineViewModelMock())
+                TimelineRouter.Wrapper.View(TimelineViewModelMock(locale))
             )
         )
 
@@ -418,7 +505,9 @@ class RoomViewModelMock : RoomViewModel {
     override fun showSettings() {}
 }
 
-class TimelineViewModelMock : TimelineViewModel {
+class TimelineViewModelMock(
+    locale: Locale,
+) : TimelineViewModel {
     override val draggedFile: StateFlow<FileDescriptor?> = MutableStateFlow(null)
     override val error: StateFlow<String?> = MutableStateFlow(null)
     override val firstVisibleTimelineElement: MutableStateFlow<String?> = MutableStateFlow(null)
@@ -428,7 +517,7 @@ class TimelineViewModelMock : TimelineViewModel {
     override val loadingBefore: StateFlow<Boolean> = MutableStateFlow(false)
     override val reportMessageStack: Value<ChildStack<ReportMessageRouter.Config, ReportMessageRouter.Wrapper>> =
         MutableValue(ChildStack(ReportMessageRouter.Config.None, ReportMessageRouter.Wrapper.None))
-    override val roomHeaderViewModel: RoomHeaderViewModel = RoomHeaderViewModelMock()
+    override val roomHeaderViewModel: RoomHeaderViewModel = RoomHeaderViewModelMock(locale)
     override val sendAttachmentStack: Value<ChildStack<TimelineViewModel.Config, TimelineViewModel.Wrapper>> =
         MutableValue(ChildStack(TimelineViewModel.Config.None, TimelineViewModel.Wrapper.None))
     override val stickyDate: StateFlow<String?> = MutableStateFlow("13.06.2024")
@@ -437,41 +526,59 @@ class TimelineViewModelMock : TimelineViewModel {
             listOf(
                 TextMessageViewModelMock(
                     UserInfoElement("Tammy", UserId("tammy", "server")),
-                    "In one week it's that time again! We're having another little Board Games Night soon.",
+                    mapOf(
+                        Locale.ENGLISH to "In one week it's that time again! We're having another little Board Games Night soon.",
+                        Locale.GERMAN to "In einer Woche ist es wieder so weit! Wir veranstalten bald wieder eine kleine Brettspielnacht.",
+                    )[locale] ?: "???",
                     formattedTime = "08:12",
                     isByMe = true,
                     showSender = false
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
-                    "Oh right, I almost forgot about that.",
+                    mapOf(
+                        Locale.ENGLISH to "Oh right, I almost forgot about that.",
+                        Locale.GERMAN to "Ach ja, das hätte ich fast vergessen.",
+                    )[locale] ?: "???",
                     formattedTime = "08:37",
                     isByMe = false,
                     showSender = true
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
-                    "Is everything already organized, or can I still help with something?",
+                    mapOf(
+                        Locale.ENGLISH to "Is everything already organized, or can I still help with something?",
+                        Locale.GERMAN to "Ist schon alles organisiert oder kann ich noch etwas mithelfen?",
+                    )[locale] ?: "???",
                     formattedTime = "08:38",
                     isByMe = false,
                     showSender = false
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Henry", UserId("henry", "server")),
-                    "Well, everyone is welcome to bring cake or other treats.",
+                    mapOf(
+                        Locale.ENGLISH to "Well, everyone is welcome to bring cake or other treats.",
+                        Locale.GERMAN to "Nun, jeder kann Kuchen oder andere Leckereien mitzubringen.",
+                    )[locale] ?: "???",
                     formattedTime = "08:43",
                     isByMe = false,
                     showSender = true
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Michael", UserId("michael", "server")),
-                    "Great, then I'll bring my famous strawberry cake again.",
+                    mapOf(
+                        Locale.ENGLISH to "Great, then I'll bring my famous strawberry cake again.",
+                        Locale.GERMAN to "Gut, dann bringe ich wieder meinen berühmten Erdbeerkuchen mit.",
+                    )[locale] ?: "???",
                     formattedTime = "08:31",
                     isByMe = false,
                     showSender = true,
                     referencedMessage = ReferencedMessage.ReferencedTextMessage(
                         UserInfoElement("Henry", UserId("henry", "server")),
-                        "Well, everyone is welcome to bring cake or other treats.",
+                        mapOf(
+                            Locale.ENGLISH to "Well, everyone is welcome to bring cake or other treats.",
+                            Locale.GERMAN to "Nun, jeder kann Kuchen oder andere Leckereien mitzubringen.",
+                        )[locale] ?: "???",
                     )
                 ) to mapOf(),
                 ImageMessageViewModelMock(
@@ -485,29 +592,42 @@ class TimelineViewModelMock : TimelineViewModel {
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tina", UserId("tina", "server")),
-                    "😋\nDoes anyone have ideas on what we should play?",
+                    mapOf(
+                        Locale.ENGLISH to "😋\nDoes anyone have ideas on what we should play?",
+                        Locale.GERMAN to "😋\nHat jemand eine Idee, was wir spielen können?",
+                    )[locale] ?: "???",
                     formattedTime = "08:43",
                     isByMe = false,
                     showSender = true
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tammy", UserId("tammy", "server")),
-                    "Oh, I have a lot of options here. But since we are quite a few people, some games won't work. " +
-                            "I'll take a look and see what would fit well! I'm already excited!",
+                    mapOf(
+                        Locale.ENGLISH to "Oh, I have a lot of options here. But since we are quite a few people, some games won't work. " +
+                                "I'll take a look and see what would fit well! I'm already excited!",
+                        Locale.GERMAN to "Oh, ich habe hier eine Menge Möglichkeiten. Aber da wir ziemlich viele Leute sind, werden einige Spiele nicht funktionieren. " +
+                                "Ich werde mal schauen, was gut passen würde! Ich bin schon ganz hibbelig!",
+                    )[locale] ?: "???",
                     formattedTime = "08:49",
                     isByMe = true,
                     showSender = false
                 ) to mapOf("👍" to 3, "🫠" to 1),
                 TextMessageViewModelMock(
                     UserInfoElement("Michael", UserId("michael", "server")),
-                    "Oh, very cool. I'm really looking forward to it!",
+                    mapOf(
+                        Locale.ENGLISH to "Oh, very cool. I'm really looking forward to it!",
+                        Locale.GERMAN to "Oh, sehr cool. Ich freue mich schon sehr darauf!",
+                    )[locale] ?: "???",
                     formattedTime = "08:50",
                     isByMe = false,
                     showSender = true
                 ) to mapOf(),
                 TextMessageViewModelMock(
                     UserInfoElement("Tammy", UserId("tammy", "server")),
-                    "Alright, see you next week at the latest!",
+                    mapOf(
+                        Locale.ENGLISH to "Alright, see you next week at the latest!",
+                        Locale.GERMAN to "Alles klar, dann bis spätestens nächste Woche!",
+                    )[locale] ?: "???",
                     formattedTime = "09:01",
                     isByMe = true,
                     showSender = false
@@ -523,7 +643,7 @@ class TimelineViewModelMock : TimelineViewModel {
     override fun loadBefore() {}
 }
 
-class RoomHeaderViewModelMock : RoomHeaderViewModel {
+class RoomHeaderViewModelMock(locale: Locale) : RoomHeaderViewModel {
     override val canBlockUser: StateFlow<Boolean> = MutableStateFlow(false)
     override val canUnblockUser: StateFlow<Boolean> = MutableStateFlow(false)
     override val canVerifyUser: StateFlow<Boolean> = MutableStateFlow(false)
@@ -532,8 +652,14 @@ class RoomHeaderViewModelMock : RoomHeaderViewModel {
     override val isUserBlocked: StateFlow<Boolean> = MutableStateFlow(false)
     override val roomHeaderInfo: StateFlow<RoomHeaderInfo> = MutableStateFlow(
         RoomHeaderInfo(
-            roomName = "Board Games Night",
-            roomTopic = "Organizing our monthly Board Games Night",
+            roomName = mapOf(
+                Locale.ENGLISH to "Board Games Night",
+                Locale.GERMAN to "Brettspielnacht",
+            )[locale] ?: "???",
+            roomTopic = mapOf(
+                Locale.ENGLISH to "Organizing our monthly Board Games Night",
+                Locale.GERMAN to "Organisation unserer monatlichen Brettspielnacht",
+            )[locale] ?: "???",
             roomImageInitials = "BG",
             roomImage = resource("boardgame.png"),
             presence = null,
