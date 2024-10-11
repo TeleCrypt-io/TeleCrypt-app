@@ -1,3 +1,4 @@
 json_key_file "./service-account.json"
 app_identifier "de.connect2x.tammy"
 package_name "de.connect2x.tammy"
+version_code ENV['CI_PIPELINE_IID'] || "0"
