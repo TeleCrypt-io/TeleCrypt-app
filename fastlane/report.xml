@@ -5,32 +5,32 @@
     
     
       
-      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.000274">
+      <testcase classname="fastlane.lanes" name="0: default_platform" time="0.000206">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="1: assembleDebug" time="1.342204">
+      <testcase classname="fastlane.lanes" name="1: assembleDebug" time="16.775759">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="2: assembleAndroidTest" time="0.989489">
+      <testcase classname="fastlane.lanes" name="2: assembleAndroidTest" time="1.898206">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="3: capture_android_screenshots" time="8.764917">
+      <testcase classname="fastlane.lanes" name="3: capture_android_screenshots" time="20.04967">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="4: capture_android_screenshots" time="8.876309">
+      <testcase classname="fastlane.lanes" name="4: capture_android_screenshots" time="14.835532">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="5: capture_android_screenshots" time="9.638922">
+      <testcase classname="fastlane.lanes" name="5: capture_android_screenshots" time="11.20505">
         
       </testcase>
     
