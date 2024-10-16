@@ -238,7 +238,7 @@ pages:
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *build-cache-web
   rules:
-    - *if-release
+    - *if-main
   artifacts:
     paths:
       - "public/"

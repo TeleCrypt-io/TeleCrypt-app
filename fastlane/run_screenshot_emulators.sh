@@ -3,15 +3,15 @@
 ANDROID_PLATFORM=${ANDROID_PLATFORM:-35}
 
 echo "create emulators"
-avdmanager create avd -n Screenshot_Nexus_6 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 6"
-avdmanager create avd -n Screenshot_Nexus_7 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 7"
-avdmanager create avd -n Screenshot_Nexus_10 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 10"
+avdmanager create avd -n Screenshot_Phone -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "pixel_6"
+avdmanager create avd -n Screenshot_Tablet_7 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 7"
+avdmanager create avd -n Screenshot_Tablet_10 -k "system-images;android-${ANDROID_PLATFORM};google_apis;arm64-v8a" -d "Nexus 10"
 
 echo "start emulators"
 mkdir "emulator_logs"
-emulator -avd Screenshot_Nexus_6 -port 5564 -no-window -no-audio -no-boot-anim &
-emulator -avd Screenshot_Nexus_7 -port 5566 -no-window -no-audio -no-boot-anim &
-emulator -avd Screenshot_Nexus_10 -port 5568 -no-window -no-audio -no-boot-anim -prop persist.sys.orientation=landscape &
+emulator -avd Screenshot_Phone -port 5564 -no-window -no-audio -no-boot-anim &
+emulator -avd Screenshot_Tablet_7 -port 5566 -no-window -no-audio -no-boot-anim &
+emulator -avd Screenshot_Tablet_10 -port 5568 -no-window -no-audio -no-boot-anim -prop persist.sys.orientation=landscape &
 
 explain() {
 	if [[ "$1" =~ "not found" ]]; then
