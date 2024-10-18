@@ -21,4 +21,6 @@ app-data/
 .kotlin
 local.properties
 
-service-account.json
+android_service-account.json
+android_keystore.jks
+apple_connect2x.keystore

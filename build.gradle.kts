@@ -221,6 +221,19 @@ compose {
                     upgradeUuid = "8d41e87a-4f88-41a3-bad9-9d4e8279b7e9"
                 }
                 macOS {
+                    bundleID = "de.connect2x.Tammy"
+                    if (isCI) {
+                        signing {
+                            sign = true
+                            keychain = "apple_keychain.keychain"
+                            identity = System.getenv("APPLE_KEYCHAIN_IDENTITY")
+                        }
+                        notarization {
+                            teamID = System.getenv("APPLE_TEAM_ID")
+                            appleID = System.getenv("APPLE_ID")
+                            password = System.getenv("APPLE_NOTARIZATION_PASSWORD")
+                        }
+                    }
                     iconFile.set(project.file("src/desktopMain/resources/logo.icns"))
                     infoPlist {
                         extraKeysRawXml = """
@@ -265,7 +278,7 @@ android {
     signingConfigs {
         create("release") {
             if (isCI) {
-                storeFile = System.getenv("ANDROID_RELEASE_STORE_FILE")?.let { file(it) }
+                storeFile = file("android_keystore.jks")
                 storePassword = System.getenv("ANDROID_RELEASE_STORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_RELEASE_KEY_ALIAS") ?: "upload"
                 keyPassword = System.getenv("ANDROID_RELEASE_KEY_PASSWORD")
@@ -352,10 +365,11 @@ val distributions = listOf(
     ),
     Distribution(
         "dmg", "Mac",
-        listOf("packageReleaseDmg")
+        listOf("packageReleaseDmg", "notarizeReleaseDmg")
     ),
     Distribution(
-        "pkg", "Mac", listOf("packageReleasePkg")
+        "pkg", "Mac",
+        listOf("packageReleasePkg", "notarizeReleasePkg")
     ),
     Distribution(
         "zip", "Mac",
@@ -490,9 +504,9 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
         "sign",
         "/debug",
         "/fd", "sha256", // signature digest algorithm
-        "/tr", System.getenv("MSIX_CODE_SIGNING_TIMESTAMP_SERVER") ?: "", // timestamp server
+        "/tr", System.getenv("WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER") ?: "", // timestamp server
         "/td", "sha256", // timestamp digest algorithm
-        "/sha1", System.getenv("MSIX_CODE_SIGNING_THUMBPRINT") ?: "", // key selection
+        "/sha1", System.getenv("WINDOWS_CODE_SIGNING_THUMBPRINT") ?: "", // key selection
         misxDistribution.originalFileName
     )
     dependsOn(packageReleaseMsix)
