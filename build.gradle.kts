@@ -223,7 +223,7 @@ compose {
                 macOS {
                     bundleID = "de.connect2x.Tammy"
                     val appleKeychainFile = file("android_keystore.jks")
-                    if (isCI && appleKeychainFile.exists()) {
+                    if (appleKeychainFile.exists()) {
                         signing {
                             sign = true
                             keychain = "apple_keychain.keychain"
@@ -279,7 +279,7 @@ android {
     signingConfigs {
         create("release") {
             val keystoreFile = file("android_keystore.jks")
-            if (isCI && keystoreFile.exists()) {
+            if (keystoreFile.exists()) {
                 storeFile = keystoreFile
                 storePassword = System.getenv("ANDROID_RELEASE_STORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_RELEASE_KEY_ALIAS") ?: "upload"
