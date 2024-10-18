@@ -173,7 +173,7 @@ binaries:mac:
       - "build/compose"
   before_script:
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
-    - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD ./apple_keychain.keychain
+    - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
   script:
     - ./gradlew
       uploadPlatformZipDistributable
