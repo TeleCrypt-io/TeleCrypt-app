@@ -222,7 +222,7 @@ compose {
                 }
                 macOS {
                     bundleID = "de.connect2x.Tammy"
-                    val appleKeychainFile = file("android_keystore.jks")
+                    val appleKeychainFile = file("apple_keychain.keychain")
                     if (appleKeychainFile.exists()) {
                         signing {
                             sign = true

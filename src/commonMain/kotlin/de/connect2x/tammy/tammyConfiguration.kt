@@ -21,6 +21,7 @@ fun tammyConfiguration(
     imprintUrl = "https://gitlab.com/connect2x/tammy/-/blob/main/IMPRINT.md"
     urlProtocol = BuildConfig.appNameCleaned
     pushUrl = "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify"
+    multiProfile = false
     modules += listOf(
         composeViewModule(),
         tammyModule(),
