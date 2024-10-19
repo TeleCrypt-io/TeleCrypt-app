@@ -218,7 +218,7 @@ compose {
                 windows {
                     menu = true
                     iconFile.set(project.file("src/desktopMain/resources/logo.ico"))
-                    upgradeUuid = "8d41e87a-4f88-41a3-bad9-9d4e8279b7e9"
+                    upgradeUuid = "8D41E87A-4F88-41A3-BAD9-9D4E8279B7E9"
                 }
                 macOS {
                     val appleKeychainFile = file("apple_keychain.keychain")
@@ -227,7 +227,7 @@ compose {
                         signing {
                             sign = true
                             keychain = "apple_keychain.keychain"
-                            identity = System.getenv("APPLE_KEYCHAIN_IDENTITY")
+                            identity = "connect2x GmbH"
                         }
                         notarization {
                             teamID = System.getenv("APPLE_TEAM_ID")
