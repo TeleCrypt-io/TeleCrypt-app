@@ -1,0 +1,51 @@
+title: Tammy
+subtitle: A fast and secure Matrix messenger.
+company: connect2x GmbH
+
+imprint: Imprint
+
+features:
+  title: Features
+  feature1:
+    title: Privacy-focused
+    desc: Emphasizes user privacy with end-to-end encryption and minimal data retention.
+  feature2:
+    title: Simple
+    desc: Intuitive UI with a modern look and explanatory guides within the app.
+  feature3:
+    title: Fast
+    desc: A messenger that feels like a native app by building on Compose Multiplatform.
+  feature4:
+    title: Reliable
+    desc: Uses the decentralized Matrix protocol, ensuring resilience against server outages or failures.
+  feature5:
+    title: Cross-platform
+    desc: Available on most platforms.
+  feature6:
+    title: Customizable
+    desc: Developers can start with an out of the box working messenger that can be modified to their requirements.
+
+download:
+  title: Download Tammy
+  android:
+    title: Android
+    store: PlayStore
+    apk: APK
+    aab: ABB
+  ios:
+    title: iOS
+    soon: Coming Soon!
+  windows:
+    title: Windows
+    appinstaller: AppInstaller (auto-update)
+    msix: MSIX
+  mac:
+    title: MacOS
+    dmg: DMG
+    pkg: PKG
+  linux:
+    title: Linux
+    soon: Coming Soon!
+  web:
+    title: Web
+    app: Web App

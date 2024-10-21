@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }}</title>
+    <link rel="stylesheet" href="{{ .Site.BaseURL }}style.css">
+</head>
+<body>
+
+<main>
+    <h1>{{ .Title }}</h1>
+    <div class="content">
+        {{ .Content }}
+    </div>
+</main>
+
+<footer>
+    <nav>
+        <ul>
+            <li><a href='{{ absLangURL "imprint" }}'>{{ i18n "imprint" }}</a></li>
+        </ul>
+    </nav>
+    <p>&copy; {{ i18n "company" }}</p>
+</footer>
+</body>
+</html>

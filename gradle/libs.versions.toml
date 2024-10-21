@@ -5,7 +5,6 @@ jvmTarget = "17"
 androidCompileSDK = "35"
 androidMinimalSDK = "28"
 androidTargetSDK = "34"
-appVersion = "1.0.0" # the version used for release or dev builds
 
 trixnityMessenger = "2.2.3-DEV-25168967" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 

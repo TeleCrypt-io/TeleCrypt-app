@@ -9,8 +9,8 @@ workflow:
 stages:
   - changelog
   - binaries
-  - release
   - website
+  - release
 
 variables:
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -180,6 +180,81 @@ binaries:mac:
       uploadMacDistributable
       --stacktrace
 
+website:app:
+  stage: website
+  interruptible: true
+  tags: [ "saas-linux-small-amd64" ]
+  image: $BUILD_LINUX_IMAGE_NAME_BASE
+  cache: *build-cache-web
+  rules:
+    - *if-main
+  artifacts:
+    paths:
+      - public
+      - website/config/_default/params.yaml
+      - website/static/Tammy-Windows.appinstaller
+  script:
+    - ./gradlew
+      createWebsite
+      --stacktrace
+
+website:homepage:
+  stage: website
+  image: registry.gitlab.com/pages/hugo/hugo_extended:latest
+  needs: [ "website:app" ]
+  rules:
+    - *if-main
+  script:
+    - cd website
+    - hugo
+  artifacts:
+    paths:
+      - website/public
+
+release:website:
+  stage: release
+  image: ubuntu:latest
+  rules:
+    - *if-main
+  variables:
+    SSH_SERVER_PUBLIC_KEY: |
+      |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
+      |1|2ywjh4MQnSRFiNbupqXVfgDB1B0=|6neQereUz86gfJcvhEIOGrCXX3o= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOGEPcfO5e/GIvHJrOb92rpz5x6xRR7V7QpAybe01OVA3xxgEXStOAHx+an8CGiyeRWrcuP9WQJLdkwRpLgF5fY=
+      |1|NqjIeCIEYbER3NUsDTJfBNO4rdY=|QxGhn1HkpIx4BBILLbI44AnIIIw= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIk09gBfcCwKjFFF9dKn2pNTrplhAVjY4TrJABwUJWUg
+    SSH_USER_APP: my_webapp__5
+    SSH_SERVER: connect2x.de
+  before_script:
+    - "which ssh-agent || ( apt-get update -y && apt-get install openssh-client lftp -y )"
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo $SSH_SERVER_PUBLIC_KEY >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - lftp -e "open sftp://connect2x.de; user $SSH_USER_WEBSITE $SSH_PASSWORD_WEBSITE; mirror -X .* -X .*/ --reverse --verbose --delete website/public/ www/; bye"
+
+release:webapp:
+  stage: release
+  image: ubuntu:latest
+  rules:
+    - *if-release
+  variables:
+    SSH_SERVER_PUBLIC_KEY: |
+      |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
+      |1|2ywjh4MQnSRFiNbupqXVfgDB1B0=|6neQereUz86gfJcvhEIOGrCXX3o= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOGEPcfO5e/GIvHJrOb92rpz5x6xRR7V7QpAybe01OVA3xxgEXStOAHx+an8CGiyeRWrcuP9WQJLdkwRpLgF5fY=
+      |1|NqjIeCIEYbER3NUsDTJfBNO4rdY=|QxGhn1HkpIx4BBILLbI44AnIIIw= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIk09gBfcCwKjFFF9dKn2pNTrplhAVjY4TrJABwUJWUg
+    SSH_USER_APP: my_webapp__4
+    SSH_SERVER: connect2x.de
+  before_script:
+    - "which ssh-agent || ( apt-get update -y && apt-get install openssh-client lftp -y )"
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo $SSH_SERVER_PUBLIC_KEY >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - lftp -e "open sftp://connect2x.de; user $SSH_USER_APP $SSH_PASSWORD_APP; mirror -X .* -X .*/ --reverse --verbose --delete public/ www/; bye"
+
 release:playstore-beta:
   stage: release
   interruptible: true
@@ -233,34 +308,3 @@ release:gitlab:
     - ./gradlew
       createGitLabRelease
       --stacktrace
-
-release:website:
-  stage: release
-  interruptible: true
-  tags: [ "saas-linux-small-amd64" ]
-  image: $BUILD_LINUX_IMAGE_NAME_BASE
-  cache: *build-cache-web
-  rules:
-    - *if-main
-  variables:
-    SSH_SERVER_PUBLIC_KEY: |
-      |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
-      |1|2ywjh4MQnSRFiNbupqXVfgDB1B0=|6neQereUz86gfJcvhEIOGrCXX3o= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOGEPcfO5e/GIvHJrOb92rpz5x6xRR7V7QpAybe01OVA3xxgEXStOAHx+an8CGiyeRWrcuP9WQJLdkwRpLgF5fY=
-      |1|NqjIeCIEYbER3NUsDTJfBNO4rdY=|QxGhn1HkpIx4BBILLbI44AnIIIw= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIk09gBfcCwKjFFF9dKn2pNTrplhAVjY4TrJABwUJWUg
-    SSH_USER: my_webapp__4
-    SSH_SERVER: connect2x.de
-  artifacts:
-    paths:
-      - "public/"
-  before_script:
-    - apt-get update -y && apt-get install openssh-client lftp -y
-    - eval $(ssh-agent -s)
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo $SSH_SERVER_PUBLIC_KEY >> ~/.ssh/known_hosts
-    - chmod 644 ~/.ssh/known_hosts
-  script:
-    - ./gradlew
-      createWebsite
-      --stacktrace
-    - lftp -e "open sftp://connect2x.de; user $SSH_USER $SSH_PASSWORD; mirror -X .* -X .*/ --reverse --verbose --delete public/ www/; bye"

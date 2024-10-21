@@ -79,4 +79,5 @@ This does not include default GitLab environment variables that are used.
 - APPLE_TEAM_ID
 - APPLE_ID
 - APPLE_NOTARIZATION_PASSWORD
-- SSH_PASSWORD: Website deployment
+- SSH_PASSWORD_APP: Web app deployment
+- SSH_PASSWORD_WEBSITE: Website deployment

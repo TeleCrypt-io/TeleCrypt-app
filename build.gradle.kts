@@ -31,7 +31,7 @@ repositories {
     mavenLocal()
 }
 
-val rawAppVersion = libs.versions.appVersion.get()
+val rawAppVersion = "1.0.0"
 val appVersion = withVersionSuffix(rawAppVersion)
 val appName = "Tammy"
 val appNameCleaned = appName.replace("[-.\\s]".toRegex(), "").lowercase()
@@ -200,8 +200,8 @@ compose {
             nativeDistributions {
                 modules("java.net.http", "java.sql", "java.naming")
                 targetFormats(
-                    TargetFormat.Exe,
-                    TargetFormat.Msi,
+                    // TargetFormat.Exe, // no deeplink support
+                    // TargetFormat.Msi, // no deeplink support
                     TargetFormat.Dmg,
                     TargetFormat.Pkg,
                     TargetFormat.Deb,
@@ -210,7 +210,7 @@ compose {
                 appResourcesRootDir.set(layout.buildDirectory) // @see https://github.com/JetBrains/compose-jb/tree/master/tutorials/Native_distributions_and_local_execution#jvm-resource-loading
                 packageName = appName
                 packageVersion = rawAppVersion
-                //licenseFile.set(project.file("LICENSE"))
+                licenseFile.set(project.file("LICENSE"))
 
                 linux {
                     iconFile.set(project.file("src/desktopMain/resources/logo.png"))
@@ -222,19 +222,19 @@ compose {
                 }
                 macOS {
                     val appleKeychainFile = file("apple_keychain.keychain")
-                    if (appleKeychainFile.exists()) {
-                        bundleID = "de.connect2x.tammy"
-                        signing {
-                            sign = true
-                            keychain = "apple_keychain.keychain"
-                            identity = "connect2x GmbH"
-                        }
-                        notarization {
-                            teamID = System.getenv("APPLE_TEAM_ID")
-                            appleID = System.getenv("APPLE_ID")
-                            password = System.getenv("APPLE_NOTARIZATION_PASSWORD")
-                        }
-                    }
+//                    if (appleKeychainFile.exists()) { // FIXME current keychain not working
+//                        bundleID = "de.connect2x.tammy"
+//                        signing {
+//                            sign = true
+//                            keychain = "apple_keychain.keychain"
+//                            identity = "connect2x GmbH"
+//                        }
+//                        notarization {
+//                            teamID = System.getenv("APPLE_TEAM_ID")
+//                            appleID = System.getenv("APPLE_ID")
+//                            password = System.getenv("APPLE_NOTARIZATION_PASSWORD")
+//                        }
+//                    }
                     iconFile.set(project.file("src/desktopMain/resources/logo.icns"))
                     infoPlist {
                         extraKeysRawXml = """
@@ -329,17 +329,22 @@ android {
     }
 }
 
+val gitLabProjectUrl = "${System.getenv("CI_API_V4_URL")}/projects/${System.getenv("CI_PROJECT_ID")}"
+
 data class Distribution(
     val type: String,
     val platform: String,
     val tasks: List<String>,
     val originalFileName: String = "$appName-$rawAppVersion.$type",
 ) {
-    val fileName = "$appName-$platform-$appVersion.$type"
-    val fileNameWithoutVersion = "$appName-$platform.$type"
+    val fileName = "$appName-$platform-$rawAppVersion.$type"
+
+    fun packageRegistryUrl(raw: Boolean) =
+        "$gitLabProjectUrl/packages/generic/$appName-$platform.$type/" +
+                "${if (raw) rawAppVersion else appVersion}/" +
+                if (raw) fileName else "$appName-$platform-$appVersion.$type"
 }
 
-// TODO deeplink support is missing for: deb, rpm, Linux-zip, exe, msi, Windows-zip, Web-zip
 val distributions = listOf(
     Distribution(
         "aab", "Android",
@@ -351,16 +356,16 @@ val distributions = listOf(
         listOf("assembleRelease"),
         "$appName-release.apk"
     ),
-    Distribution(
-        "deb", "Linux",
-        listOf("packageReleaseDeb"),
-        "${appNameCleaned}_${rawAppVersion}_amd64.deb"
-    ),
-    Distribution(
-        "rpm", "Linux",
-        listOf("packageReleaseRpm"),
-        "$appNameCleaned-$rawAppVersion-1.x86_64.rpm"
-    ),
+//    Distribution( // no deeplink support
+//        "deb", "Linux",
+//        listOf("packageReleaseDeb"),
+//        "${appNameCleaned}_${rawAppVersion}_amd64.deb"
+//    ),
+//    Distribution( // no deeplink support
+//        "rpm", "Linux",
+//        listOf("packageReleaseRpm"),
+//        "$appNameCleaned-$rawAppVersion-1.x86_64.rpm"
+//    ),
     Distribution(
         "zip", "Linux",
         listOf("createReleaseDistributable")
@@ -377,14 +382,14 @@ val distributions = listOf(
         "zip", "Mac",
         listOf("createReleaseDistributable")
     ),
-    Distribution(
-        "exe", "Windows",
-        listOf("packageReleaseExe")
-    ),
-    Distribution(
-        "msi", "Windows",
-        listOf("packageReleaseMsi")
-    ),
+//    Distribution( // no deeplink support
+//        "exe", "Windows",
+//        listOf("packageReleaseExe")
+//    ),
+//    Distribution( // no deeplink support
+//        "msi", "Windows",
+//        listOf("packageReleaseMsi")
+//    ),
     Distribution(
         "msix", "Windows",
         listOf("packageReleaseMsix", "notarizeReleaseMsix")
@@ -519,14 +524,10 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
 // upload to package registry
 // #####################################################################################################################
 
-val projectUrl = "${System.getenv("CI_API_V4_URL")}/projects/${System.getenv("CI_PROJECT_ID")}"
-fun packageRegistryUrl(packageName: String, version: String, fileName: String) =
-    "$projectUrl/packages/generic/$packageName/$version/$fileName"
-
-fun uploadToPackageRegistry(filePath: Path, packageName: String, fileName: String) {
+fun uploadToPackageRegistry(filePath: Path, distribution: Distribution) {
     val httpClient = HttpClient.newHttpClient()
     val request = HttpRequest.newBuilder()
-        .uri(URI.create(packageRegistryUrl(packageName, appVersion, fileName)))
+        .uri(URI.create(distribution.packageRegistryUrl(false)))
         .header("Content-Type", "application/octet-stream")
         .headers("JOB-TOKEN", System.getenv("CI_JOB_TOKEN"))
         .PUT(HttpRequest.BodyPublishers.ofFile(filePath))
@@ -537,8 +538,7 @@ fun uploadToPackageRegistry(filePath: Path, packageName: String, fileName: Strin
 fun uploadDistributableToPackageRegistry(distribution: Distribution) {
     uploadToPackageRegistry(
         distributionDir.get().file("${distribution.type}/${distribution.originalFileName}").asFile.toPath(),
-        distribution.fileNameWithoutVersion,
-        distribution.fileName
+        distribution,
     )
 }
 
@@ -576,30 +576,16 @@ val uploadAndroidDistributable by tasks.registering {
         uploadToPackageRegistry(
             layout.buildDirectory.get()
                 .file("outputs/bundle/release/${aabDistribution.originalFileName}").asFile.toPath(),
-            aabDistribution.fileNameWithoutVersion,
-            aabDistribution.fileName
+            aabDistribution
         )
         uploadToPackageRegistry(
             layout.buildDirectory.get()
                 .file("outputs/apk/release/${apkDistribution.originalFileName}").asFile.toPath(),
-            apkDistribution.fileNameWithoutVersion,
-            apkDistribution.fileName
+            apkDistribution
         )
     }
     dependsOn.addAll(aabDistribution.tasks)
     dependsOn.addAll(apkDistribution.tasks)
-}
-
-val uploadLinuxDistributable by tasks.registering {
-    group = "release"
-    val thisDistributions = distributions.filter { it.platform == "Linux" && it.type != "zip" }
-    doLast {
-        thisDistributions.forEach {
-            uploadDistributableToPackageRegistry(it)
-        }
-    }
-    dependsOn.addAll(thisDistributions.flatMap { it.tasks.toList() })
-    onlyIf { os.isLinux }
 }
 
 val webZipDistribution = distributions.first { it.type == "zip" && it.platform == "Web" }
@@ -620,9 +606,21 @@ val uploadWebZipDistributable by tasks.registering {
     dependsOn(packageReleaseWebZip)
 }
 
+val uploadLinuxDistributable by tasks.registering {
+    group = "release"
+    val thisDistributions = distributions.filter { it.platform == "Linux" }
+    doLast {
+        thisDistributions.forEach {
+            uploadDistributableToPackageRegistry(it)
+        }
+    }
+    dependsOn.addAll(thisDistributions.flatMap { it.tasks.toList() })
+    onlyIf { os.isLinux }
+}
+
 val uploadMacDistributable by tasks.registering {
     group = "release"
-    val thisDistributions = distributions.filter { it.platform == "Mac" && it.type != "zip" }
+    val thisDistributions = distributions.filter { it.platform == "Mac" }
     doLast {
         thisDistributions.forEach {
             uploadDistributableToPackageRegistry(it)
@@ -634,7 +632,7 @@ val uploadMacDistributable by tasks.registering {
 
 val uploadWindowsDistributable by tasks.registering {
     group = "release"
-    val thisDistributions = distributions.filter { it.platform == "Windows" && it.type != "zip" }
+    val thisDistributions = distributions.filter { it.platform == "Windows" }
     doLast {
         thisDistributions.forEach {
             uploadDistributableToPackageRegistry(it)
@@ -648,37 +646,37 @@ val uploadWindowsDistributable by tasks.registering {
 // release
 // #####################################################################################################################
 
-val publicDir = provider { layout.projectDirectory.asFile.resolve("public").also { it.createDirectory() } }
-
-fun getReleasedFileUrl(distribution: Distribution) =
-    "https://gitlab.com/connect2x/tammy/-/releases/$appVersion/downloads/${distribution.fileName}"
+val publicDir = provider {
+    layout.projectDirectory.asFile
+        .resolve("public").also { it.createDirectory() }
+}
 
 val createWebsiteRedirects by tasks.registering {
     doLast {
-        fun redirect(distribution: Distribution) =
-            "rewrite /${distribution.fileNameWithoutVersion} ${
-                packageRegistryUrl(
-                    distribution.fileNameWithoutVersion,
-                    appVersion,
-                    distribution.fileName
-                )
-            } permanent;"
+        fun links(distribution: Distribution) =
+            "$appName${distribution.platform}${distribution.type}: ${distribution.packageRegistryUrl(true)}"
 
-        publicDir.get()
-            .resolve("redirects.conf")
+        layout.projectDirectory.asFile
+            .resolve("website")
+            .resolve("config")
+            .resolve("_default").also { it.createDirectory() }
+            .resolve("params.yaml")
             .apply {
                 createNewFile()
-                writeText(distributions.joinToString("\r\n") { redirect(it) })
+                writeText("downloads:\r\n  " + distributions.joinToString("\r\n  ") { links(it) })
             }
     }
 }
 
 val createWebsiteMsixAppinstaller by tasks.registering {
     doLast {
-        val msixBaseUrl = "https://app.tammy.connect2x.de/"
+        val websiteBaseUrl = "https://tammy.connect2x.de/"
         val appinstallerFileName = "$appName-Windows.appinstaller"
-        val uri = getReleasedFileUrl(Distribution("msix", "Windows", listOf()))
-        publicDir.get()
+        val msixDistribution = distributions.first { it.platform == "Windows" && it.type != "msix" }
+        val uri = msixDistribution.packageRegistryUrl(true)
+        layout.projectDirectory.asFile
+            .resolve("website")
+            .resolve("static").also { it.createDirectory() }
             .resolve(appinstallerFileName)
             .apply {
                 createNewFile()
@@ -687,12 +685,12 @@ val createWebsiteMsixAppinstaller by tasks.registering {
                         <?xml version="1.0" encoding="utf-8"?>
                         <AppInstaller
                             xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
-                            Version="${appVersion.toMsix()}"
-                            Uri="$msixBaseUrl/$appinstallerFileName">
+                            Version="${rawAppVersion.toMsix()}"
+                            Uri="$websiteBaseUrl/$appinstallerFileName">
                             <MainPackage
                                 Name="$appPackage"
                                 Publisher="$publisherCN"
-                                Version="${appVersion.toMsix()}"
+                                Version="${rawAppVersion.toMsix()}"
                                 ProcessorArchitecture="x64"
                                 Uri="$uri" />
                             <UpdateSettings>
@@ -738,28 +736,22 @@ val createGitLabRelease by tasks.registering {
             """
                 {
                     "name": "${distribution.fileName}",
-                    "url": "${
-                packageRegistryUrl(
-                    distribution.fileNameWithoutVersion,
-                    appVersion,
-                    distribution.fileName
-                )
-            }"
+                    "url": "${distribution.packageRegistryUrl(false)}"
                 }
             """.trimIndent()
 
 
         val httpClient = HttpClient.newHttpClient()
         val request = HttpRequest.newBuilder()
-            .uri(URI.create("$projectUrl/releases"))
+            .uri(URI.create("$gitLabProjectUrl/releases"))
             .header("Content-Type", "application/json")
             .headers("JOB-TOKEN", System.getenv("CI_JOB_TOKEN"))
             .POST(
                 HttpRequest.BodyPublishers.ofString(
                     """
                         {
-                            "name": "$appVersion",
-                            "tag_name": "v$appVersion",
+                            "name": "$rawAppVersion",
+                            "tag_name": "v$rawAppVersion",
                             "assets": {
                                 "links": [
                                     ${distributions.joinToString(",") { assetsLinkJson(it) }}
