@@ -193,6 +193,7 @@ website:webapp:
     paths:
       - public
       - website/config/_default/params.yaml
+      - website/static/fastlane
       - website/static/Tammy-Windows.appinstaller
   script:
     - ./gradlew

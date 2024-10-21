@@ -3,4 +3,5 @@ public/
 resources/_gen/
 config/_default/params.yaml
 static/Tammy-Windows.appinstaller
+static/fastlane
 .hugo_build.lock

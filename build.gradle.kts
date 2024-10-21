@@ -716,7 +716,11 @@ val createWebsiteWebApp by tasks.registering(Copy::class) {
 
 val createWebsiteFastlaneMetadata by tasks.registering(Copy::class) {
     from(layout.projectDirectory.dir("fastlane").dir("metadata"))
-    into(publicDir.map { it.resolve("fastlane").resolve("metadata").also { it.createDirectory() } })
+    into(layout.projectDirectory.asFile
+        .resolve("website")
+        .resolve("static").also { it.createDirectory() }
+        .resolve("fastlane").resolve("metadata").also { it.createDirectory() }
+    )
 }
 
 val createWebsite by tasks.registering {
