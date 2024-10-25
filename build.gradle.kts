@@ -511,9 +511,9 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
         "sign",
         "/debug",
         "/fd", "sha256", // signature digest algorithm
-        "/tr", System.getenv("WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER") ?: "", // timestamp server
+        "/tr", System.getenv("WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER"), // timestamp server
         "/td", "sha256", // timestamp digest algorithm
-        "/sha1", System.getenv("WINDOWS_CODE_SIGNING_THUMBPRINT") ?: "", // key selection
+        "/sha1", System.getenv("WINDOWS_CODE_SIGNING_THUMBPRINT"), // key selection
         misxDistribution.originalFileName
     )
     dependsOn(packageReleaseMsix)
