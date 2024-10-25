@@ -175,6 +175,7 @@ binaries:mac:
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
     - security set-keychain-settings -t 300 "$(realpath apple_keychain.keychain)"
+    - security set-key-partition-list -S "apple-tool:,apple:" -s -k $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
     - security show-keychain-info "$(realpath apple_keychain.keychain)"
     - security dump-keychain "$(realpath apple_keychain.keychain)"
   script:
