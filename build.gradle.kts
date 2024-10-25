@@ -227,7 +227,7 @@ compose {
                         signing {
                             sign = true
                             keychain = "apple_keychain.keychain"
-                            identity = System.getenv("APPLE_KEYCHAIN_IDENTITY")
+                            identity = "connect2x GmbH"
                         }
                         notarization {
                             teamID = System.getenv("APPLE_TEAM_ID")
