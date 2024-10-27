@@ -193,7 +193,7 @@ binaries:mac-x64:
 binaries:mac-arm64:
   stage: binaries
   interruptible: true
-  tags: [ "csaas-macos-medium-m1" ]
+  tags: [ "saas-macos-medium-m1" ]
   timeout: 30m
   variables:
     HOMEBREW_NO_AUTO_UPDATE: 1
