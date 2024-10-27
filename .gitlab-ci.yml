@@ -49,13 +49,13 @@ variables:
     - $KONAN_DATA_DIR
     - $KOTLIN_DATA_DIR
 
-.build-cache-mac-x64: &build-cache-mac-x64
+.build-cache-macos-x64: &build-cache-macos-x64
   paths:
     - $GRADLE_USER_HOME
     - $KONAN_DATA_DIR
     - $KOTLIN_DATA_DIR
 
-.build-cache-mac-arm64: &build-cache-mac-arm64
+.build-cache-macos-arm64: &build-cache-macos-arm64
   paths:
     - $GRADLE_USER_HOME
     - $KONAN_DATA_DIR
@@ -166,11 +166,11 @@ binaries:win-x64:
       uploadPlatformDistributable
       --stacktrace
 
-binaries:mac-x64:
+binaries:macos-x64:
   stage: binaries
   interruptible: true
   tags: [ "connect2x-mac" ]
-  cache: *build-cache-mac-x64
+  cache: *build-cache-macos-x64
   rules:
     - *if-main
     - *if-release
@@ -190,14 +190,14 @@ binaries:mac-x64:
       uploadPlatformDistributable
       --stacktrace
 
-binaries:mac-arm64:
+binaries:macos-arm64:
   stage: binaries
   interruptible: true
   tags: [ "saas-macos-medium-m1" ]
   timeout: 30m
   variables:
     HOMEBREW_NO_AUTO_UPDATE: 1
-  cache: *build-cache-mac-arm64
+  cache: *build-cache-macos-arm64
   rules:
     - *if-main
     - *if-release
@@ -208,7 +208,6 @@ binaries:mac-arm64:
     paths:
       - "build/compose"
   before_script:
-    - brew tap homebrew/cask-versions
     - brew install --cask temurin@21
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
