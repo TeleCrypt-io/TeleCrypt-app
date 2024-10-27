@@ -208,7 +208,7 @@ binaries:macos-arm64:
     paths:
       - "build/compose"
   before_script:
-    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR IGNORE INTO access VALUES('kTCCServiceSystemPolicyAllFiles','/bin/bash',1,2,0,1,NULL,NULL,NULL,'UNUSED',NULL,0,1583997993);"
+    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR IGNORE INTO access VALUES('kTCCServiceSystemPolicyAllFiles','/bin/bash',1,2,0,1,NULL,NULL,NULL,'UNUSED',NULL,0,NULL,NULL,'UNUSED',1583997993);"
     - brew install --cask temurin@21
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
