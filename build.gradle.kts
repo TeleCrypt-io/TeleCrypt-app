@@ -538,7 +538,7 @@ val platformName: String = when {
     else -> throw IllegalStateException("${os.name} is not supported")
 }
 val architectureName: String = when {
-    arch.isAmd64 -> "x86"
+    arch.isAmd64 -> "x64"
     arch.isArm64 -> "arm64"
     else -> throw IllegalStateException("${arch.name} is not supported")
 }
