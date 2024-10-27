@@ -208,7 +208,7 @@ binaries:macos-arm64:
     paths:
       - "build/compose"
   before_script:
-    - sudo brew install --cask temurin@21
+    - brew install --cask temurin@21
     - sudo echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - sudo security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
     - sudo security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
