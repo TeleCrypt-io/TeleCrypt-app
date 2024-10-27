@@ -208,13 +208,20 @@ binaries:macos-arm64:
     paths:
       - "build/compose"
   before_script:
+    - sudo csrutil disable || echo "SIP already disabled or command not applicable"
+    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceSystemPolicyAllFiles','/bin/bash',0,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,strftime('%s','now'));"
+    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceSystemPolicyAllFiles','/bin/zsh',0,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,strftime('%s','now'));"
+    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceSystemPolicyRemovableVolumes','/bin/bash',0,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,strftime('%s','now'));"
+    - sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access VALUES('kTCCServiceSystemPolicyRemovableVolumes','/bin/zsh',0,1,1,NULL,NULL,NULL,'UNUSED',NULL,0,strftime('%s','now'));"
+    - sudo killall -HUP cfprefsd || echo "Failed to restart cfprefsd, but continuing"
+    - sudo killall -HUP tccd || echo "Failed to restart tccd, but continuing"
     - brew install --cask temurin@21
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
-    - sudo security list-keychains -d system -s "$(realpath apple_keychain.keychain)"
-    - sudo security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
-    - sudo security set-keychain-settings -t 600 "$(realpath apple_keychain.keychain)"
+    - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
+    - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
+    - security set-keychain-settings -t 600 "$(realpath apple_keychain.keychain)"
   script:
-    - sudo ./gradlew
+    - ./gradlew
       uploadPlatformDistributable
       --stacktrace
 
