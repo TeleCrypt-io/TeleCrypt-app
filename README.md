@@ -1,6 +1,7 @@
 # Tammy
 
-Website: https://tammy.connect2x.de
+Website: [https://tammy.connect2x.de](https://tammy.connect2x.de)\
+Matrix-Room: [#tammy:imbitbu.de](matrix:r/tammy:imbitbu.de)
 
 White label messenger based on [Trixnity Messenger](https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger).
 Please consult the Readme there for additional information.
