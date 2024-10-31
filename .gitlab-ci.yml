@@ -230,7 +230,8 @@ build:prepare-website:
     paths:
       - website/config/_default/params.yaml
       - website/static/fastlane
-      - website/static/Tammy-Windows.appinstaller
+      - website/static/Tammy-Windows-x64.appinstaller
+      - website/static/Tammy-Windows-arm64.appinstaller
   script:
     - ./gradlew
       prepareWebsite
