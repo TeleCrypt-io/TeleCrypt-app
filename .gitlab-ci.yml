@@ -298,7 +298,7 @@ release:webapp:
     - echo $SSH_SERVER_PUBLIC_KEY >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
   script:
-    - lftp -e "open sftp://connect2x.de; user $SSH_USER $SSH_PASSWORD_APP; mirror -X .* -X .*/ --reverse --verbose --delete build/compose/binaries/main-release/web www/; bye"
+    - lftp -e "open sftp://connect2x.de; user $SSH_USER $SSH_PASSWORD_APP; mirror -X .* -X .*/ --reverse --verbose --delete build/compose/binaries/main-release/web/ www/; bye"
 
 release:playstore-beta:
   stage: release
