@@ -32,7 +32,7 @@ repositories {
     mavenLocal()
 }
 
-val rawAppVersion = "1.0.1"
+val rawAppVersion = "1.0.2"
 val appVersion = withVersionSuffix(rawAppVersion)
 val appName = "Tammy"
 val appId = "de.connect2x.tammy"
