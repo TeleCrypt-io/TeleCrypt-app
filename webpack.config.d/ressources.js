@@ -17,3 +17,16 @@ config.plugins.push(
             ],
         })
 )
+
+config.devServer.historyApiFallback = {
+    disableDotRule: true,
+    rewrites: [
+        { from: /\/sso\.html(\/.*)/, to: ({ request, parsedUrl, match }) => match[1] },
+        { from: /\/sso\.html/, to: '/index.html' },
+    ],
+}
+config.devServer.headers = {
+  "Access-Control-Allow-Origin" : "*",
+  "Access-Control-Allow-Methods": "GET",
+  "Access-Control-Allow-Headers": "content-type"
+}

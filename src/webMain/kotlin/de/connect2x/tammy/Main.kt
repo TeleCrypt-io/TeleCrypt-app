@@ -6,7 +6,7 @@ import kotlinx.browser.window
 suspend fun main() = startMessenger(
     configuration = tammyConfiguration {
         urlProtocol = window.location.protocol.dropLast(1)
-        urlHost = window.location.hostname
+        urlHost = window.location.host
         messengerConfiguration {
             ssoRedirectPath = "sso.html"
         }
