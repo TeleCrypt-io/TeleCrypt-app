@@ -70,7 +70,7 @@ changelog:
   stage: changelog
   interruptible: true
   timeout: 5m
-  tags: [ "connect2x-linux" ]
+  tags: [ "saas-linux-small-amd64" ]
   rules:
     - *if-merge-request
   script:
