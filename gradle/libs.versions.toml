@@ -1,6 +1,6 @@
 [versions]
 appPublishedVersion = "1.0.5" # The current published version of this app
-appVersion = "1.0.6" # The next version of this app
+appVersion = "1.0.5" # The next version of this app
 
 kotlin = "2.0.21" # https://github.com/JetBrains/kotlin/releases
 
