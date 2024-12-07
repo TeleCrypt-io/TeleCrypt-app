@@ -223,7 +223,7 @@ compose {
 
                 linux {
                     iconFile.set(project.file("src/desktopMain/resources/logo.png"))
-		    modules("jdk.security.auth")
+                    modules("jdk.security.auth")
                 }
                 windows {
                     menu = true
