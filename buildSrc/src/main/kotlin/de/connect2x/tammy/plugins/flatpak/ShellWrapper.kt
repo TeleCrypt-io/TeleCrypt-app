@@ -36,7 +36,7 @@ constructor(
 
             environment.get().forEach { (key, value) -> writer.println("export $key=\"$value\"") }
 
-            writer.println(executableName.get())
+            writer.println("${executableName.get()} $@")
         }
     }
 }
