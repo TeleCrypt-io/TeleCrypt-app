@@ -1,0 +1,32 @@
+{
+  "app-id": "${APP_ID}",
+  "runtime": "${RUNTIME}",
+  "runtime-version": "${RUNTIME_VERSION}",
+  "sdk": "${SDK}",
+  "command": "${COMMAND}",
+  "finish-args": [
+    "--share=network",
+    "--share=ipc",
+    "--device=dri",
+    "--socket=x11",
+    "--socket=pulseaudio"
+  ],
+  "modules": [
+    {
+      "name": "${APP_NAME}",
+      "only-arches": [
+        "x86_64"
+      ],
+      "buildsystem": "simple",
+      "build-commands": [
+        "mv * \${FLATPAK_DEST}"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "${SOURCE_DIRECTORY}"
+        }
+      ]
+    }
+  ]
+}
