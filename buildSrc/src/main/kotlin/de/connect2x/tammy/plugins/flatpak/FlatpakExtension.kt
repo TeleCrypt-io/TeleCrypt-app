@@ -51,6 +51,9 @@ constructor(
     val publishedVersion = objectFactory.property<String>()
     val homepage = objectFactory.property<String>()
 
+    val needsWrapper = objectFactory.property<Boolean>()
+        .convention(false)
+
     val buildDirectory =
         objectFactory.directoryProperty().convention(projectLayout.buildDirectory.dir("flatpak"))
 
@@ -83,7 +86,7 @@ constructor(
         mutableMap.put("DEVELOPER_NAME", developerName)
         mutableMap.put("PUBLISHED_VERSION", publishedVersion)
         mutableMap.put("HOMEPAGE", homepage)
-        mutableMap.put("COMMAND", wrapperScriptName)
+        mutableMap.put("COMMAND", needsWrapper.flatMap { if (it) wrapperScriptName else applicationName })
         mutableMap.put("RUNTIME", flatpakRuntime)
         mutableMap.put("SDK", flatpakSdk)
         mutableMap.put("RUNTIME_VERSION", flatpakRuntimeVersion)
@@ -170,7 +173,7 @@ constructor(
 
                 desktop = desktopFile
                 metainfo = metainfoFile
-                wrapper = wrapperScriptFile
+                wrapper = needsWrapper.flatMap { if (it) wrapperScriptFile else objectFactory.fileProperty() }
                 app = appDistributionDirectory
 
                 destination = buildDirectory.map { it.dir("sources") }
