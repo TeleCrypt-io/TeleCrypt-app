@@ -526,6 +526,11 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
     onlyIf { os.isWindows && isRelease }
 }
 
+
+// #####################################################################################################################
+// flatpak
+// #####################################################################################################################
+
 flatpak {
     applicationId = appId
     applicationName = appName
