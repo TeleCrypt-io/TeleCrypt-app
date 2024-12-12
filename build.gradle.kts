@@ -2,6 +2,7 @@ import com.mikepenz.aboutlibraries.plugin.AboutLibrariesTask
 import org.gradle.nativeplatform.platform.internal.DefaultArchitecture
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
@@ -21,6 +22,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.aboutlibraries.plugin)
     alias(libs.plugins.download.plugin)
+    de.connect2x.tammy.plugins.flatpak
 }
 
 repositories {
@@ -223,7 +225,7 @@ compose {
 
                 linux {
                     iconFile.set(project.file("src/desktopMain/resources/logo.png"))
-		    modules("jdk.security.auth")
+                    modules("jdk.security.auth")
                 }
                 windows {
                     menu = true
@@ -399,6 +401,14 @@ val distributions = listOf(
         "zip", "Web", "universal",
         listOf("packageReleaseWebZip")
     ),
+    Distribution(
+        "flatpak", "Linux", "x64",
+        listOf("packageReleaseFlatpakBundle"),
+    ),
+    Distribution(
+        "flatpak-sources.zip", "Linux", "x64",
+        listOf("packageReleaseFlatpakSources"),
+    )
 )
 
 // #####################################################################################################################
@@ -515,6 +525,78 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
     dependsOn(packageReleaseMsix)
     onlyIf { os.isWindows && isRelease }
 }
+
+
+// #####################################################################################################################
+// flatpak
+// #####################################################################################################################
+
+flatpak {
+    applicationId = appId
+    applicationName = appName
+
+    flatpakRemoteName = "flathub"
+    flatpakRemoteLocation = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+    // This is explicitly not in the build directory as this would bloat the cache by about 3GB without
+    // actually being able to reuse anything.
+    flatpakCacheDirectory = layout.projectDirectory.dir(".flatpak-cache")
+    flatpakDependencies = mapOf(
+        "org.freedesktop.Platform/x86_64/24.08" to "4032cef5b0b698b46df684fc68527252cb7350f39bd90b25bb0c79766911de23",
+        "org.freedesktop.Platform.GL.default/x86_64/24.08" to "0afe3466c4abe98c6d77d6740f69fa18c9940e851176d3114903777f91469455",
+        "org.freedesktop.Platform.GL.default/x86_64/24.08extra" to "10a5153b2b4aee357d43cecf7987ee972acd2d3d282b0f2e317c9caa4fd27c8c",
+        "org.freedesktop.Platform.openh264/x86_64/2.4.1" to "50b21d3fc221e861a8573f642bd3e582453b68c8be9962614461ee4d1b0ea38e",
+        "org.freedesktop.Sdk/x86_64/24.08" to  "c452562271263c5cf32cec693f20a99f77c0771d9a13f607991984e927f0a602"
+    )
+
+    desktopTemplate = file("flatpak/app.desktop.tmpl")
+    manifestTemplate = file("flatpak/manifest.json.tmpl")
+    metainfoTemplate = file("flatpak/metainfo.xml.tmpl")
+    iconsDirectory = layout.projectDirectory.dir("flatpak/icons")
+
+    appDistributionDirectory = provider {
+        tasks
+            .named<AbstractJPackageTask>("createReleaseDistributable")
+            .flatMap { it.destinationDir.dir(appName) }
+    }.flatMap { it }
+
+    developerName = publisherName
+    publishedVersion = appVersion
+    homepage = "https://tammy.connect2x.de"
+}
+
+val flatpakBundleDistribution =  distributions.first { it.type == "flatpak" && it.platform == "Linux" }
+val packageReleaseFlatpakBundle by tasks.registering {
+    group = "compose desktop"
+
+    inputs.file(flatpak.bundleFile)
+    outputs.file(distributionDir.map { it.file("${flatpakBundleDistribution.type}/${flatpakBundleDistribution.originalFileName}") })
+
+    doLast {
+        val bundle = inputs.files.singleFile
+        val target = outputs.files.singleFile
+
+        bundle.copyTo(target, overwrite = true)
+    }
+}
+
+// The point of this is that one can just import them in the de.connect2x.yml manifest when publishing to flathub
+// The archive contains the structure with all files needed for the flatpak, e.g. metainfo, icons, desktop entry, etc. and can just be
+// This can be built without any flatpak tooling
+val flatpakSourcesDistribution =  distributions.first { it.type == "flatpak-sources.zip" && it.platform == "Linux" }
+val packageReleaseFlatpakSources by tasks.registering {
+    group = "compose desktop"
+
+    inputs.file(flatpak.sourcesZip)
+    outputs.file(distributionDir.map { it.file("${flatpakSourcesDistribution.type}/${flatpakSourcesDistribution.originalFileName}") })
+
+    doLast {
+        val bundle = inputs.files.singleFile
+        val target = outputs.files.singleFile
+
+        bundle.copyTo(target, overwrite = true)
+    }
+}
+
 
 // #####################################################################################################################
 // upload to package registry

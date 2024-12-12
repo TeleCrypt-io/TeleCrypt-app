@@ -24,3 +24,6 @@ local.properties
 android_service-account.json
 android_keystore.jks
 apple_keychain.keychain
+
+.flatpak-builder
+.flatpak-cache
