@@ -7,7 +7,6 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
-import org.jetbrains.kotlin.incremental.createDirectory
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -428,7 +427,7 @@ fun String.toMsix() =
     substringBefore("-").split(".").map { it.toInt() }.let { (major, minor, patch) -> "$major.0.$minor.$patch" }
 
 val msixDistributionDir: Provider<Directory> =
-    distributionDir.map { it.dir("msix").also { it.asFile.createDirectory() } }
+    distributionDir.map { it.dir("msix").also { it.asFile.mkdirs() } }
 
 val createMsixManifest by tasks.registering {
     doLast {
@@ -634,7 +633,7 @@ val architectureName: String = when {
 
 val platformZipDistribution =
     distributions.first { it.type == "zip" && it.platform == platformName && it.architecture == architectureName }
-val zipDistributionDir = distributionDir.map { it.dir("zip").also { it.asFile.createDirectory() } }
+val zipDistributionDir = distributionDir.map { it.dir("zip").also { it.asFile.mkdirs() } }
 
 val packageReleasePlatformZip by tasks.creating(Zip::class) {
     group = "compose desktop"
@@ -707,7 +706,7 @@ val createWebsiteDownloadLinks by tasks.registering {
         layout.projectDirectory.asFile
             .resolve("website")
             .resolve("config")
-            .resolve("_default").also { it.createDirectory() }
+            .resolve("_default").also { it.mkdirs() }
             .resolve("params.yaml")
             .apply {
                 createNewFile()
@@ -724,7 +723,7 @@ fun createWebsiteMsixAppinstaller(architecture: String) {
     val uri = msixDistribution.packageRegistryUrl(true)
     layout.projectDirectory.asFile
         .resolve("website")
-        .resolve("static").also { it.createDirectory() }
+        .resolve("static").also { it.mkdirs() }
         .resolve(appinstallerFileName)
         .apply {
             createNewFile()
@@ -763,10 +762,11 @@ val createWebsiteMsixX64Appinstaller by tasks.registering {
 
 val createWebsiteFastlaneMetadata by tasks.registering(Copy::class) {
     from(layout.projectDirectory.dir("fastlane").dir("metadata"))
-    into(layout.projectDirectory.asFile
-        .resolve("website")
-        .resolve("static").also { it.createDirectory() }
-        .resolve("fastlane").resolve("metadata").also { it.createDirectory() }
+    into(
+        layout.projectDirectory.asFile
+            .resolve("website")
+            .resolve("static").also { it.mkdirs() }
+            .resolve("fastlane").resolve("metadata").also { it.mkdirs() }
     )
 }
 

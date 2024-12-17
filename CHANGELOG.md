@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Distribute Flatpak Bundle
-
 ### Changed
 
 ### Deprecated
@@ -19,10 +17,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+### Security
+
+## 1.0.6
+
+### Added
+
+- Distribute Flatpak Bundle
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.0.0
+
+### Fixed
+
 - Use a docker image with flatpak
 - Add `Network` to flatpak categories
-
-### Security
 
 ## 1.0.5
 
