@@ -83,7 +83,7 @@ val buildConfigGenerator by tasks.registering {
             package $appId
             
             object BuildConfig {
-                const val version = "$version"
+                const val appVersion = "$version"
                 val flavor = Flavor.valueOf("$buildFlavor")
                 const val appName = "$appName"
                 const val appId = "$appId"

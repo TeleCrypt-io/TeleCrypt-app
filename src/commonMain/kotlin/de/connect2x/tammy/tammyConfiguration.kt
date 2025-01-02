@@ -15,6 +15,7 @@ fun tammyConfiguration(
 ): MatrixMultiMessengerConfiguration.() -> Unit = {
     appName = BuildConfig.appName
     appId = BuildConfig.appId
+    appVersion = BuildConfig.appVersion
     urlProtocol = BuildConfig.appId
     licenses = BuildConfig.licenses
     sendLogsEmailAddress = "error-reports@connect2x.de"
