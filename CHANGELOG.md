@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- App starts now when using a11y on Windows
+
 ### Security
 
 ## 1.0.9
