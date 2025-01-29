@@ -27,7 +27,7 @@ working on it.
 
 ## Create release
 
-1. Create a git commit with
+1. Create a git commit with `[ci skip]` in the commit message and the following changes:
     - `appPublishedVersion` (e. g. `1.2.3`) set to the version that is going to be published.
     - `appVersion` must be the same as `appPublishedVersion`.
     - Updated `CHANGELOG.md` containing a section about the new version.
@@ -35,7 +35,7 @@ working on it.
     - The version must be the same as `appPublishedVersion`.
     - This will trigger a pipeline creating all distributions, uploading them into package registry and linking them in
       a newly created GitLab release.
-3. Create a git commit with
+3. Create a git commit with `[ci skip]` in the commit message and the following changes:
     - `appPublishedVersion` (e. g. `1.2.3`) stays at the version, that has been published.
     - `appVersion` increased to the next version as this is used for `DEV` builds.
 
