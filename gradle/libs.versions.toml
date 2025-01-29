@@ -1,13 +1,13 @@
 [versions]
 appPublishedVersion = "1.0.9" # The current published version of this app
-appVersion = "1.0.10" # The next version of this app
+appVersion = "1.1.0" # The next version of this app
 
 kotlin = "2.1.0" # https://github.com/JetBrains/kotlin/releases
 
 jvmTarget = "17"
 androidCompileSDK = "35"
 androidMinimalSDK = "28"
-androidTargetSDK = "34"
+androidTargetSDK = "35"
 
 trixnityMessenger = "3.1.0" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 

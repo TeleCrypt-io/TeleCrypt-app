@@ -545,7 +545,7 @@ flatpak {
         "org.freedesktop.Platform.GL.default/x86_64/24.08" to "0afe3466c4abe98c6d77d6740f69fa18c9940e851176d3114903777f91469455",
         "org.freedesktop.Platform.GL.default/x86_64/24.08extra" to "10a5153b2b4aee357d43cecf7987ee972acd2d3d282b0f2e317c9caa4fd27c8c",
         "org.freedesktop.Platform.openh264/x86_64/2.4.1" to "50b21d3fc221e861a8573f642bd3e582453b68c8be9962614461ee4d1b0ea38e",
-        "org.freedesktop.Sdk/x86_64/24.08" to  "c452562271263c5cf32cec693f20a99f77c0771d9a13f607991984e927f0a602"
+        "org.freedesktop.Sdk/x86_64/24.08" to "c452562271263c5cf32cec693f20a99f77c0771d9a13f607991984e927f0a602"
     )
 
     desktopTemplate = file("flatpak/app.desktop.tmpl")
@@ -564,7 +564,7 @@ flatpak {
     homepage = "https://tammy.connect2x.de"
 }
 
-val flatpakBundleDistribution =  distributions.first { it.type == "flatpak" && it.platform == "Linux" }
+val flatpakBundleDistribution = distributions.first { it.type == "flatpak" && it.platform == "Linux" }
 val packageReleaseFlatpakBundle by tasks.registering {
     group = "compose desktop"
 
@@ -582,7 +582,7 @@ val packageReleaseFlatpakBundle by tasks.registering {
 // The point of this is that one can just import them in the de.connect2x.yml manifest when publishing to flathub
 // The archive contains the structure with all files needed for the flatpak, e.g. metainfo, icons, desktop entry, etc. and can just be
 // This can be built without any flatpak tooling
-val flatpakSourcesDistribution =  distributions.first { it.type == "flatpak-sources.zip" && it.platform == "Linux" }
+val flatpakSourcesDistribution = distributions.first { it.type == "flatpak-sources.zip" && it.platform == "Linux" }
 val packageReleaseFlatpakSources by tasks.registering {
     group = "compose desktop"
 
