@@ -27,10 +27,11 @@ working on it.
 
 ## Create release
 
-1. Create a git commit with `[ci skip]` in the commit message and the following changes:
+1. Create a git commit `bump version` with the following changes:
     - `appPublishedVersion` (e. g. `1.2.3`) set to the version that is going to be published.
     - `appVersion` must be the same as `appPublishedVersion`.
     - Updated `CHANGELOG.md` containing a section about the new version.
+    - Cancel triggered pipeline.
 2. Create a version-tag of the form `v1.2.3`.
     - The version must be the same as `appPublishedVersion`.
     - This will trigger a pipeline creating all distributions, uploading them into package registry and linking them in
