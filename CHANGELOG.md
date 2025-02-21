@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Upgraded Trixnity Messenger to latest version
+
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- Fix text overflow in about licenses section
 
 ### Security
 
