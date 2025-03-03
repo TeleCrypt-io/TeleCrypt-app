@@ -2,14 +2,14 @@
 appPublishedVersion = "1.1.4" # The current published version of this app
 appVersion = "1.1.5" # The next version of this app
 
-kotlin = "2.1.0" # https://github.com/JetBrains/kotlin/releases
+kotlin = "2.1.10" # https://github.com/JetBrains/kotlin/releases
 
 jvmTarget = "17"
 androidCompileSDK = "35"
 androidMinimalSDK = "28"
 androidTargetSDK = "35"
 
-trixnityMessenger = "3.4.0" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.4.0-DEV-36950550" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.7.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.2" # https://firebase.google.com/support/release-notes/android
@@ -19,18 +19,18 @@ downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-downlo
 copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-plugin/releases
 logback = "1.5.16" # https://github.com/qos-ch/logback/tags
 slf4j = "2.0.16" # https://github.com/qos-ch/slf4j/tags
-kotlinxCoroutines = "1.9.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
+kotlinxCoroutines = "1.10.1" # https://github.com/Kotlin/kotlinx.coroutines/releases
 
-activity = "1.10.0" # https://developer.android.com/jetpack/androidx/releases/activity
+activity = "1.10.1" # https://developer.android.com/jetpack/androidx/releases/activity
 logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
 workManager = "2.10.0" # https://developer.android.com/jetpack/androidx/releases/work
 liveData = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 appcompat = "1.7.0" # https://developer.android.com/jetpack/androidx/releases/appcompat
-firebase = "33.9.0" # https://firebase.google.com/support/release-notes/android
+firebase = "33.10.0" # https://firebase.google.com/support/release-notes/android
 
 okio = "3.10.2" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
-composeUiTest = "1.8.0-beta02"
+composeUiTest = "1.8.0-beta03"
 
 [libraries]
 trixnity-messenger = { module = "de.connect2x:trixnity-messenger", version.ref = "trixnityMessenger" }
