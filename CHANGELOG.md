@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Upgraded trixnity-messenger to 3.4.0
+- Upgraded trixnity-messenger to 3.4.0-DEV-36950550
+- Upgraded Kotlin to 2.1.10
 
 ### Deprecated
 
