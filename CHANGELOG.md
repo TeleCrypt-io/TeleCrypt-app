@@ -9,16 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Common IDE run profiles for Desktop and Android
-
 ### Changed
-
-- Upgraded trixnity-messenger to 3.4.0-DEV-36950550
-- Upgraded Kotlin to 2.1.10
 
 ### Deprecated
 
 ### Removed
+
+### Fixed
+
+### Security
+
+## 1.1.5
+
+### Added
+
+- Common IDE run profiles for Desktop and Android
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.4.1
+- Upgraded Kotlin to 2.1.10
 
 ### Fixed
 

@@ -1,5 +1,5 @@
 [versions]
-appPublishedVersion = "1.1.4" # The current published version of this app
+appPublishedVersion = "1.1.5" # The current published version of this app
 appVersion = "1.1.5" # The next version of this app
 
 kotlin = "2.1.10" # https://github.com/JetBrains/kotlin/releases
@@ -9,7 +9,7 @@ androidCompileSDK = "35"
 androidMinimalSDK = "28"
 androidTargetSDK = "35"
 
-trixnityMessenger = "3.4.0-DEV-36950550" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.4.1" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.7.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.2" # https://firebase.google.com/support/release-notes/android
