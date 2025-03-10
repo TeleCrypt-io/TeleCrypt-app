@@ -19,3 +19,7 @@ fun withVersionSuffix(version: String) = when {
 
     else -> "$version-LOCAL"
 }
+
+fun String.substringAfterMarkdownFrontMatter(): String {
+    return this.substringAfter("---").substringAfter("---")
+}

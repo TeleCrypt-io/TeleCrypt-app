@@ -43,6 +43,8 @@ if (isRelease)
 val appSuffixedVersion = withVersionSuffix(appVersion)
 val appName = "Tammy"
 val appId = "de.connect2x.tammy"
+val privacyInfo = File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
+val imprint = File("website/content/imprint.de-DE.md").readText().substringAfterMarkdownFrontMatter()
 
 group = "de.connect2x"
 version = appSuffixedVersion
@@ -96,6 +98,8 @@ val buildConfigGenerator by tasks.registering {
                 const val appName = "$appName"
                 const val appId = "$appId"
                 val licenses = $quotes$licencesString$quotes
+                const val privacyInfo = $quotes$privacyInfo$quotes
+                const val imprint = $quotes$imprint$quotes
             }
             
             enum class Flavor { PROD, DEV }
