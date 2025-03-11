@@ -19,8 +19,8 @@ fun tammyConfiguration(
     urlProtocol = BuildConfig.appId
     licenses = BuildConfig.licenses
     sendLogsEmailAddress = "error-reports@connect2x.de"
-    privacyInfoUrl = "https://tammy.connect2x.de/en-us/privacy"
-    imprintUrl = "https://tammy.connect2x.de/en-us/imprint"
+    privacyInfo = BuildConfig.privacyInfo
+    imprint = BuildConfig.imprint
     pushUrl = "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify"
     multiProfile = false
     modulesFactories += listOf(
