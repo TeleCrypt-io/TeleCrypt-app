@@ -338,6 +338,7 @@ release:playstore:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > android_keystore.jks
     - echo $ANDROID_SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > android_service-account.json
   script:
+    - fastlane android releaseBeta
     - fastlane android release
 
 release:gitlab:

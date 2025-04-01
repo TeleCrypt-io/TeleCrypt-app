@@ -1,5 +1,5 @@
 [versions]
-appPublishedVersion = "1.1.9" # The current published version of this app
+appPublishedVersion = "1.1.10" # The current published version of this app
 appVersion = "1.1.10" # The next version of this app
 
 kotlin = "2.1.20" # https://github.com/JetBrains/kotlin/releases
@@ -9,7 +9,7 @@ androidCompileSDK = "35"
 androidMinimalSDK = "28"
 androidTargetSDK = "35"
 
-trixnityMessenger = "3.5.1" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.5.2" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.7.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.2" # https://firebase.google.com/support/release-notes/android
@@ -26,7 +26,7 @@ logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
 workManager = "2.10.0" # https://developer.android.com/jetpack/androidx/releases/work
 liveData = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 appcompat = "1.7.0" # https://developer.android.com/jetpack/androidx/releases/appcompat
-firebase = "33.11.0" # https://firebase.google.com/support/release-notes/android
+firebase = "33.12.0" # https://firebase.google.com/support/release-notes/android
 
 okio = "3.10.2" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
