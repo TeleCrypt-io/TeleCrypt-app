@@ -3,17 +3,12 @@ package de.connect2x.tammy
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
-import de.connect2x.messenger.compose.view.DI
 import de.connect2x.messenger.compose.view.common.deriveFromHue
 import de.connect2x.messenger.compose.view.common.hue
-import de.connect2x.messenger.compose.view.composeViewModule
 import de.connect2x.messenger.compose.view.theme.DefaultAccentColor
 import de.connect2x.messenger.compose.view.theme.ThemeDarkColorScheme
 import de.connect2x.messenger.compose.view.theme.ThemeLightColorScheme
-import de.connect2x.trixnity.messenger.MatrixMessengerSettingsHolder
 import org.koin.dsl.module
 
 fun tammyModule() = module {
@@ -24,12 +19,7 @@ fun tammyModule() = module {
     }
     single<ThemeLightColorScheme> {
         object : ThemeLightColorScheme {
-            @Composable
-            override fun create(): ColorScheme {
-                val settings =
-                    DI.current.getOrNull<MatrixMessengerSettingsHolder>()?.collectAsState()?.value
-                val accentColor =
-                    settings?.base?.accentColor?.let { Color(it.toULong()) } ?: accentColor
+            override fun create(accentColor: Color): ColorScheme {
                 val accentHue = accentColor.hue
                 return lightColorScheme(
                     primary = accentColor,
@@ -66,13 +56,8 @@ fun tammyModule() = module {
         }
     }
     single<ThemeDarkColorScheme> {
-        object: ThemeDarkColorScheme {
-            @Composable
-            override fun create(): ColorScheme {
-                val settings =
-                    DI.current.getOrNull<MatrixMessengerSettingsHolder>()?.collectAsState()?.value
-                val accentColor =
-                    settings?.base?.accentColor?.let { Color(it.toULong()) } ?: accentColor
+        object : ThemeDarkColorScheme {
+            override fun create(accentColor: Color): ColorScheme {
                 val accentHue = accentColor.hue
                 return darkColorScheme(
                     primary = accentColor,
