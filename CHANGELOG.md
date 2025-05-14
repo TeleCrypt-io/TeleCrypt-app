@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated to latest version of Trixnity Messenger
+- Updated Gradle to 8.14
+- Updated AGP to 8.9.2
+
 ### Deprecated
 
 ### Removed

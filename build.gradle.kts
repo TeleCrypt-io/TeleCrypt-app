@@ -1,5 +1,5 @@
-import com.mikepenz.aboutlibraries.plugin.AboutLibrariesTask
 import org.gradle.nativeplatform.platform.internal.DefaultArchitecture
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
@@ -12,6 +12,8 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Path
+import de.connect2x.conventions.registerMultiplatformLicensesTasks
+import org.gradle.internal.extensions.stdlib.capitalized
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -21,17 +23,8 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.aboutlibraries.plugin)
     alias(libs.plugins.download.plugin)
+    alias(libs.plugins.c2xConventions)
     de.connect2x.tammy.plugins.flatpak
-}
-
-repositories {
-    google()
-    mavenCentral()
-    maven("https://gitlab.com/api/v4/projects/26519650/packages/maven") // trixnity
-    maven("https://gitlab.com/api/v4/projects/47538655/packages/maven") // trixnity-messenger
-    maven("https://gitlab.com/api/v4/projects/58749664/packages/maven") // sysnotify
-    maven("https://gitlab.com/api/v4/projects/65998892/packages/maven") // androidx
-    mavenLocal()
 }
 
 val appVersion = libs.versions.appVersion.get()
@@ -53,71 +46,56 @@ val distributionDir: Provider<Directory> =
     compose.desktop.nativeApplication.distributions.outputBaseDir.map { it.dir("main-release") }
 val appDistributionDir: Provider<Directory> = distributionDir.map { it.dir("app") }
 
-val os: DefaultOperatingSystem =
-    org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.getCurrentOperatingSystem()
-val arch: DefaultArchitecture =
-    org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.getCurrentArchitecture()
-        .let { DefaultArchitecture(it.name) }
+val os: DefaultOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
+val arch: DefaultArchitecture = DefaultArchitecture(DefaultNativePlatform.getCurrentArchitecture().name)
 
 enum class BuildFlavor { PROD, DEV }
 
 val buildFlavor =
     BuildFlavor.valueOf(System.getenv("TAMMY_BUILD_FLAVOR") ?: if (isCI) "PROD" else "DEV")
 
-val licensesDir = layout.buildDirectory.dir("generated").get().dir("aboutLibraries").asFile
-val licenses by tasks.registering(AboutLibrariesTask::class) {
-    resultDirectory = licensesDir
-    dependsOn("collectDependencies")
-}
+registerMultiplatformLicensesTasks { licenseTask, target, variant ->
+    // TODO: move this into c2x-conventions eventually
+    val targetName = target.targetName
+    val buildConfigTask =
+        tasks.register("generateBuildConfig${targetName.capitalized()}${variant.capitalized()}") {
+            dependsOn(licenseTask)
+            group = "build config"
+            val generatedSrc =
+                layout.buildDirectory.dir("generatedSrc/${targetName}Main/kotlin")
+            doLast {
+                val outputFile = generatedSrc.get()
+                    .dir(appId.replace(".", "/"))
+                    .file("BuildConfig.kt")
+                val quotes = "\"\"\""
+                val licencesString = licenseTask.get().outputFile.get().asFile.readText()
+                    .replace("$", "\${'$'}")
+                    .replace(quotes, "")
 
-aboutLibraries {
-    configPath = "license-config"
-    // Disable this as it causes issues with a custom AboutLibrariesTask
-    registerAndroidTasks = false
-}
-
-val buildConfigGenerator by tasks.registering {
-    val licencesFile = licensesDir.resolve("aboutlibraries.json")
-    val generatedSrc = layout.buildDirectory.dir("generated-src/kotlin/")
-    inputs.file(licencesFile)
-    doLast {
-        val outputFile = generatedSrc.get()
-            .dir(appId.replace(".", "/"))
-            .file("BuildConfig.kt")
-        val quotes = "\"\"\""
-        val licencesString = licencesFile.readText()
-            .replace("$", "\${'$'}")
-            .replace(quotes, "")
-        val buildConfigString =
-            """
+                val buildConfigString =
+                    """
             package $appId
-            
-            object BuildConfig {
-                const val appVersion = "$version"
-                val flavor = Flavor.valueOf("$buildFlavor")
-                const val appName = "$appName"
-                const val appId = "$appId"
-                val licenses = $quotes$licencesString$quotes
-                const val privacyInfo = $quotes$privacyInfo$quotes
-                const val imprint = $quotes$imprint$quotes
-            }
-            
-            enum class Flavor { PROD, DEV }
-        """.trimIndent()
-        outputFile.asFile.apply {
-            ensureParentDirsCreated()
-            createNewFile()
-            writeText(buildConfigString)
-        }
-    }
-    outputs.dirs(generatedSrc)
-    dependsOn(licenses)
-}
 
-tasks.named("prepareKotlinIdeaImport") {
-    val prepareKotlinIdeaImport = this
-    kotlin.sourceSets.all {
-        prepareKotlinIdeaImport.dependsOn(kotlin)
+            actual val BuildConfig: CommonBuildConfig = object : CommonBuildConfig {
+                override val version: String = "$version"
+                override val flavor: Flavor = Flavor.valueOf("$buildFlavor")
+                override val appName: String = "$appName"
+                override val appId: String = "$appId"
+                override val licenses: String = $quotes$licencesString$quotes
+                override val privacyInfo: String = $quotes$privacyInfo$quotes
+                override val imprint: String = $quotes$imprint$quotes
+            }
+        """.trimIndent()
+                outputFile.asFile.apply {
+                    ensureParentDirsCreated()
+                    createNewFile()
+                    writeText(buildConfigString)
+                }
+            }
+            outputs.dirs(generatedSrc)
+        }
+    kotlin.sourceSets.named("${targetName}Main") {
+        kotlin.srcDir(buildConfigTask.map { it.outputs })
     }
 }
 
@@ -158,7 +136,7 @@ kotlin {
                 implementation(libs.messenger.compose.view)
                 implementation(compose.components.resources)
             }
-            kotlin.srcDir(buildConfigGenerator.map { it.outputs })
+            //kotlin.srcDir(buildConfigGenerator.map { it.outputs })
         }
         val desktopMain by getting {
             dependencies {
