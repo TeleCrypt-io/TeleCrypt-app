@@ -57,10 +57,10 @@
   resolved "https://registry.yarnpkg.com/@js-joda/core/-/core-3.2.0.tgz#3e61e21b7b2b8a6be746df1335cf91d70db2a273"
   integrity sha512-PMqgJ0sw5B7FKb2d5bWYIoxjri+QlW/Pys7+Rw82jSH0QN3rB05jZ/VrrsUdh1w4+i2kw9JOejXGq/KhDOX7Kg==
 
-"@js-joda/timezone@2.21.2":
-  version "2.21.2"
-  resolved "https://registry.yarnpkg.com/@js-joda/timezone/-/timezone-2.21.2.tgz#787cbb6d4a5fb15f47360dc9fe0105e2e4366c9e"
-  integrity sha512-+eBODVO3a5Dy/vWH2WxshmZuHAh/pnU6vw/8dq9/HODvvsN6FaeW45voP12MTfOWYuwb5dFvPP8Wp91YckaYWw==
+"@js-joda/timezone@2.22.0":
+  version "2.22.0"
+  resolved "https://registry.yarnpkg.com/@js-joda/timezone/-/timezone-2.22.0.tgz#dc0eea2b33c6bac4404240ce91095573543f5d3e"
+  integrity sha512-9UNXxEztbcofD6XvV7xPrbzB2nE/AWaHr/XfugRZgVqg2vCZOVPnD8QI7GW164EFIWMw0c97Gs6STJ5dh0J99Q==
 
 "@leichtgewicht/ip-codec@^2.0.1":
   version "2.0.5"
@@ -471,10 +471,10 @@
   resolved "https://registry.yarnpkg.com/@xtuc/long/-/long-4.2.2.tgz#d291c6a4e97989b5c61d9acf396ae4fe133a718d"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
 
-"@zip.js/zip.js@2.7.58":
-  version "2.7.58"
-  resolved "https://registry.yarnpkg.com/@zip.js/zip.js/-/zip.js-2.7.58.tgz#cb89133b3f418e7c5150f21e7a390a4adadf5b71"
-  integrity sha512-tU130QPuBtCPpJ/4a7YUfrOmZFnfxSsAH15gr+Kbl0ypwREu3YkGVswFNFHBHlP/FqFjvp9D27/fmd4LWYa1UQ==
+"@zip.js/zip.js@2.7.61":
+  version "2.7.61"
+  resolved "https://registry.yarnpkg.com/@zip.js/zip.js/-/zip.js-2.7.61.tgz#417ba7c6afe2f704d7b5e4f93d14488bc20ab3a6"
+  integrity sha512-+tZvY10nkW0pJoU88XFWLBd2O9PJPvEnDhSY/jQHfIroN5W5qGfPgFHKC4lkx0+9Vw/0IAkNHf1XBVInBkM9Vw==
 
 accepts@~1.3.4, accepts@~1.3.5, accepts@~1.3.8:
   version "1.3.8"
