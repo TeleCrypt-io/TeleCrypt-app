@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated to latest version of Trixnity Messenger
 - Updated Gradle to 8.14
 - Updated AGP to 8.9.2
+- Updated Kotlin from 2.1.10 to 2.1.20
+- Updated KotlinX Coroutines from 1.10.1 to 1.10.2
+- Updated Trixnity Messenger from 3.5.8-DEV-43147292 to 3.5.8-DEV-43265011
+- Updated AndroidX Work Manager from 2.10.0 to 2.10.1
+- Updated AndroidX Live Data from 2.8.7 to 2.9.0
+- Updated okio from 3.10.2 to 3.11.0
 
 ### Deprecated
 
