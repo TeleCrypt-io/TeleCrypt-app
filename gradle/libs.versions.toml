@@ -1,7 +1,7 @@
 [versions]
 c2xConventions = "43109500" # https://gitlab.com/connect2x/c2x-conventions/-/packages
 
-appPublishedVersion = "1.1.13" # The current published version of this app
+appPublishedVersion = "1.1.14" # The current published version of this app
 appVersion = "1.1.14" # The next version of this app
 
 kotlin = "2.1.20" # https://github.com/JetBrains/kotlin/releases
