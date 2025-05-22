@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Upgraded trixnity-messenger to 3.5.8
-
 ### Deprecated
 
 ### Removed
@@ -20,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## 1.1.14
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.5.8
 
 ## 1.1.13
 
@@ -33,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Upgraded trixnity-messenger to 3.5.4
 
-### FIxed
+### Fixed
 
 - Fixed crash on startup caused by Compose UI Test in debug mode
 
