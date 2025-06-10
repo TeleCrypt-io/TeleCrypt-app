@@ -33,7 +33,7 @@ download:
     title: Android
     store: PlayStore
     apk: APK
-    aab: ABB
+    aab: AAB
   ios:
     title: iOS
     soon: Coming Soon!
