@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Internal: add remote caching
+- Upgraded trixnity-messenger to 3.6.3
 
 ### Deprecated
 
