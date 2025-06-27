@@ -57,9 +57,13 @@ fun tammyConfiguration(
         )
 
         when (BuildConfig.flavor) {
-            Flavor.PROD -> {}
+            Flavor.PROD -> {
+                encryptLocalData = platformEncryptLocalData
+            }
+
             Flavor.DEV -> {
                 defaultHomeServer = "matrix.org"
+                encryptLocalData = false
             }
         }
     }
@@ -67,3 +71,4 @@ fun tammyConfiguration(
 }
 
 internal expect fun getDevRootPath(): RootPath?
+internal expect val platformEncryptLocalData: Boolean

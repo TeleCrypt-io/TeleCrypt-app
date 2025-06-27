@@ -7,3 +7,5 @@ internal actual fun getDevRootPath(): RootPath? =
     if (System.getenv("TRIXNITY_MESSENGER_ROOT_PATH") == null)
         RootPath("./app-data".toPath())
     else null
+
+internal actual val platformEncryptLocalData: Boolean = true
