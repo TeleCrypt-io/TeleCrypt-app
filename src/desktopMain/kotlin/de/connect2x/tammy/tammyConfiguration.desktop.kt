@@ -8,4 +8,4 @@ internal actual fun getDevRootPath(): RootPath? =
         RootPath("./app-data".toPath())
     else null
 
-internal actual val platformEncryptLocalData: Boolean = true
+internal actual val platformDatabaseEncryptionEnabled: Boolean = true
