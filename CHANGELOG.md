@@ -9,15 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- System notifications on Android, iOS, Linux, Windows, macOS and Web
+
 ### Changed
 
 - Upgraded trixnity-messenger to 3.6.15
+- Upgraded Gradle from 8.14 to 8.14.3
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- Added Gradle distribution hash to wrapper properties
 
 ### Security
 

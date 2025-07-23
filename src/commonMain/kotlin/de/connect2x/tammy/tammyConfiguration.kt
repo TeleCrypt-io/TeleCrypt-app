@@ -1,6 +1,7 @@
 package de.connect2x.tammy
 
 import de.connect2x.messenger.compose.view.composeViewModule
+import de.connect2x.messenger.compose.view.notifications.notificationsModule
 import de.connect2x.trixnity.messenger.i18n.DefaultLanguages
 import de.connect2x.trixnity.messenger.i18n.I18n
 import de.connect2x.trixnity.messenger.i18n.Languages
@@ -12,7 +13,7 @@ import org.koin.dsl.module
 
 fun tammyConfiguration(
     customConfig: MatrixMultiMessengerConfiguration.() -> Unit = {},
-): MatrixMultiMessengerConfiguration.() -> Unit = {
+): MatrixMultiMessengerConfiguration.() -> Unit = multiMessengerConfig@{
     appName = BuildConfig.appName
     appId = BuildConfig.appId
     appVersion = BuildConfig.version
@@ -23,8 +24,11 @@ fun tammyConfiguration(
     imprint = BuildConfig.imprint
     pushUrl = "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify"
     multiProfile = false
+    val notificationsDebugEnabled = BuildConfig.flavor == Flavor.DEV
+
     modulesFactories += listOf(
         { composeViewModule(null) },
+        { notificationsModule(this@multiMessengerConfig, notificationsDebugEnabled) },
         ::tammyModule,
         // TODO this needs to be removed and fixed, as there is no MatrixMessengerSettingsHolderImpl at MultiMessenger level!
         ::platformMatrixMessengerSettingsHolderModule,
@@ -35,8 +39,7 @@ fun tammyConfiguration(
                 single<Languages> { DefaultLanguages }
                 single<I18n> { object : I18n(get(), get(), get(), get()) {} }
             }
-        }
-    )
+        })
     // MatrixMultiMessengerConfiguration flavors
     when (BuildConfig.flavor) {
         Flavor.PROD -> {}
@@ -50,9 +53,10 @@ fun tammyConfiguration(
         }
     }
 
-    messengerConfiguration {
+    messengerConfiguration messengerConfig@{
         modulesFactories += listOf(
             { composeViewModule(this) },
+            { notificationsModule(this@messengerConfig, notificationsDebugEnabled) },
             ::tammyModule,
         )
 
