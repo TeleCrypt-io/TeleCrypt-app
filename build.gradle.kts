@@ -126,6 +126,13 @@ kotlin {
         }
         binaries.executable()
     }
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            export(libs.essenty.lifecycle)
+            baseName = "TammyUI"
+            isStatic = true
+        }
+    }
     sourceSets {
         all {
             languageSettings.optIn("kotlin.RequiresOptIn")
@@ -133,8 +140,8 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.trixnity.messenger)
-                implementation(libs.messenger.compose.view)
                 implementation(compose.components.resources)
+                implementation(libs.messenger.compose.view)
             }
             //kotlin.srcDir(buildConfigGenerator.map { it.outputs })
         }
@@ -152,6 +159,11 @@ kotlin {
                 }
                 implementation(libs.logback.classic)
                 implementation(libs.kotlinx.coroutines.swing)
+            }
+        }
+        iosMain {
+            dependencies {
+                api(libs.essenty.lifecycle) // Needed for export as iOS framework
             }
         }
         androidMain {

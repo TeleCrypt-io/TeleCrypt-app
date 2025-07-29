@@ -11,7 +11,7 @@ androidCompileSDK = "35"
 androidMinimalSDK = "28"
 androidTargetSDK = "35"
 
-trixnityMessenger = "3.6.16" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.6.18-DEV-49744508" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 androidGradle = "8.9.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.3" # https://firebase.google.com/support/release-notes/android
@@ -34,6 +34,9 @@ okio = "3.13.0" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
 composeUiTest = "1.8.3"
 
+# iOS exports
+essenty = "2.5.0" # https://github.com/arkivanov/Essenty/releases
+
 [libraries]
 trixnity-messenger = { module = "de.connect2x:trixnity-messenger", version.ref = "trixnityMessenger" }
 messenger-compose-view = { module = "de.connect2x:trixnity-messenger-compose-view", version.ref = "trixnityMessenger" }
@@ -47,6 +50,7 @@ androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version
 androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "liveData" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase" }
 firebase-messaging-ktx = { module = "com.google.firebase:firebase-messaging-ktx", version = "" }
+essenty-lifecycle = { module = "com.arkivanov.essenty:lifecycle", version.ref = "essenty" }
 
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
 

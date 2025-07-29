@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - System notifications on Android, iOS, Linux, Windows, macOS and Web
+- Support for running on iOS devices
 
 ### Changed
 
-- Upgraded trixnity-messenger to 3.6.16
+- Upgraded trixnity-messenger to 3.6.18
 - Upgraded Gradle from 8.14 to 8.14.3
 - Downgraded Java to 17
 
