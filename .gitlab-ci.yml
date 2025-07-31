@@ -195,6 +195,31 @@ build:macos-arm64:
       uploadPlatformDistributable
       --stacktrace
 
+# TODO: Uncomment this when iOS is being distributed (The link process requires more than 4 GB of memory)
+#build:ios-arm64:
+#  stage: build
+#  interruptible: true
+#  tags: [ "connect2x-macos" ]
+#  timeout: 40m
+#  cache: *cache
+#  rules:
+#    - *if-main
+#    - *if-release
+#  artifacts:
+#    name: build
+#    when: always
+#    expire_in: 1 day
+#    paths:
+#      - "iosApp/build/tammy-archive.xcarchive"
+#  before_script:
+#    - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
+#    - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
+#    - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
+#    - security set-keychain-settings -t 600 "$(realpath apple_keychain.keychain)"
+#  script:
+#    - cd ./iosApp
+#    - xcodebuild archive -scheme "Tammy for iOS (Release)" -archivePath tammy-archive.xcarchive
+
 build:prepare-website:
   stage: build
   interruptible: true
