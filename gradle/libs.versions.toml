@@ -15,8 +15,8 @@ trixnityMessenger = "3.6.18-DEV-49744508" # https://gitlab.com/connect2x/trixnit
 
 androidGradle = "8.9.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.3" # https://firebase.google.com/support/release-notes/android
-composeMultiplatform = "1.7.3" # https://github.com/JetBrains/compose-multiplatform/releases
-aboutLibraries = "12.0.0" # https://github.com/mikepenz/AboutLibraries/releases
+composeMultiplatform = "1.8.2" # https://github.com/JetBrains/compose-multiplatform/releases
+aboutLibraries = "12.2.4" # https://github.com/mikepenz/AboutLibraries/releases
 downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-download-task/releases
 copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-plugin/releases
 logback = "1.5.18" # https://github.com/qos-ch/logback/tags
