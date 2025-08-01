@@ -1,3 +1,4 @@
+import de.connect2x.conventions.configureJava
 import org.gradle.nativeplatform.platform.internal.DefaultArchitecture
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
@@ -16,16 +17,18 @@ import de.connect2x.conventions.registerMultiplatformLicensesTasks
 import org.gradle.internal.extensions.stdlib.capitalized
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.compose.multiplatform)
-    alias(libs.plugins.compose.compiler)
+    alias(sharedLibs.plugins.kotlin.multiplatform)
+    alias(sharedLibs.plugins.android.application)
+    alias(sharedLibs.plugins.compose.multiplatform)
+    alias(sharedLibs.plugins.compose.compiler)
+    alias(sharedLibs.plugins.aboutLibraries.plugin)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.aboutlibraries.plugin)
     alias(libs.plugins.download.plugin)
     alias(libs.plugins.c2xConventions)
     de.connect2x.tammy.plugins.flatpak
 }
+
+configureJava(sharedLibs.versions.targetJvm)
 
 val appVersion = libs.versions.appVersion.get()
 val appPublishedVersion = libs.versions.appPublishedVersion.get()
@@ -100,17 +103,11 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
 }
 
 kotlin {
-    val kotlinJvmTarget = libs.versions.jvmTarget.get()
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
     }
-    jvmToolchain(JavaLanguageVersion.of(kotlinJvmTarget).asInt())
-    jvm("desktop") {
-        compilations.all {
-            kotlinOptions.jvmTarget = kotlinJvmTarget
-        }
-    }
+    jvm("desktop")
     js("web", IR) {
         browser {
             runTask {
@@ -128,11 +125,12 @@ kotlin {
     }
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
-            export(libs.essenty.lifecycle)
+            export(sharedLibs.essenty.lifecycle)
             baseName = "TammyUI"
             isStatic = true
         }
     }
+    applyDefaultHierarchyTemplate()
     sourceSets {
         all {
             languageSettings.optIn("kotlin.RequiresOptIn")
@@ -158,18 +156,22 @@ kotlin {
                     implementation(compose.desktop.currentOs)
                 }
                 implementation(libs.logback.classic)
-                implementation(libs.kotlinx.coroutines.swing)
+                implementation(sharedLibs.kotlinx.coroutines.swing)
             }
         }
         iosMain {
             dependencies {
-                api(libs.essenty.lifecycle) // Needed for export as iOS framework
+                api(sharedLibs.essenty.lifecycle) // Needed for export as iOS framework
             }
         }
         androidMain {
             dependencies {
                 implementation(compose.uiTooling)
-                implementation(libs.bundles.android.common)
+                implementation(sharedLibs.androidx.appcompat)
+                implementation(sharedLibs.androidx.work.runtime.ktx)
+                implementation(sharedLibs.androidx.lifecycle.livedata.ktx)
+                implementation(sharedLibs.androidx.activity.compose)
+                implementation(libs.logback.android)
                 implementation(libs.slf4j.api)
                 implementation(project.dependencies.platform(libs.firebase.bom))
                 implementation(libs.firebase.messaging.ktx)
@@ -198,14 +200,16 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 }
 
-composeCompiler {
-    enableStrongSkippingMode = true
-}
+val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
+    vendor = JvmVendorSpec.ADOPTIUM
+}.get().metadata.installationPath.asFile.absolutePath
 
 compose {
     desktop {
         application {
             mainClass = "$appId.desktop.MainKt"
+            javaHome = distributionJavaHome
             jvmArgs("-Xmx2G")
 
             buildTypes.release.proguard {
@@ -275,11 +279,11 @@ android {
     buildFeatures {
         compose = true
     }
-    compileSdk = libs.versions.androidCompileSDK.get().toInt()
+    compileSdk = sharedLibs.versions.androidCompileSDK.get().toInt()
 
     defaultConfig {
-        minSdk = libs.versions.androidMinimalSDK.get().toInt()
-        targetSdk = libs.versions.androidTargetSDK.get().toInt()
+        minSdk = sharedLibs.versions.androidMinimalSDK.get().toInt()
+        targetSdk = sharedLibs.versions.androidTargetSDK.get().toInt()
         versionCode = System.getenv("CI_PIPELINE_IID")?.toInt() ?: 1
         versionName = appSuffixedVersion
         applicationId = appId
@@ -306,10 +310,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
-        targetCompatibility = JavaVersion.toVersion(libs.versions.jvmTarget.get())
-    }
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")

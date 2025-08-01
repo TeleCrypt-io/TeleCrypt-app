@@ -1,74 +1,40 @@
 [versions]
-c2xConventions = "43109500" # https://gitlab.com/connect2x/c2x-conventions/-/packages
+
+c2xConventions = "49969555" # https://gitlab.com/connect2x/c2x-conventions/-/packages
 
 appPublishedVersion = "1.1.21" # The current published version of this app
 appVersion = "1.1.22" # The next version of this app
 
-kotlin = "2.1.21" # https://github.com/JetBrains/kotlin/releases
+trixnityMessenger = "3.6.18-DEV-50015317" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
-jvmTarget = "17"
-androidCompileSDK = "35"
-androidMinimalSDK = "28"
-androidTargetSDK = "35"
-
-trixnityMessenger = "3.6.18-DEV-49744508" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
-
-androidGradle = "8.9.3" # https://developer.android.com/reference/tools/gradle-api
 googleServices = "4.4.3" # https://firebase.google.com/support/release-notes/android
-composeMultiplatform = "1.8.2" # https://github.com/JetBrains/compose-multiplatform/releases
-aboutLibraries = "12.2.4" # https://github.com/mikepenz/AboutLibraries/releases
 downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-download-task/releases
 copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-plugin/releases
 logback = "1.5.18" # https://github.com/qos-ch/logback/tags
 slf4j = "2.0.17" # https://github.com/qos-ch/slf4j/tags
-kotlinxCoroutines = "1.10.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
-
-activity = "1.10.1" # https://developer.android.com/jetpack/androidx/releases/activity
 logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
-workManager = "2.10.2" # https://developer.android.com/jetpack/androidx/releases/work
-liveData = "2.9.1" # https://developer.android.com/jetpack/androidx/releases/lifecycle
-appcompat = "1.7.1" # https://developer.android.com/jetpack/androidx/releases/appcompat
 firebase = "33.16.0" # https://firebase.google.com/support/release-notes/android
-
 okio = "3.13.0" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
 composeUiTest = "1.8.3"
 
-# iOS exports
-essenty = "2.5.0" # https://github.com/arkivanov/Essenty/releases
-
 [libraries]
+
 trixnity-messenger = { module = "de.connect2x:trixnity-messenger", version.ref = "trixnityMessenger" }
 messenger-compose-view = { module = "de.connect2x:trixnity-messenger-compose-view", version.ref = "trixnityMessenger" }
 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
-androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
-androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
-androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
-androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "liveData" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase" }
 firebase-messaging-ktx = { module = "com.google.firebase:firebase-messaging-ktx", version = "" }
-essenty-lifecycle = { module = "com.arkivanov.essenty:lifecycle", version.ref = "essenty" }
-
-kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinxCoroutines" }
-
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 screengrab = { module = "tools.fastlane:screengrab", version.ref = "screengrab" }
 androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "composeUiTest" }
 androidx-ui-test-junit4-android = { module = "androidx.compose.ui:ui-test-junit4-android", version.ref = "composeUiTest" }
 
-[bundles]
-android-common = ["androidx-appcompat", "androidx-work-runtime-ktx", "androidx-lifecycle-livedata-ktx", "androidx-activity-compose", "logback-android"]
-
 [plugins]
-c2xConventions = { id = "de.connect2x.conventions.c2x-conventions", version.ref = "c2xConventions" }
 
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-android-application = { id = "com.android.application", version.ref = "androidGradle" }
-aboutlibraries-plugin = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutLibraries" }
+c2xConventions = { id = "de.connect2x.conventions.c2x-conventions", version.ref = "c2xConventions" }
 download-plugin = { id = "de.undercouch.download", version.ref = "downloadGradlePlugin" }
-compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
-compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

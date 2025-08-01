@@ -77,6 +77,8 @@ build:android:
     paths:
       - "build/outputs/bundle"
       - "build/outputs/apk"
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   before_script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > android_keystore.jks
   script:
@@ -99,6 +101,8 @@ build:linux-x64:
     expire_in: 1 day
     paths:
       - "build/compose"
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   script:
     - ./gradlew
       uploadPlatformDistributable
@@ -119,6 +123,8 @@ build:web:
     expire_in: 1 day
     paths:
       - "build/compose"
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   script:
     - ./gradlew
       uploadWebZipDistributable
@@ -235,6 +241,8 @@ build:prepare-website:
       - website/static/fastlane
       - website/static/Tammy-Windows-x64.appinstaller
       - website/static/Tammy-Windows-arm64.appinstaller
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   script:
     - ./gradlew
       prepareWebsite
@@ -255,6 +263,8 @@ build:website:
   artifacts:
     paths:
       - website/public
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
 
 release:website:
   stage: release
@@ -264,6 +274,7 @@ release:website:
     - *if-main
     - *if-release
   variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
     SSH_SERVER_PUBLIC_KEY: |
       |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
       |1|2ywjh4MQnSRFiNbupqXVfgDB1B0=|6neQereUz86gfJcvhEIOGrCXX3o= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOGEPcfO5e/GIvHJrOb92rpz5x6xRR7V7QpAybe01OVA3xxgEXStOAHx+an8CGiyeRWrcuP9WQJLdkwRpLgF5fY=
@@ -287,6 +298,7 @@ release:webapp:
   rules:
     - *if-release
   variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
     SSH_SERVER_PUBLIC_KEY: |
       |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
       |1|2ywjh4MQnSRFiNbupqXVfgDB1B0=|6neQereUz86gfJcvhEIOGrCXX3o= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOGEPcfO5e/GIvHJrOb92rpz5x6xRR7V7QpAybe01OVA3xxgEXStOAHx+an8CGiyeRWrcuP9WQJLdkwRpLgF5fY=
@@ -318,6 +330,8 @@ release:playstore-beta:
     paths:
       - "build/outputs/bundle"
       - "build/outputs/apk"
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   before_script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > android_keystore.jks
     - echo $ANDROID_SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > android_service-account.json
@@ -336,6 +350,8 @@ release:playstore:
     name: build
     when: always
     expire_in: 1 day
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   before_script:
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > android_keystore.jks
     - echo $ANDROID_SERVICE_ACCOUNT_JSON_BASE64 | base64 --decode > android_service-account.json
@@ -349,6 +365,8 @@ release:gitlab:
   cache: *cache
   rules:
     - *if-release
+  variables:
+    DIST_JAVA_HOME: /lib/jvm/temurin-24-jdk-amd64
   script:
     - ./gradlew
       createGitLabRelease
