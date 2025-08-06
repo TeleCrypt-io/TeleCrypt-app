@@ -1,11 +1,9 @@
 [versions]
 
-c2xConventions = "49969555" # https://gitlab.com/connect2x/c2x-conventions/-/packages
-
 appPublishedVersion = "1.1.21" # The current published version of this app
 appVersion = "1.1.22" # The next version of this app
 
-trixnityMessenger = "3.6.18-DEV-50015317" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.6.18-DEV-50378414" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
 googleServices = "4.4.3" # https://firebase.google.com/support/release-notes/android
 downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-download-task/releases
@@ -35,6 +33,5 @@ androidx-ui-test-junit4-android = { module = "androidx.compose.ui:ui-test-junit4
 
 [plugins]
 
-c2xConventions = { id = "de.connect2x.conventions.c2x-conventions", version.ref = "c2xConventions" }
 download-plugin = { id = "de.undercouch.download", version.ref = "downloadGradlePlugin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

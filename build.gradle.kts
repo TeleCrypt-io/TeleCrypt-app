@@ -24,7 +24,7 @@ plugins {
     alias(sharedLibs.plugins.aboutLibraries.plugin)
     alias(libs.plugins.google.services)
     alias(libs.plugins.download.plugin)
-    alias(libs.plugins.c2xConventions)
+    alias(sharedLibs.plugins.c2xConventions)
     de.connect2x.tammy.plugins.flatpak
 }
 

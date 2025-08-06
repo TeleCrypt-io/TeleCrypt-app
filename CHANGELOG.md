@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded Gradle from 8.14 to 8.14.3
 - Downgraded Java to 17
 - Desktop distribution now uses Temurin 24
+- Bump c2x Conventions to 50375801
 
 ### Deprecated
 
