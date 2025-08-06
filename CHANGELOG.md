@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Downgraded Java to 17
 - Desktop distribution now uses Temurin 24
 - Bump c2x Conventions to 50375801
+- Let Foojay download distribution JDK for 100% reproducible builds
 
 ### Deprecated
 
