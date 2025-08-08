@@ -1,7 +1,7 @@
 [versions]
 
 appPublishedVersion = "1.1.22" # The current published version of this app
-appVersion = "1.1.23" # The next version of this app
+appVersion = "1.1.22" # The next version of this app
 
 trixnityMessenger = "3.7.0" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
@@ -11,7 +11,7 @@ copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-p
 logback = "1.5.18" # https://github.com/qos-ch/logback/tags
 slf4j = "2.0.17" # https://github.com/qos-ch/slf4j/tags
 logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
-firebase = "34.1.0" # https://firebase.google.com/support/release-notes/android
+firebase = "33.16.0" # https://firebase.google.com/support/release-notes/android
 okio = "3.13.0" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
 composeUiTest = "1.8.3"
