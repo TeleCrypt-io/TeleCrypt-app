@@ -1,4 +1,6 @@
 import de.connect2x.conventions.configureJava
+import de.connect2x.conventions.registerMultiplatformLicensesTasks
+import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.nativeplatform.platform.internal.DefaultArchitecture
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
@@ -13,8 +15,6 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Path
-import de.connect2x.conventions.registerMultiplatformLicensesTasks
-import org.gradle.internal.extensions.stdlib.capitalized
 
 plugins {
     alias(sharedLibs.plugins.kotlin.multiplatform)
@@ -202,7 +202,7 @@ dependencies {
 
 val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
-    vendor = JvmVendorSpec.ADOPTIUM
+    vendor = JvmVendorSpec.AZUL
 }.get().metadata.installationPath.asFile.absolutePath
 
 compose {
