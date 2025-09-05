@@ -3,35 +3,27 @@
 appPublishedVersion = "1.1.26" # The current published version of this app
 appVersion = "1.1.27" # The next version of this app
 
-trixnityMessenger = "3.8.1" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
+trixnityMessenger = "3.8.3-DEV-52839608" # https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/packages
 
-googleServices = "4.4.3" # https://firebase.google.com/support/release-notes/android
 downloadGradlePlugin = "5.6.0" # https://github.com/michel-kraemer/gradle-download-task/releases
 copyWebpackPlugin = "12.0.2" # https://github.com/webpack-contrib/copy-webpack-plugin/releases
 logback = "1.5.18" # https://github.com/qos-ch/logback/tags
 slf4j = "2.0.17" # https://github.com/qos-ch/slf4j/tags
 logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
-firebase = "33.16.0" # https://firebase.google.com/support/release-notes/android
 okio = "3.16.0" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
-composeUiTest = "1.8.3"
 
 [libraries]
 
 trixnity-messenger = { module = "de.connect2x:trixnity-messenger", version.ref = "trixnityMessenger" }
-messenger-compose-view = { module = "de.connect2x:trixnity-messenger-compose-view", version.ref = "trixnityMessenger" }
+trixnity-messenger-view = { module = "de.connect2x:trixnity-messenger-compose-view", version.ref = "trixnityMessenger" }
 
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 logback-android = { module = "com.github.tony19:logback-android", version.ref = "logbackAndroid" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase" }
-firebase-messaging-ktx = { module = "com.google.firebase:firebase-messaging-ktx", version = "" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 screengrab = { module = "tools.fastlane:screengrab", version.ref = "screengrab" }
-androidx-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest", version.ref = "composeUiTest" }
-androidx-ui-test-junit4-android = { module = "androidx.compose.ui:ui-test-junit4-android", version.ref = "composeUiTest" }
 
 [plugins]
 
 download-plugin = { id = "de.undercouch.download", version.ref = "downloadGradlePlugin" }
-google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

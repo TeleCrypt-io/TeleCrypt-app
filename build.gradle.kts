@@ -22,7 +22,7 @@ plugins {
     alias(sharedLibs.plugins.compose.multiplatform)
     alias(sharedLibs.plugins.compose.compiler)
     alias(sharedLibs.plugins.aboutLibraries.plugin)
-    alias(libs.plugins.google.services)
+    alias(sharedLibs.plugins.google.services)
     alias(libs.plugins.download.plugin)
     alias(sharedLibs.plugins.c2xConventions)
     de.connect2x.tammy.plugins.flatpak
@@ -138,8 +138,8 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.trixnity.messenger)
+                implementation(libs.trixnity.messenger.view)
                 implementation(compose.components.resources)
-                implementation(libs.messenger.compose.view)
             }
             //kotlin.srcDir(buildConfigGenerator.map { it.outputs })
         }
@@ -173,8 +173,7 @@ kotlin {
                 implementation(sharedLibs.androidx.activity.compose)
                 implementation(libs.logback.android)
                 implementation(libs.slf4j.api)
-                implementation(project.dependencies.platform(libs.firebase.bom))
-                implementation(libs.firebase.messaging.ktx)
+                implementation(sharedLibs.firebase.messaging)
             }
         }
 
@@ -196,8 +195,6 @@ kotlin {
 
 dependencies {
     androidTestImplementation(libs.screengrab)
-    androidTestImplementation(libs.androidx.ui.test.junit4.android)
-    debugImplementation(libs.androidx.ui.test.manifest)
 }
 
 val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.launcherFor {
