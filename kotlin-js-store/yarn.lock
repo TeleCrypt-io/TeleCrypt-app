@@ -504,10 +504,10 @@
   resolved "https://registry.yarnpkg.com/@xtuc/long/-/long-4.2.2.tgz#d291c6a4e97989b5c61d9acf396ae4fe133a718d"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
 
-"@zip.js/zip.js@2.7.62":
-  version "2.7.62"
-  resolved "https://registry.yarnpkg.com/@zip.js/zip.js/-/zip.js-2.7.62.tgz#6650f84c3a89d918215a936637214b09688656c8"
-  integrity sha512-OaLvZ8j4gCkLn048ypkZu29KX30r8/OfFF2w4Jo5WXFr+J04J+lzJ5TKZBVgFXhlvSkqNFQdfnY1Q8TMTCyBVA==
+"@zip.js/zip.js@2.7.72":
+  version "2.7.72"
+  resolved "https://registry.yarnpkg.com/@zip.js/zip.js/-/zip.js-2.7.72.tgz#2c53887c2a3b79e9d9f1c63f048bc0cf485703c3"
+  integrity sha512-3/A4JwrgkvGBlCxtItjxs8HrNbuTAAl/zlGkV6tC5Fb5k5nk4x2Dqxwl/YnUys5Ch+QB01eJ8Q5K/J2uXfy9Vw==
 
 accepts@~1.3.4, accepts@~1.3.5, accepts@~1.3.8:
   version "1.3.8"
@@ -883,10 +883,10 @@ copy-webpack-plugin@12.0.2:
     schema-utils "^4.2.0"
     serialize-javascript "^6.0.2"
 
-copy-webpack-plugin@13.0.0:
-  version "13.0.0"
-  resolved "https://registry.yarnpkg.com/copy-webpack-plugin/-/copy-webpack-plugin-13.0.0.tgz#793342576eed76fdbc7936b873eae17aa7a7d9a3"
-  integrity sha512-FgR/h5a6hzJqATDGd9YG41SeDViH+0bkHn6WNXCi5zKAZkeESeSxLySSsFLHqLEVCh0E+rITmCf0dusXWYukeQ==
+copy-webpack-plugin@13.0.1:
+  version "13.0.1"
+  resolved "https://registry.yarnpkg.com/copy-webpack-plugin/-/copy-webpack-plugin-13.0.1.tgz#fba18c22bcab3633524e1b652580ff4489eddc0d"
+  integrity sha512-J+YV3WfhY6W/Xf9h+J1znYuqTye2xkBUIGyTPWuBAT27qajBa5mR4f8WBmfDY3YjRftT2kqZZiLi1qf0H+UOFw==
   dependencies:
     glob-parent "^6.0.1"
     normalize-path "^3.0.0"
