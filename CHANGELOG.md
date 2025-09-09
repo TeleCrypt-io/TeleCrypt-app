@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Upgraded Trixnity Messenger to 3.8.3-DEV-52839608
+- Bump flatpak dependencies
 
 ### Deprecated
 
