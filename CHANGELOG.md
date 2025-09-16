@@ -9,12 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for push notifications on iOS
-
 ### Changed
-
-- Bump flatpak dependencies
-- Upgraded Trixnity Messenger to 3.8.5
 
 ### Deprecated
 
@@ -22,15 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- SSO Login redirect to App on iOS
-
 ### Security
 
 ## 1.1.27
 
 ### Changed
 
-- Upgraded trixnity-messenger to 3.8.4
+- Bump flatpak dependencies
+- Upgraded trixnity-messenger to 3.8.5
+
+### Fixed
+
+- SSO Login redirect to App on iOS
 
 ## 1.1.26
 
