@@ -51,6 +51,13 @@ fun tammyModule() = module {
                     surfaceTint = md_theme_light_surfaceTint,
                     outlineVariant = md_theme_light_outlineVariant,
                     scrim = md_theme_light_scrim,
+                    surfaceDim = md_theme_light_surfaceDim.deriveFromHue(accentHue),
+                    surfaceBright = md_theme_light_surfaceBright.deriveFromHue(accentHue),
+                    surfaceContainerLowest = md_theme_light_surfaceContainerLowest.deriveFromHue(accentHue),
+                    surfaceContainerLow = md_theme_light_surfaceContainerLow.deriveFromHue(accentHue),
+                    surfaceContainer = md_theme_light_surfaceContainer.deriveFromHue(accentHue),
+                    surfaceContainerHigh = md_theme_light_surfaceContainerHigh.deriveFromHue(accentHue),
+                    surfaceContainerHighest = md_theme_light_surfaceContainerHighest.deriveFromHue(accentHue),
                 )
             }
         }
@@ -83,12 +90,19 @@ fun tammyModule() = module {
                     surfaceVariant = md_theme_dark_surfaceVariant.deriveFromHue(accentHue),
                     onSurfaceVariant = md_theme_dark_onSurfaceVariant,
                     outline = md_theme_dark_outline.deriveFromHue(accentHue),
-                    inverseOnSurface = md_theme_dark_inverseOnSurface.deriveFromHue(accentHue),
+                    inverseOnSurface = md_theme_dark_inverseOnSurface,
                     inverseSurface = md_theme_dark_inverseSurface.deriveFromHue(accentHue),
                     inversePrimary = md_theme_dark_inversePrimary.deriveFromHue(accentHue),
-                    surfaceTint = md_theme_dark_surfaceTint,
+                    surfaceTint = md_theme_dark_surfaceTint.deriveFromHue(accentHue),
                     outlineVariant = md_theme_dark_outlineVariant,
                     scrim = md_theme_dark_scrim,
+                    surfaceDim = md_theme_dark_surfaceDim.deriveFromHue(accentHue),
+                    surfaceBright = md_theme_dark_surfaceBright.deriveFromHue(accentHue),
+                    surfaceContainerLowest = md_theme_dark_surfaceContainerLowest.deriveFromHue(accentHue),
+                    surfaceContainerLow = md_theme_dark_surfaceContainerLow.deriveFromHue(accentHue),
+                    surfaceContainer = md_theme_dark_surfaceContainer.deriveFromHue(accentHue),
+                    surfaceContainerHigh = md_theme_dark_surfaceContainerHigh.deriveFromHue(accentHue),
+                    surfaceContainerHighest = md_theme_dark_surfaceContainerHighest.deriveFromHue(accentHue),
                 )
             }
         }

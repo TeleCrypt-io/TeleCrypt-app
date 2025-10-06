@@ -32,6 +32,13 @@ internal val md_theme_light_inversePrimary = Color(0xFF5BD5F9)   // FIXME
 internal val md_theme_light_surfaceTint = Color(0xFF000000)      // FIXME
 internal val md_theme_light_outlineVariant = Color(0xFFBFC8CC)   // FIXME
 internal val md_theme_light_scrim = Color(0xFF000000)            // FIXME
+internal val md_theme_light_surfaceDim = Color(0xFFDCD9D9)
+internal val md_theme_light_surfaceBright = Color(0xFFFCF8F8)
+internal val md_theme_light_surfaceContainerLowest = Color(0xFFFFFFFF)
+internal val md_theme_light_surfaceContainerLow = Color(0xFFF6F3F2)
+internal val md_theme_light_surfaceContainer = Color(0xFFF1EDEC)
+internal val md_theme_light_surfaceContainerHigh = Color(0xFFEBE7E7)
+internal val md_theme_light_surfaceContainerHighest = Color(0xFFE5E2E1)
 
 
 // Dark theme template (mostly used for lightness/saturation)
@@ -63,3 +70,10 @@ internal val md_theme_dark_inversePrimary = Color(0xFF00677E)    // FIXME
 internal val md_theme_dark_surfaceTint = Color(0xFF5BD5F9)       // FIXME
 internal val md_theme_dark_outlineVariant = Color(0xFF40484B)    // FIXME
 internal val md_theme_dark_scrim = Color(0xFF101010)
+internal val md_theme_dark_surfaceDim = Color(0xFF131313)
+internal val md_theme_dark_surfaceBright = Color(0xFF3A3939)
+internal val md_theme_dark_surfaceContainerLowest = Color(0xFF0E0E0E)
+internal val md_theme_dark_surfaceContainerLow = Color(0xFF1C1B1B)
+internal val md_theme_dark_surfaceContainer = Color(0xFF201F1F)
+internal val md_theme_dark_surfaceContainerHigh = Color(0xFF2A2A2A)
+internal val md_theme_dark_surfaceContainerHighest = Color(0xFF353534)
