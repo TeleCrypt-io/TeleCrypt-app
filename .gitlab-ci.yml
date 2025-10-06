@@ -48,7 +48,7 @@ changelog:
   stage: changelog
   interruptible: true
   timeout: 5m
-  tags: [ "saas-linux-small-amd64" ]
+  tags: [ "telecrypt-linux" ]
   rules:
     - *if-merge-request
   script:
@@ -64,7 +64,7 @@ changelog:
 build:android:
   stage: build
   interruptible: true
-  tags: [ "connect2x-linux" ]
+  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
@@ -78,6 +78,7 @@ build:android:
       - "build/outputs/bundle"
       - "build/outputs/apk"
   before_script:
+    - tools/brandify.sh branding/branding.json
     - echo $ANDROID_RELEASE_STORE_FILE_BASE64 | base64 --decode > android_keystore.jks
   script:
     - ./gradlew
@@ -87,7 +88,7 @@ build:android:
 build:linux-x64:
   stage: build
   interruptible: true
-  tags: [ "connect2x-linux" ]
+  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_PACKAGE
   cache: *cache
   rules:
@@ -99,6 +100,8 @@ build:linux-x64:
     expire_in: 1 day
     paths:
       - "build/compose"
+  before_script:
+    - tools/brandify.sh branding/branding.json
   script:
     - ./gradlew
       uploadPlatformDistributable
@@ -107,7 +110,7 @@ build:linux-x64:
 build:web:
   stage: build
   interruptible: true
-  tags: [ "connect2x-linux" ]
+  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
@@ -119,6 +122,8 @@ build:web:
     expire_in: 1 day
     paths:
       - "build/compose"
+  before_script:
+    - tools/brandify.sh branding/branding.json
   script:
     - ./gradlew
       uploadWebZipDistributable
@@ -127,7 +132,7 @@ build:web:
 build:windows-x64:
   stage: build
   interruptible: true
-  tags: [ "connect2x-win" ]
+  tags: [ "telecrypt-win" ]
   cache: *cache
   rules:
     - *if-main
@@ -146,7 +151,7 @@ build:windows-x64:
 build:macos-x64:
   stage: build
   interruptible: true
-  tags: [ "connect2x-mac" ]
+  tags: [ "telecrypt-mac-intel" ]
   cache: *cache
   rules:
     - *if-main
@@ -158,6 +163,7 @@ build:macos-x64:
     paths:
       - "build/compose"
   before_script:
+    - tools/brandify.sh branding/branding.json
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
     - security unlock-keychain -p $APPLE_KEYCHAIN_PASSWORD "$(realpath apple_keychain.keychain)"
@@ -170,7 +176,7 @@ build:macos-x64:
 build:macos-arm64:
   stage: build
   interruptible: true
-  tags: [ "saas-macos-medium-m1" ]
+  tags: [ "telecrypt-mac-arm" ]
   timeout: 30m
   variables:
     HOMEBREW_NO_AUTO_UPDATE: 1
@@ -185,6 +191,7 @@ build:macos-arm64:
     paths:
       - "build/compose"
   before_script:
+    - tools/brandify.sh branding/branding.json
     - brew install --cask temurin@21
     - echo $APPLE_KEYCHAIN_FILE_BASE64 | base64 --decode > apple_keychain.keychain
     - security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
