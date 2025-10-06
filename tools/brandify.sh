@@ -162,7 +162,13 @@ copy_tree() {
   fi
 }
 
-copy_tree "$ICON_DIR/android" "$ANDROID_TARGET"
+if [[ "$SKIP_ANDROID_ID" != true ]]; then
+  if [[ -d "$ANDROID_TARGET" ]]; then
+    find "$ANDROID_TARGET" -type f -name 'ic_launcher*.png' -delete
+    find "$ANDROID_TARGET" -type f -name 'ic_launcher*.webp' -delete
+  fi
+  copy_tree "$ICON_DIR/android" "$ANDROID_TARGET"
+fi
 copy_tree "$ICON_DIR/ios/AppIcon.appiconset" "$IOS_TARGET"
 copy_tree "$ICON_DIR/desktop" "$DESKTOP_TARGET"
 

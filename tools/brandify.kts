@@ -108,7 +108,18 @@ fun copyTree(source: Path, destination: Path) {
 }
 
 if (!skipAndroid) {
-    copyTree(iconDir.resolve("android"), Path.of("src/androidMain/res"))
+    val androidTarget = Path.of("src/androidMain/res")
+    if (androidTarget.exists()) {
+        Files.walk(androidTarget).use { stream ->
+            stream.filter { Files.isRegularFile(it) }
+                .filter { file ->
+                    val name = file.fileName.toString()
+                    name.startsWith("ic_launcher") && (name.endsWith(".png") || name.endsWith(".webp"))
+                }
+                .forEach { Files.deleteIfExists(it) }
+        }
+    }
+    copyTree(iconDir.resolve("android"), androidTarget)
 }
 copyTree(iconDir.resolve("ios").resolve("AppIcon.appiconset"), Path.of("iosApp/iosApp/Assets.xcassets/AppIcon.appiconset"))
 copyTree(iconDir.resolve("desktop"), Path.of("src/desktopMain/resources"))
