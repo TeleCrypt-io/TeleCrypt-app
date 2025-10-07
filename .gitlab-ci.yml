@@ -51,7 +51,6 @@ changelog:
   rules:
     - *if-merge-request
     - *if-main
-    - *if-main
   script:
     - git fetch origin main
     - |
@@ -65,7 +64,6 @@ changelog:
 build:android:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
@@ -90,7 +88,6 @@ build:android:
 build:linux-x64:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_PACKAGE
   cache: *cache
   rules:
@@ -113,7 +110,6 @@ build:linux-x64:
 build:web:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
@@ -136,12 +132,9 @@ build:web:
 build:windows-x64:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-win" ]
   cache: *cache
   rules:
-    - *if-merge-request
-    - *if-main
-    - *if-release
+    - when: manual
   artifacts:
     name: build
     when: always
@@ -156,11 +149,9 @@ build:windows-x64:
 build:macos-x64:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-mac-intel" ]
   cache: *cache
   rules:
-    - *if-main
-    - *if-release
+    - when: manual
   artifacts:
     name: build
     when: always
@@ -181,14 +172,12 @@ build:macos-x64:
 build:macos-arm64:
   stage: build
   interruptible: true
-  tags: [ "telecrypt-mac-arm" ]
   timeout: 30m
   variables:
     HOMEBREW_NO_AUTO_UPDATE: 1
   cache: *cache
   rules:
-    - *if-main
-    - *if-release
+    - when: manual
   artifacts:
     name: build
     when: always
@@ -235,10 +224,10 @@ build:macos-arm64:
 build:prepare-website:
   stage: build
   interruptible: true
-  tags: [ "connect2x-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
+    - *if-merge-request
     - *if-main
     - *if-release
   artifacts:
@@ -255,7 +244,6 @@ build:prepare-website:
 build:website:
   stage: build
   interruptible: true
-  tags: [ "connect2x-linux" ]
   image: registry.gitlab.com/pages/hugo/hugo_extended:latest
   needs: [ "build:prepare-website" ]
   rules:
@@ -271,11 +259,9 @@ build:website:
 
 release:website:
   stage: release
-  tags: [ "connect2x-linux" ]
   image: ubuntu:latest
   rules:
-    - *if-main
-    - *if-release
+    - when: manual
   variables:
     SSH_SERVER_PUBLIC_KEY: |
       |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
@@ -295,10 +281,9 @@ release:website:
 
 release:webapp:
   stage: release
-  tags: [ "connect2x-linux" ]
   image: ubuntu:latest
   rules:
-    - *if-release
+    - when: manual
   variables:
     SSH_SERVER_PUBLIC_KEY: |
       |1|rkXUG6Zg2U7Icsi1+W+16Bf0Agg=|aIDGBml+j9OBTthTodbxWcKZGN8= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD24yORSNdYYIm+huvj+F9wc+BFsGSdi2V7uC+P54T1xJt+ll1LezHHps5jgRJU5JYEeGRWwRjaTMn+wNq8RwtEoDo830DckEzu/KqOVMi2o77XFi2e6oIcUKwvpouHHrSyLgeyipLaV392QNISj+AT3IXBICo/gXVj82kKN//je7hLkVnPX3/7fE3CWKTiTAh3iRa302gfPuDutaJ9Iu0Z+LLk/P5UWSdjhcXKMwPBWrQTK9Is9JI7YH0Kd49NyXrz3dgmyhm1HYtCu5yvwopcMf0iaFG40COlIHx8GzOp7/6E9mULWKS2A2942uxmRIxL71Cs1oTWJgck1ymNVv5vIPZ+/9ROrZtfoHuK8LIIZWupvFqBbYduJ7Th9rPnlNmI7I0QgTt7iRuxjyCNs7TdBZLidnEtNzcHo9iQ1kkWY0BRGk3PvkgmknzMmc43D4dj7AEK1YOVYXfYmeZXtLnK2BjYZcJ1bcFfvNOrPyQ+pVw78ZWm+n7XQgXkwKGr+2c=
@@ -319,11 +304,10 @@ release:webapp:
 release:playstore-beta:
   stage: release
   interruptible: true
-  tags: [ "connect2x-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_FASTLANE
   cache: *cache
   rules:
-    - *if-main
+    - when: manual
   artifacts:
     name: build
     when: always
@@ -340,11 +324,10 @@ release:playstore-beta:
 release:playstore:
   stage: release
   interruptible: true
-  tags: [ "connect2x-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_FASTLANE
   cache: *cache
   rules:
-    - *if-release
+    - when: manual
   artifacts:
     name: build
     when: always
@@ -357,11 +340,10 @@ release:playstore:
 
 release:gitlab:
   stage: release
-  tags: [ "connect2x-linux" ]
   image: $BUILD_LINUX_IMAGE_NAME_BASE
   cache: *cache
   rules:
-    - *if-release
+    - when: manual
   script:
     - ./gradlew
       createGitLabRelease
