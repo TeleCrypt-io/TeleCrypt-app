@@ -27,10 +27,9 @@ PY
 )
 
 APP_NAME="${BRANDING[0]}"
-ANDROID_APP_ID="${BRANDING[1]}"
-IOS_BUNDLE_ID="${BRANDING[2]}"
+ANDROID_APP_ID_RAW="${BRANDING[1]}"
+IOS_BUNDLE_ID_RAW="${BRANDING[2]}"
 ICON_DIR="${BRANDING[3]}"
-ANDROID_DEV_APP_ID="${ANDROID_APP_ID}.dev"
 
 trim() {
   local var="$1"
@@ -38,19 +37,24 @@ trim() {
   echo "${var}" | sed 's/^\s*//;s/\s*$//'
 }
 
-ANDROID_APP_ID_TRIMMED=$(trim "$ANDROID_APP_ID")
-IOS_BUNDLE_ID_TRIMMED=$(trim "$IOS_BUNDLE_ID")
+ANDROID_APP_ID="$(trim "$ANDROID_APP_ID_RAW")"
+IOS_BUNDLE_ID="$(trim "$IOS_BUNDLE_ID_RAW")"
 
 SKIP_ANDROID_ID=false
-if [[ -z "$ANDROID_APP_ID_TRIMMED" ]]; then
+ANDROID_DEV_APP_ID=""
+if [[ -z "$ANDROID_APP_ID" ]]; then
   SKIP_ANDROID_ID=true
-  ANDROID_DEV_APP_ID=""
+else
+  ANDROID_DEV_APP_ID="${ANDROID_APP_ID}.dev"
 fi
 
-ANDROID_APP_ID="$ANDROID_APP_ID_TRIMMED"
-IOS_BUNDLE_ID="$IOS_BUNDLE_ID_TRIMMED"
 if [[ -z "$IOS_BUNDLE_ID" ]]; then
   IOS_BUNDLE_ID="$ANDROID_APP_ID"
+fi
+
+PROJECT_SLUG=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
+if [[ -z "$PROJECT_SLUG" ]]; then
+  PROJECT_SLUG="telecrypt"
 fi
 
 if [[ ! -d "$ICON_DIR" ]]; then
@@ -58,17 +62,17 @@ if [[ ! -d "$ICON_DIR" ]]; then
   exit 1
 fi
 
-python3 - <<'PY' "$APP_NAME" "$ANDROID_APP_ID" "$IOS_BUNDLE_ID" "$SKIP_ANDROID_ID"
+python3 - <<'PY' "$APP_NAME" "$ANDROID_APP_ID" "$IOS_BUNDLE_ID" "$SKIP_ANDROID_ID" "$PROJECT_SLUG"
 import re
 from pathlib import Path
 import sys
 
-app_name, android_app_id, ios_bundle_id, skip_android_flag = sys.argv[1:5]
+app_name, android_app_id, ios_bundle_id, skip_android_flag, project_slug = sys.argv[1:6]
 skip_android = skip_android_flag.lower() == "true" or not android_app_id
 
 replacements = [
     (Path('build.gradle.kts'), r'val appName = "[^"]+"', f'val appName = "{app_name}"'),
-    (Path('settings.gradle.kts'), r'rootProject.name = "[^"]+"', f'rootProject.name = "{app_name}"'),
+    (Path('settings.gradle.kts'), r'rootProject.name = "[^"]+"', f'rootProject.name = "{project_slug}"'),
     (Path('fastlane/Appfile'), r'app_identifier "[^"]+"', f'app_identifier "{ios_bundle_id}"'),
     (Path('iosApp/Configuration/Config.xcconfig'), r'PRODUCT_NAME=.*', f'PRODUCT_NAME={app_name}'),
     (Path('iosApp/Configuration/Config.xcconfig'), r'PRODUCT_BUNDLE_IDENTIFIER=.*', f'PRODUCT_BUNDLE_IDENTIFIER={ios_bundle_id}'),
@@ -77,7 +81,7 @@ replacements = [
 
 if not skip_android:
     replacements.extend([
-        (Path('build.gradle.kts'), r'val appId = "[^"]+"', f'val appId = "{android_app_id}"'),
+        (Path('build.gradle.kts'), r'val appIdentifier = "[^"]+"', f'val appIdentifier = "{android_app_id}"'),
         (Path('fastlane/Appfile'), r'package_name "[^"]+"', f'package_name "{android_app_id}"'),
     ])
 
@@ -167,13 +171,7 @@ if [[ "$SKIP_ANDROID_ID" != true ]]; then
     find "$ANDROID_TARGET" -type f -name 'ic_launcher*.png' -delete
     find "$ANDROID_TARGET" -type f -name 'ic_launcher*.webp' -delete
   fi
-if [[ "$SKIP_ANDROID_ID" != true ]]; then
-  if [[ -d "$ANDROID_TARGET" ]]; then
-    find "$ANDROID_TARGET" -type f -name 'ic_launcher*.png' -delete
-    find "$ANDROID_TARGET" -type f -name 'ic_launcher*.webp' -delete
-  fi
   copy_tree "$ICON_DIR/android" "$ANDROID_TARGET"
-fi
 fi
 copy_tree "$ICON_DIR/ios/AppIcon.appiconset" "$IOS_TARGET"
 copy_tree "$ICON_DIR/desktop" "$DESKTOP_TARGET"

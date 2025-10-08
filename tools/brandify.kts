@@ -31,7 +31,11 @@ require(Files.isDirectory(iconDir)) { "brandify: icon directory not found: $icon
 val androidAppId = androidAppIdRaw.trim()
 val skipAndroid = androidAppId.isBlank()
 val iosBundleId = iosBundleIdRaw.trim().ifEmpty { androidAppId }
-val androidDevAppId = if (skipAndroid) "" else "$androidAppId.dev"
+val androidDevAppId = if (skipAndroid) "" else "${androidAppId.trim()}.dev"
+val projectSlug = appName.lowercase()
+    .replace(Regex("[^a-z0-9]+"), "-")
+    .trim('-')
+    .ifBlank { "telecrypt" }
 
 fun replaceRegex(path: Path, regex: Regex, replacement: String) {
     if (!path.exists()) return
@@ -52,9 +56,9 @@ fun replaceLiteral(path: Path, marker: String, replacement: String) {
 
 replaceRegex(Path.of("build.gradle.kts"), Regex("val appName = \"[^\"]+\""), "val appName = \"$appName\"")
 if (!skipAndroid) {
-    replaceRegex(Path.of("build.gradle.kts"), Regex("val appId = \"[^\"]+\""), "val appId = \"$androidAppId\"")
+    replaceRegex(Path.of("build.gradle.kts"), Regex("val appIdentifier = \"[^\"]+\""), "val appIdentifier = \"$androidAppId\"")
 }
-replaceRegex(Path.of("settings.gradle.kts"), Regex("rootProject.name = \"[^\"]+\""), "rootProject.name = \"$appName\"")
+replaceRegex(Path.of("settings.gradle.kts"), Regex("rootProject.name = \"[^\"]+\""), "rootProject.name = \"$projectSlug\"")
 replaceRegex(Path.of("fastlane/Appfile"), Regex("app_identifier \"[^\"]+\""), "app_identifier \"$iosBundleId\"")
 if (!skipAndroid) {
     replaceRegex(Path.of("fastlane/Appfile"), Regex("package_name \"[^\"]+\""), "package_name \"$androidAppId\"")

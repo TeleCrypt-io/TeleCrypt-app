@@ -1,4 +1,4 @@
-rootProject.name = "Tammy"
+rootProject.name = "telecrypt-messenger"
 
 buildCache {
     val buildCacheUrl = System.getenv("GRADLE_BUILD_CACHE_URL")

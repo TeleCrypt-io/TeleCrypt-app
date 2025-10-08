@@ -37,8 +37,9 @@ if (isRelease)
         "when creating a release, the appVersion ($appVersion) must the same as the appPublishedVersion($appPublishedVersion)"
     }
 val appSuffixedVersion = withVersionSuffix(appVersion)
-val appName = "Tammy"
-val appId = "de.connect2x.tammy"
+val appName = "TeleCrypt Messenger"
+val appIdentifier = "com.zendev.telecrypt"
+val appPackage = "de.connect2x.tammy"
 val privacyInfo = File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
 val imprint = File("website/content/imprint.de-DE.md").readText().substringAfterMarkdownFrontMatter()
 
@@ -68,7 +69,7 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
                 layout.buildDirectory.dir("generatedSrc/${targetName}Main/kotlin")
             doLast {
                 val outputFile = generatedSrc.get()
-                    .dir(appId.replace(".", "/"))
+                    .dir(appPackage.replace(".", "/"))
                     .file("BuildConfig.kt")
                 val quotes = "\"\"\""
                 val licencesString = licenseTask.get().outputFile.get().asFile.readText()
@@ -77,13 +78,13 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
 
                 val buildConfigString =
                     """
-            package $appId
+            package $appPackage
 
             actual val BuildConfig: CommonBuildConfig = object : CommonBuildConfig {
                 override val version: String = "$version"
                 override val flavor: Flavor = Flavor.valueOf("$buildFlavor")
                 override val appName: String = "$appName"
-                override val appId: String = "$appId"
+                override val appId: String = "$appIdentifier"
                 override val licenses: String = $quotes$licencesString$quotes
                 override val privacyInfo: String = $quotes$privacyInfo$quotes
                 override val imprint: String = $quotes$imprint$quotes
@@ -111,10 +112,10 @@ kotlin {
     js("web", IR) {
         browser {
             runTask {
-                mainOutputFileName = "$appId.js"
+                mainOutputFileName = "$appIdentifier.js"
             }
             webpackTask {
-                mainOutputFileName = "$appId.js"
+                mainOutputFileName = "$appIdentifier.js"
             }
             @OptIn(ExperimentalDistributionDsl::class)
             distribution {
@@ -208,7 +209,7 @@ val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.lau
 compose {
     desktop {
         application {
-            mainClass = "$appId.desktop.MainKt"
+            mainClass = "$appPackage.desktop.MainKt"
             javaHome = distributionJavaHome
             jvmArgs("-Xmx2G")
 
@@ -240,7 +241,7 @@ compose {
                 macOS {
                     val appleKeychainFile = file("apple_keychain.keychain")
                     if (appleKeychainFile.exists()) {
-                        bundleID = appId
+                        bundleID = appIdentifier
                         signing {
                             sign = true
                             keychain = "apple_keychain.keychain"
@@ -259,10 +260,10 @@ compose {
                               <array>
                                 <dict>
                                   <key>CFBundleURLName</key>
-                                  <string>$appName</string>
-                                  <key>CFBundleURLSchemes</key>
-                                  <array>
-                                    <string>$appId</string>
+                                    <string>$appName</string>
+                                    <key>CFBundleURLSchemes</key>
+                                    <array>
+                                    <string>$appIdentifier</string>
                                   </array>
                                 </dict>
                               </array>
@@ -275,7 +276,7 @@ compose {
 }
 
 android {
-    namespace = appId
+    namespace = appPackage
     buildFeatures {
         compose = true
     }
@@ -286,10 +287,10 @@ android {
         targetSdk = sharedLibs.versions.androidTargetSDK.get().toInt()
         versionCode = System.getenv("CI_PIPELINE_IID")?.toInt() ?: 1
         versionName = appSuffixedVersion
-        applicationId = appId
+        applicationId = appIdentifier
         setProperty("archivesBaseName", appName)
         resValue("string", "app_name", appName)
-        resValue("string", "scheme", appId)
+        resValue("string", "scheme", appIdentifier)
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -447,7 +448,7 @@ val createMsixManifest by tasks.registering {
                   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
                   IgnorableNamespaces="uap10 rescap">
-                  <Identity Name="$appId" Publisher="$publisherCN" Version="${appVersion.toMsix()}" ProcessorArchitecture="x64" />
+                  <Identity Name="$appIdentifier" Publisher="$publisherCN" Version="${appVersion.toMsix()}" ProcessorArchitecture="x64" />
                   <Properties>
                     <DisplayName>$appName</DisplayName>
                     <PublisherDisplayName>$publisherName</PublisherDisplayName>
@@ -468,14 +469,14 @@ val createMsixManifest by tasks.registering {
                   </Capabilities>
                   <Applications>
                     <Application
-                      Id="$appId"
+                      Id="$appIdentifier"
                       Executable="$appName.exe"
                       EntryPoint="Windows.FullTrustApplication">
                       <uap:VisualElements DisplayName="$appName" Description="$appDescription"	Square150x150Logo="$logo155FileName"
                          Square44x44Logo="$logo44FileName" BackgroundColor="white" />
                       <Extensions>
                         <uap:Extension Category="windows.protocol">
-                          <uap:Protocol Name="$appId" />
+                          <uap:Protocol Name="$appIdentifier" />
                         </uap:Extension>
                       </Extensions>
                     </Application>
@@ -536,7 +537,7 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
 // #####################################################################################################################
 
 flatpak {
-    applicationId = appId
+    applicationId = appIdentifier
     applicationName = appName
 
     flatpakRemoteName = "flathub"
@@ -760,7 +761,7 @@ fun createWebsiteMsixAppinstaller(architecture: String) {
                             Version="${appPublishedVersion.toMsix()}"
                             Uri="$websiteBaseUrl/$appinstallerFileName">
                             <MainPackage
-                                Name="$appId"
+                                Name="$appIdentifier"
                                 Publisher="$publisherCN"
                                 Version="${appPublishedVersion.toMsix()}"
                                 ProcessorArchitecture="x64"
