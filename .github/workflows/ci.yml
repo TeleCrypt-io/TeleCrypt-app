@@ -31,7 +31,6 @@ env:
   APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
   WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER: ${{ secrets.WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER }}
   WINDOWS_CODE_SIGNING_THUMBPRINT: ${{ secrets.WINDOWS_CODE_SIGNING_THUMBPRINT }}
-  ENABLE_IOS_BUILD: ${{ secrets.ENABLE_IOS_BUILD }}
 
 jobs:
   android:
@@ -234,7 +233,10 @@ jobs:
     name: iOS Archive
     runs-on: macos-latest
     needs: desktop_macos
-    if: ${{ secrets.ENABLE_IOS_BUILD == 'true' }}
+    env:
+      ENABLE_IOS_BUILD: ${{ secrets.ENABLE_IOS_BUILD || 'false' }}
+      APPLE_KEYCHAIN_FILE_BASE64: ${{ secrets.APPLE_KEYCHAIN_FILE_BASE64 || '' }}
+    if: ${{ env.ENABLE_IOS_BUILD == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -264,7 +266,7 @@ jobs:
         run: tools/brandify.sh branding/branding.json
 
       - name: Configure signing keychain
-        if: ${{ secrets.APPLE_KEYCHAIN_FILE_BASE64 != '' }}
+        if: ${{ env.APPLE_KEYCHAIN_FILE_BASE64 != '' }}
         run: |
           echo "$APPLE_KEYCHAIN_FILE_BASE64" | base64 --decode > apple_keychain.keychain
           security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
