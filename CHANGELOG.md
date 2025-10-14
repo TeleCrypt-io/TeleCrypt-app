@@ -11,18 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Upgraded trixnity-messenger to 3.8.6
-
 ### Deprecated
 
 ### Removed
 
 ### Fixed
 
+### Security
+
+## 1.1.28
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.8.7
+
+### Fixed
+
 - Fixed screenshot generation
 - Fixed missing theme color overrides
-
-### Security
 
 ## 1.1.27
 
