@@ -33,8 +33,9 @@ ICON_DIR="${BRANDING[3]}"
 
 trim() {
   local var="$1"
-  # shellcheck disable=SC2001
-  echo "${var}" | sed 's/^\s*//;s/\s*$//'
+  printf '%s' "$var" |
+    tr -d '\r' |
+    sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
 ANDROID_APP_ID="$(trim "$ANDROID_APP_ID_RAW")"

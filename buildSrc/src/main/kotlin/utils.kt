@@ -12,7 +12,11 @@ fun withVersionSuffix(version: String) = when {
     }
 
     isCI -> {
-        val commitEpoch = Instant.parse(System.getenv("CI_COMMIT_TIMESTAMP")).epochSecond
+        val rawTimestamp = System.getenv("CI_COMMIT_TIMESTAMP")
+            ?: System.getenv("GITHUB_RUN_STARTED_AT")
+            ?: Instant.now().toString()
+        val commitEpoch = runCatching { Instant.parse(rawTimestamp).epochSecond }
+            .getOrElse { Instant.now().epochSecond }
         val commitCustomEpoch = commitEpoch - 1704067200 // 01.01.2024
         "$version-DEV-$commitCustomEpoch"
     }
