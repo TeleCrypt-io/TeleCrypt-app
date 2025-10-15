@@ -8,7 +8,33 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
   exit 1
 fi
 
-mapfile -t BRANDING < <(python3 - "$CONFIG_PATH" <<'PY'
+PYTHON_BIN=""
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    PYTHON_BIN="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$PYTHON_BIN" ]]; then
+  echo "[brandify] python3 or python executable not found" >&2
+  exit 1
+fi
+
+APP_NAME=""
+ANDROID_APP_ID_RAW=""
+IOS_BUNDLE_ID_RAW=""
+ICON_DIR=""
+index=0
+while IFS= read -r line; do
+  case $index in
+    0) APP_NAME="$line" ;;
+    1) ANDROID_APP_ID_RAW="$line" ;;
+    2) IOS_BUNDLE_ID_RAW="$line" ;;
+    3) ICON_DIR="$line" ;;
+  esac
+  index=$((index + 1))
+done < <("$PYTHON_BIN" - "$CONFIG_PATH" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding='utf-8') as f:
     data = json.load(f)
@@ -26,10 +52,10 @@ print(icon_dir)
 PY
 )
 
-APP_NAME="${BRANDING[0]}"
-ANDROID_APP_ID_RAW="${BRANDING[1]}"
-IOS_BUNDLE_ID_RAW="${BRANDING[2]}"
-ICON_DIR="${BRANDING[3]}"
+if [[ $index -lt 4 ]]; then
+  echo "[brandify] failed to parse branding config: expected 4 values, got $index" >&2
+  exit 1
+fi
 
 trim() {
   local var="$1"
@@ -40,6 +66,7 @@ trim() {
 
 ANDROID_APP_ID="$(trim "$ANDROID_APP_ID_RAW")"
 IOS_BUNDLE_ID="$(trim "$IOS_BUNDLE_ID_RAW")"
+ICON_DIR="$(trim "$ICON_DIR")"
 
 SKIP_ANDROID_ID=false
 ANDROID_DEV_APP_ID=""
@@ -63,7 +90,7 @@ if [[ ! -d "$ICON_DIR" ]]; then
   exit 1
 fi
 
-python3 - <<'PY' "$APP_NAME" "$ANDROID_APP_ID" "$IOS_BUNDLE_ID" "$SKIP_ANDROID_ID" "$PROJECT_SLUG"
+$PYTHON_BIN - <<'PY' "$APP_NAME" "$ANDROID_APP_ID" "$IOS_BUNDLE_ID" "$SKIP_ANDROID_ID" "$PROJECT_SLUG"
 import re
 from pathlib import Path
 import sys
@@ -117,7 +144,7 @@ PY
 if [[ "$SKIP_ANDROID_ID" == true ]]; then
   echo "[brandify] androidAppId missing, skipping google-services replacement"
 else
-python3 - <<'PY' "$ANDROID_APP_ID" "$ANDROID_DEV_APP_ID"
+$PYTHON_BIN - <<'PY' "$ANDROID_APP_ID" "$ANDROID_DEV_APP_ID"
 import json
 from pathlib import Path
 import sys
@@ -139,7 +166,7 @@ path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding=
 PY
 
 # Update Android Manifest label if hardcoded elsewhere (string resource handled via appName)
-python3 - <<'PY' "$ANDROID_APP_ID"
+$PYTHON_BIN - <<'PY' "$ANDROID_APP_ID"
 from pathlib import Path
 import sys
 app_id = sys.argv[1]
