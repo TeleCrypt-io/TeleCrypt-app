@@ -21,14 +21,14 @@ if [[ -z "$PYTHON_BIN" ]]; then
   exit 1
 fi
 
-APP_NAME=""
+APP_NAME_RAW=""
 ANDROID_APP_ID_RAW=""
 IOS_BUNDLE_ID_RAW=""
 ICON_DIR=""
 index=0
 while IFS= read -r line; do
   case $index in
-    0) APP_NAME="$line" ;;
+    0) APP_NAME_RAW="$line" ;;
     1) ANDROID_APP_ID_RAW="$line" ;;
     2) IOS_BUNDLE_ID_RAW="$line" ;;
     3) ICON_DIR="$line" ;;
@@ -64,9 +64,14 @@ trim() {
     sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
+APP_NAME="$(trim "$APP_NAME_RAW")"
 ANDROID_APP_ID="$(trim "$ANDROID_APP_ID_RAW")"
 IOS_BUNDLE_ID="$(trim "$IOS_BUNDLE_ID_RAW")"
 ICON_DIR="$(trim "$ICON_DIR")"
+
+if [[ -z "$APP_NAME" ]]; then
+  APP_NAME="TeleCrypt Messenger"
+fi
 
 SKIP_ANDROID_ID=false
 ANDROID_DEV_APP_ID=""
@@ -98,8 +103,16 @@ import sys
 app_name, android_app_id, ios_bundle_id, skip_android_flag, project_slug = sys.argv[1:6]
 skip_android = skip_android_flag.lower() == "true" or not android_app_id
 
+app_name = app_name.strip()
+android_app_id = android_app_id.strip()
+ios_bundle_id = ios_bundle_id.strip()
+project_slug = project_slug.strip()
+
+def escape_kotlin_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
 replacements = [
-    (Path('build.gradle.kts'), r'val appName = "[^"]+"', f'val appName = "{app_name}"'),
+    (Path('build.gradle.kts'), r'val appName = "[^"]+"', f'val appName = "{escape_kotlin_string(app_name)}"'),
     (Path('settings.gradle.kts'), r'rootProject.name = "[^"]+"', f'rootProject.name = "{project_slug}"'),
     (Path('fastlane/Appfile'), r'app_identifier "[^"]+"', f'app_identifier "{ios_bundle_id}"'),
     (Path('iosApp/Configuration/Config.xcconfig'), r'PRODUCT_NAME=.*', f'PRODUCT_NAME={app_name}'),
