@@ -27,3 +27,4 @@ apple_keychain.keychain
 
 .flatpak-builder
 .flatpak-cache
+bin/
