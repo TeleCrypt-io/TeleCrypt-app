@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:383291232276:android:0190af0d6f60206b221701",
         "android_client_info": {
-          "package_name": "de.connect2x.tammy"
+          "package_name": "com.zendev.telecrypt"
         }
       },
       "oauth_client": [],
@@ -28,7 +28,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:383291232276:android:161d04f2c171a80d221701",
         "android_client_info": {
-          "package_name": "de.connect2x.tammy.dev"
+          "package_name": "com.zendev.telecrypt.dev"
         }
       },
       "oauth_client": [],
