@@ -77,6 +77,16 @@ prompt_bool() {
   done
 }
 
+ask_bool() {
+  local title="$1"
+  local explanation="$2"
+  local question="$3"
+  local default="$4"
+  printf '\n[upstream_sync] %s\n' "$title"
+  printf '[upstream_sync] %s\n' "$explanation"
+  prompt_bool "$question" "$default"
+}
+
 CLI_AUTO_COMMIT=""
 CLI_PUSH_UPDATES=""
 CLI_ALLOW_REBASE=""
@@ -155,7 +165,11 @@ if [[ -z "$AUTO_COMMIT" ]]; then
 fi
 if [[ -z "$AUTO_COMMIT" ]]; then
   if [[ "$is_interactive" == true ]]; then
-    AUTO_COMMIT="$(prompt_bool "Автоматически закоммитить изменения после brandify?" "true")"
+    AUTO_COMMIT="$(ask_bool \
+      "Автоматический коммит брендинга" \
+      "Скрипт запишет изменения от brandify сразу после выполнения. Это обеспечивает чистую историю и избавляет от ручного git add/commit." \
+      "Включить автоматический commit?" \
+      "true")"
   else
     AUTO_COMMIT="true"
   fi
@@ -167,7 +181,11 @@ if [[ -z "$PUSH_UPDATES" ]]; then
 fi
 if [[ -z "$PUSH_UPDATES" ]]; then
   if [[ "$is_interactive" == true ]]; then
-    PUSH_UPDATES="$(prompt_bool "Выполнить git push в origin/${DEFAULT_BRANCH}?" "true")"
+    PUSH_UPDATES="$(ask_bool \
+      "Публикация результата" \
+      "Если включено, обновлённая ветка ${DEFAULT_BRANCH} будет отправлена в origin (GitHub). Отключите, если работаете офлайн или хотите проверить изменения перед пушем." \
+      "Выполнить git push?" \
+      "true")"
   else
     PUSH_UPDATES="true"
   fi
@@ -179,7 +197,11 @@ if [[ -z "$ALLOW_REBASE" ]]; then
 fi
 if [[ -z "$ALLOW_REBASE" ]]; then
   if [[ "$is_interactive" == true ]]; then
-    ALLOW_REBASE="$(prompt_bool "Пробовать git rebase, если fast-forward невозможен?" "true")"
+    ALLOW_REBASE="$(ask_bool \
+      "Автоматическое разрешение расхождений" \
+      "Когда Tammy и TeleCrypt расходятся, rebase позволяет применить наши коммиты поверх свежего апстрима. Отключите, если хотите решать конфликт вручную." \
+      "Разрешить автоматический rebase?" \
+      "true")"
   else
     ALLOW_REBASE="true"
   fi
