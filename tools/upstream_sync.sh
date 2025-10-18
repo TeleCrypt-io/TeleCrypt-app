@@ -60,7 +60,7 @@ prompt_bool() {
     hint="y/N"
   fi
   while true; do
-    printf '[upstream_sync] %s [%s] ' "$question" "$hint"
+    printf '[upstream_sync] %s [%s] ' "$question" "$hint" >&2
     IFS= read -r reply || true
     reply="${reply%%$'\r'}"
     reply="${reply#"${reply%%[![:space:]]*}"}"
@@ -82,8 +82,8 @@ ask_bool() {
   local explanation="$2"
   local question="$3"
   local default="$4"
-  printf '\n[upstream_sync] %s\n' "$title"
-  printf '[upstream_sync] %s\n' "$explanation"
+  printf '\n[upstream_sync] %s\n' "$title" >&2
+  printf '[upstream_sync] %s\n' "$explanation" >&2
   prompt_bool "$question" "$default"
 }
 
