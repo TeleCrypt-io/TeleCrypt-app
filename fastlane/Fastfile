@@ -1,76 +1,130 @@
-# This file contains the fastlane.tools configuration
-# You can find the documentation at https://docs.fastlane.tools
-#
-# For a list of all available actions, check out
-#
-#     https://docs.fastlane.tools/actions
-#
-# For a list of all available plugins, check out
-#
-#     https://docs.fastlane.tools/plugins/available-plugins
-#
+require 'fileutils'
+require 'tmpdir'
+require 'base64'
 
-# Uncomment the line if you want fastlane to automatically update itself
-# update_fastlane
+default_platform(:ios)
 
-default_platform(:android)
+def ensure_upload_enabled!
+  UI.user_error!("UPLOAD_TO_STORES is false") unless ENV["UPLOAD_TO_STORES"] == "true"
+end
+
+def env_value(*keys)
+  keys.each do |key|
+    value = ENV[key]
+    return value unless value.nil? || value.empty?
+  end
+  nil
+end
+
+platform :ios do
+  desc "Build TeleCrypt IPA for App Store/TestFlight distribution"
+  lane :build do
+    key_id = env_value("APP_STORE_CONNECT_KEY_ID", "KEY_ID")
+    issuer_id = env_value("APP_STORE_CONNECT_ISSUER_ID", "ISSUER_ID")
+    api_key_content = env_value("APP_STORE_CONNECT_API_KEY")
+    UI.user_error!("APP_STORE_CONNECT_API_KEY is missing") if api_key_content.to_s.empty?
+    keychain_password = ENV.fetch("APPLE_KEYCHAIN_PASSWORD")
+    mobileprovision_base64 = ENV.fetch("IOS_MOBILEPROVISION_BASE64")
+
+    api_key = app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_content: api_key_content
+    )
+
+    keychain_name = "telecrypt-ci"
+    certificate_path = File.join(Dir.tmpdir, "telecrypt_ios.p12")
+    provisioning_path = File.join(Dir.tmpdir, "telecrypt.mobileprovision")
+
+    File.binwrite(certificate_path, Base64.decode64(ENV.fetch("APPLE_KEYCHAIN_FILE_BASE64")))
+    File.binwrite(provisioning_path, Base64.decode64(mobileprovision_base64))
+
+    keychain_fs_path = File.expand_path("~/Library/Keychains/#{keychain_name}.keychain-db")
+    delete_keychain(name: keychain_name) if File.exist?(keychain_fs_path)
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: true
+    )
+
+    import_certificate(
+      certificate_path: certificate_path,
+      certificate_password: keychain_password,
+      keychain_name: keychain_name,
+      keychain_password: keychain_password
+    )
+    install_provisioning_profile(path: provisioning_path)
+    profile = FastlaneCore::ProvisioningProfile.parse(provisioning_path)
+
+    ipa_path = build_app(
+      workspace: "iosApp/iosApp.xcworkspace",
+      scheme: "Tammy for iOS",
+      export_method: "app-store",
+      output_directory: "iosApp/build",
+      output_name: "TeleCrypt",
+      api_key: api_key,
+      clean: true,
+      silent: true,
+      build_path: "iosApp/build",
+      derived_data_path: "iosApp/build/DerivedData",
+      configuration: "Release",
+      export_options: {
+        provisioningProfiles: {
+          profile.bundle_id => profile.name
+        },
+        signingStyle: "manual",
+        signingCertificate: "Apple Distribution"
+      }
+    )
+
+    ipa_path
+  ensure
+    FileUtils.rm_f(certificate_path) if defined?(certificate_path)
+    FileUtils.rm_f(provisioning_path) if defined?(provisioning_path)
+    delete_keychain(name: keychain_name) if defined?(keychain_name)
+  end
+
+  desc "Upload TeleCrypt build to TestFlight (guarded by UPLOAD_TO_STORES flag)"
+  lane :beta do
+    ensure_upload_enabled!
+
+    key_id = env_value("APP_STORE_CONNECT_KEY_ID", "KEY_ID")
+    issuer_id = env_value("APP_STORE_CONNECT_ISSUER_ID", "ISSUER_ID")
+    api_key_content = env_value("APP_STORE_CONNECT_API_KEY")
+
+    api_key = app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_content: api_key_content
+    )
+
+    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH] || Dir["iosApp/build/*.ipa"].max
+    UI.user_error!("IPA not found — run fastlane ios build first") unless ipa_path
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_path,
+      distribute_external: false,
+      skip_submission: true
+    )
+  end
+end
 
 platform :android do
-    lane :screenshots do
-        build_android_app(
-            task: 'assemble',
-            build_type: 'Debug'
-        )
-        build_android_app(
-            task: 'assemble',
-            build_type: 'AndroidTest'
-        )
-        capture_android_screenshots(
-            locales: ["en-US", "de-DE"],
-            clear_previous_screenshots: true,
-            skip_open_summary: true,
-            use_timestamp_suffix: false,
-            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
-            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
-            device_type: "phone",
-            specific_device: "emulator-5564"
-        )
-        capture_android_screenshots(
-            locales: ["en-US", "de-DE"],
-            clear_previous_screenshots: true,
-            skip_open_summary: true,
-            use_timestamp_suffix: false,
-            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
-            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
-            device_type: "sevenInch",
-            specific_device: "emulator-5566"
-        )
-        capture_android_screenshots(
-            locales: ["en-US", "de-DE"],
-            clear_previous_screenshots: true,
-            skip_open_summary: true,
-            use_timestamp_suffix: false,
-            app_apk_path: "build/outputs/apk/androidTest/debug/Tammy-debug-androidTest.apk",
-            tests_apk_path: "build/outputs/apk/debug/Tammy-debug.apk",
-            device_type: "tenInch",
-            specific_device: "emulator-5568"
-        )
-    end
+  desc "Upload TeleCrypt release to Google Play internal testing (guarded)"
+  lane :internal do
+    ensure_upload_enabled!
 
-    lane :releaseBeta do
-        upload_to_play_store(
-            track: 'beta',
-            skip_upload_apk: true,
-            aab: "build/outputs/bundle/release/Tammy-release.aab",
-            version_code: ENV['CI_PIPELINE_IID']
-        )
-    end
+    service_json = env_value("ANDROID_SERVICE_ACCOUNT_JSON_BASE64")
+    UI.user_error!("ANDROID_SERVICE_ACCOUNT_JSON_BASE64 is missing") if service_json.to_s.empty?
 
-    lane :release do
-        upload_to_play_store(
-            skip_upload_apk: true,
-            aab: "build/outputs/bundle/release/Tammy-release.aab",
-            version_code: ENV['CI_PIPELINE_IID']
-        )
-    end
+    File.binwrite("android_service-account.json", Base64.decode64(service_json))
+
+    gradle(task: "publishRelease")
+  ensure
+    FileUtils.rm_f("android_service-account.json")
+  end
 end

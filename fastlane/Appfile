@@ -1,3 +1,4 @@
-json_key_file "./android_service-account.json"
-app_identifier "io.telecrypt.messenger"
-package_name "com.zendev.telecrypt"
+app_identifier("io.telecrypt.messenger")
+itc_team_id(ENV["APPLE_TEAM_ID"])
+team_id(ENV["APPLE_TEAM_ID"])
+json_key_file("./android_service-account.json")

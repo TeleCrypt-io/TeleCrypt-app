@@ -31,6 +31,11 @@ env:
   APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
   WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER: ${{ secrets.WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER }}
   WINDOWS_CODE_SIGNING_THUMBPRINT: ${{ secrets.WINDOWS_CODE_SIGNING_THUMBPRINT }}
+  APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY || '' }}
+  APP_STORE_CONNECT_KEY_ID: ${{ secrets.KEY_ID || '' }}
+  APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.ISSUER_ID || '' }}
+  IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 || '' }}
+  UPLOAD_TO_STORES: ${{ secrets.UPLOAD_TO_STORES || 'false' }}
 
 jobs:
   setup:
@@ -101,6 +106,20 @@ jobs:
           path: |
             build/outputs/apk/release/*.apk
             build/outputs/bundle/release/*.aab
+
+      - name: Setup Ruby (Fastlane)
+        if: env.UPLOAD_TO_STORES == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Bundle install (Fastlane)
+        if: env.UPLOAD_TO_STORES == 'true'
+        run: bundle install
+
+      - name: Fastlane Android internal (optional upload)
+        if: env.UPLOAD_TO_STORES == 'true'
+        run: bundle exec fastlane android internal
 
   desktop_linux:
     name: Desktop & Web (Linux)
@@ -292,9 +311,25 @@ jobs:
           cd iosApp
           xcodebuild -workspace iosApp.xcworkspace -scheme "Tammy for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive
 
+      - name: Setup Ruby (Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Bundle install (Fastlane)
+        run: bundle install
+
+      - name: Fastlane iOS build
+        run: bundle exec fastlane ios build
+
+      - name: Fastlane iOS beta (optional upload)
+        if: env.UPLOAD_TO_STORES == 'true'
+        run: bundle exec fastlane ios beta
+
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-artifacts
           path: |
             iosApp/build/TeleCrypt.xcarchive
+            iosApp/build/*.ipa
