@@ -44,15 +44,18 @@ platform :ios do
       in_house: false
     )
 
-    keychain_name = "telecrypt-ci"
+    keychain_name = "telecrypt-ci-#{Time.now.to_i}"
     certificate_path = File.join(Dir.tmpdir, "telecrypt_ios.p12")
     provisioning_path = File.join(Dir.tmpdir, "telecrypt.mobileprovision")
 
     File.binwrite(certificate_path, Base64.decode64(ENV.fetch("APPLE_KEYCHAIN_FILE_BASE64")))
     File.binwrite(provisioning_path, Base64.decode64(mobileprovision_base64))
 
-    keychain_fs_path = File.expand_path("~/Library/Keychains/#{keychain_name}.keychain-db")
-    delete_keychain(name: keychain_name) if File.exist?(keychain_fs_path)
+    begin
+      delete_keychain(name: keychain_name)
+    rescue StandardError
+      # ignore
+    end
     create_keychain(
       name: keychain_name,
       password: keychain_password,
@@ -72,7 +75,7 @@ platform :ios do
     profile = FastlaneCore::ProvisioningProfile.parse(provisioning_path)
 
     ipa_path = build_app(
-      workspace: "iosApp/iosApp.xcworkspace",
+      project: "iosApp/iosApp.xcodeproj",
       scheme: "Tammy for iOS",
       export_method: "app-store",
       output_directory: "iosApp/build",
