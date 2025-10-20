@@ -61,9 +61,22 @@ platform :ios do
       p12_sha = sh("shasum -a 256 #{Shellwords.escape(certificate_path)} | awk '{print $1}'", log: false).strip
       prof_sha = sh("shasum -a 256 #{Shellwords.escape(provisioning_path)} | awk '{print $1}'", log: false).strip
       UI.message("Codesign diag: p12_sha256=#{p12_sha} profile_sha256=#{prof_sha}")
+      
+      # Debug password info (masked)
+      UI.message("Codesign diag: certificate_password length=#{certificate_password.length}, starts_with=#{certificate_password[0..2]}, ends_with=#{certificate_password[-3..-1]}")
+      UI.message("Codesign diag: keychain_password length=#{keychain_password.length}, starts_with=#{keychain_password[0..2]}, ends_with=#{keychain_password[-3..-1]}")
+      
       # validate that password matches the p12 by extracting cert metadata (no keys printed)
       cert_info = sh("openssl pkcs12 -in #{Shellwords.escape(certificate_path)} -clcerts -nokeys -passin pass:'#{certificate_password}' | openssl x509 -noout -subject -issuer -enddate", log: false).to_s.strip
       UI.message("Codesign diag: certificate_info=#{cert_info}")
+      
+      # Test with keychain password too
+      begin
+        cert_info_keychain = sh("openssl pkcs12 -in #{Shellwords.escape(certificate_path)} -clcerts -nokeys -passin pass:'#{keychain_password}' | openssl x509 -noout -subject -issuer -enddate", log: false).to_s.strip
+        UI.message("Codesign diag: certificate_info_with_keychain_pass=#{cert_info_keychain}")
+      rescue StandardError => e2
+        UI.important("Codesign diag: OpenSSL check with keychain password failed — #{e2.message}")
+      end
     rescue StandardError => e
       UI.important("Codesign diag: OpenSSL check failed — #{e.message}")
     end
@@ -82,6 +95,9 @@ platform :ios do
       lock_when_sleeps: true
     )
 
+    # Debug: log what we're about to pass to import_certificate
+    UI.message("Codesign diag: About to import with cert_password length=#{certificate_password.length}, keychain_password length=#{keychain_password.length}")
+    
     import_certificate(
       certificate_path: certificate_path,
       certificate_password: certificate_password,
