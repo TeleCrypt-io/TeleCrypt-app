@@ -144,10 +144,27 @@ platform :android do
     service_json = env_value("ANDROID_SERVICE_ACCOUNT_JSON_BASE64")
     UI.user_error!("ANDROID_SERVICE_ACCOUNT_JSON_BASE64 is missing") if service_json.to_s.empty?
 
-    File.binwrite("android_service-account.json", Base64.decode64(service_json))
+    service_account_path = File.join(Dir.tmpdir, "telecrypt_service_account.json")
+    File.binwrite(service_account_path, Base64.decode64(service_json.gsub(/\s+/, "")))
 
-    gradle(task: "publishRelease")
+    gradle(task: "bundleRelease")
+    gradle(task: "assembleRelease")
+
+    aab_path = Dir["build/outputs/bundle/release/*.aab"].max
+    UI.user_error!("Release AAB not found") unless aab_path
+
+    supply(
+      json_key: service_account_path,
+      package_name: "com.zendev.telecrypt",
+      track: "internal",
+      aab: aab_path,
+      skip_upload_apk: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      skip_upload_metadata: true
+    )
   ensure
-    FileUtils.rm_f("android_service-account.json")
+    FileUtils.rm_f(service_account_path) if defined?(service_account_path)
   end
 end
