@@ -27,6 +27,8 @@ platform :ios do
     UI.user_error!("APP_STORE_CONNECT_ISSUER_ID is missing") if issuer_id.to_s.empty?
     UI.user_error!("APP_STORE_CONNECT_API_KEY is missing") if api_key_content.to_s.empty?
     keychain_password = ENV.fetch("APPLE_KEYCHAIN_PASSWORD").to_s.strip
+    # allow using a separate password for the .p12 if provided
+    certificate_password = env_value("APPLE_CERTIFICATE_PASSWORD") || keychain_password
     mobileprovision_base64 = ENV.fetch("IOS_MOBILEPROVISION_BASE64")
 
     unless api_key_content.include?("BEGIN PRIVATE KEY")
@@ -54,6 +56,18 @@ platform :ios do
     File.binwrite(certificate_path, Base64.decode64(clean_cert))
     File.binwrite(provisioning_path, Base64.decode64(clean_profile))
 
+    # lightweight diagnostics to compare with local artefacts (no secrets printed)
+    begin
+      p12_sha = sh("shasum -a 256 #{Shellwords.escape(certificate_path)} | awk '{print $1}'", log: false).strip
+      prof_sha = sh("shasum -a 256 #{Shellwords.escape(provisioning_path)} | awk '{print $1}'", log: false).strip
+      UI.message("Codesign diag: p12_sha256=#{p12_sha} profile_sha256=#{prof_sha}")
+      # validate that password matches the p12 by extracting cert metadata (no keys printed)
+      cert_info = sh("openssl pkcs12 -in #{Shellwords.escape(certificate_path)} -clcerts -nokeys -passin pass:'#{certificate_password}' | openssl x509 -noout -subject -issuer -enddate", log: false).to_s.strip
+      UI.message("Codesign diag: certificate_info=#{cert_info}")
+    rescue StandardError => e
+      UI.important("Codesign diag: OpenSSL check failed — #{e.message}")
+    end
+
     begin
       delete_keychain(name: keychain_name)
     rescue StandardError
@@ -70,10 +84,17 @@ platform :ios do
 
     import_certificate(
       certificate_path: certificate_path,
-      certificate_password: keychain_password,
+      certificate_password: certificate_password,
       keychain_name: keychain_name,
       keychain_password: keychain_password
     )
+    # list identities visible to the temporary keychain for easier troubleshooting
+    begin
+      identities = sh("security find-identity -p codesigning -v #{Shellwords.escape(keychain_name)}", log: false)
+      UI.message("Codesign diag: identities in keychain '#{keychain_name}':\n#{identities}")
+    rescue StandardError => e
+      UI.important("Codesign diag: failed to list identities — #{e.message}")
+    end
     install_provisioning_profile(path: provisioning_path)
     profile = FastlaneCore::ProvisioningProfile.parse(provisioning_path)
     profile_name = profile["Name"]
