@@ -285,7 +285,10 @@ android {
     defaultConfig {
         minSdk = sharedLibs.versions.androidMinimalSDK.get().toInt()
         targetSdk = sharedLibs.versions.androidTargetSDK.get().toInt()
-        versionCode = System.getenv("CI_PIPELINE_IID")?.toInt() ?: 1
+        // Auto-increment versionCode in CI: prefer GitHub run number, then GitLab pipeline IID, else 1
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toInt()
+            ?: System.getenv("CI_PIPELINE_IID")?.toInt()
+            ?: 1
         versionName = appSuffixedVersion
         applicationId = appIdentifier
         setProperty("archivesBaseName", appName)
