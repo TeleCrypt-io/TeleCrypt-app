@@ -150,7 +150,8 @@ platform :android do
     gradle(task: "bundleRelease")
     gradle(task: "assembleRelease")
 
-    aab_path = Dir["build/outputs/bundle/release/*.aab"].max
+    aab_candidates = Actions.lane_context[SharedValues::GRADLE_ALL_AAB_OUTPUT_PATHS] || []
+    aab_path = aab_candidates.compact.select { |path| File.exist?(path) }.max
     UI.user_error!("Release AAB not found") unless aab_path
 
     supply(
