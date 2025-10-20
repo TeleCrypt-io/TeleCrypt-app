@@ -65,6 +65,7 @@ platform :ios do
       export_method: "app-store",
       output_directory: "iosApp/build",
       output_name: "TeleCrypt",
+      archive_path: "iosApp/build/TeleCrypt.xcarchive",
       api_key: api_key,
       clean: true,
       silent: true,
