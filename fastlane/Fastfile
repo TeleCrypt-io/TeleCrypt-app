@@ -22,6 +22,8 @@ platform :ios do
     key_id = env_value("APP_STORE_CONNECT_KEY_ID", "KEY_ID")
     issuer_id = env_value("APP_STORE_CONNECT_ISSUER_ID", "ISSUER_ID")
     api_key_content = env_value("APP_STORE_CONNECT_API_KEY")
+    UI.user_error!("APP_STORE_CONNECT_KEY_ID is missing") if key_id.to_s.empty?
+    UI.user_error!("APP_STORE_CONNECT_ISSUER_ID is missing") if issuer_id.to_s.empty?
     UI.user_error!("APP_STORE_CONNECT_API_KEY is missing") if api_key_content.to_s.empty?
     keychain_password = ENV.fetch("APPLE_KEYCHAIN_PASSWORD")
     mobileprovision_base64 = ENV.fetch("IOS_MOBILEPROVISION_BASE64")
@@ -83,9 +85,15 @@ platform :ios do
 
     ipa_path
   ensure
-    FileUtils.rm_f(certificate_path) if defined?(certificate_path)
-    FileUtils.rm_f(provisioning_path) if defined?(provisioning_path)
-    delete_keychain(name: keychain_name) if defined?(keychain_name)
+    if defined?(certificate_path) && certificate_path
+      FileUtils.rm_f(certificate_path)
+    end
+    if defined?(provisioning_path) && provisioning_path
+      FileUtils.rm_f(provisioning_path)
+    end
+    if defined?(keychain_name) && keychain_name
+      delete_keychain(name: keychain_name)
+    end
   end
 
   desc "Upload TeleCrypt build to TestFlight (guarded by UPLOAD_TO_STORES flag)"
