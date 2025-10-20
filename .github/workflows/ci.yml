@@ -35,24 +35,22 @@ env:
   APP_STORE_CONNECT_KEY_ID: ${{ secrets.KEY_ID || '' }}
   APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.ISSUER_ID || '' }}
   IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 || '' }}
+  ENABLE_IOS_BUILD: ${{ secrets.ENABLE_IOS_BUILD || 'false' }}
   UPLOAD_TO_STORES: ${{ secrets.UPLOAD_TO_STORES || 'false' }}
 
 jobs:
   setup:
     name: Resolve build flags
     runs-on: ubuntu-latest
-    outputs:
-      enable_ios_build: ${{ steps.flags.outputs.enable_ios_build }}
-      apple_keychain_file_base64: ${{ steps.flags.outputs.apple_keychain_file_base64 }}
     steps:
-      - name: Emit flags
-        id: flags
+      - name: Echo configuration summary
         run: |
-          echo "enable_ios_build=${ENABLE_IOS_BUILD}" >> "$GITHUB_OUTPUT"
-          echo "apple_keychain_file_base64=${APPLE_KEYCHAIN_FILE_BASE64}" >> "$GITHUB_OUTPUT"
-        env:
-          ENABLE_IOS_BUILD: ${{ secrets.ENABLE_IOS_BUILD || 'false' }}
-          APPLE_KEYCHAIN_FILE_BASE64: ${{ secrets.APPLE_KEYCHAIN_FILE_BASE64 || '' }}
+          echo "ENABLE_IOS_BUILD=${ENABLE_IOS_BUILD}"
+          if [[ -n "${APPLE_KEYCHAIN_FILE_BASE64}" ]]; then
+            echo "APPLE_KEYCHAIN_FILE_BASE64: present"
+          else
+            echo "APPLE_KEYCHAIN_FILE_BASE64: missing"
+          fi
 
   android:
     name: Android Release Build
@@ -269,7 +267,7 @@ jobs:
     name: iOS Archive
     runs-on: macos-latest
     needs: [setup, desktop_macos]
-    if: ${{ needs.setup.outputs.enable_ios_build == 'true' }}
+    if: ${{ env.ENABLE_IOS_BUILD == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -299,7 +297,7 @@ jobs:
         run: tools/brandify.sh branding/branding.json
 
       - name: Configure signing keychain
-        if: ${{ needs.setup.outputs.apple_keychain_file_base64 != '' }}
+        if: ${{ env.APPLE_KEYCHAIN_FILE_BASE64 != '' }}
         run: |
           echo "${{ needs.setup.outputs.apple_keychain_file_base64 }}" | base64 --decode > apple_keychain.keychain
           security list-keychains -d user -s "$(realpath apple_keychain.keychain)"
