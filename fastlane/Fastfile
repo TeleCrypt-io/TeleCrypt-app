@@ -195,7 +195,8 @@ platform :android do
       skip_upload_images: true,
       skip_upload_screenshots: true,
       skip_upload_changelogs: true,
-      skip_upload_metadata: true
+      skip_upload_metadata: true,
+      release_status: "draft"
     )
   ensure
     FileUtils.rm_f(service_account_path) if defined?(service_account_path)
