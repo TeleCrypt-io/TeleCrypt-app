@@ -209,18 +209,14 @@ jobs:
 
       - name: Build desktop distributions (Windows)
         shell: bash
-        run: ./gradlew --stacktrace createReleaseDistributable packageReleaseExe packageReleaseMsix
+        run: ./gradlew --stacktrace createReleaseDistributable packageReleaseExe packageReleasePlatformZip
 
       - name: Sign binaries
-        if: env.WINDOWS_CERT_FILE_BASE64 != ''
         run: |
           echo "$WINDOWS_CERT_FILE_BASE64" | base64 --decode > cert.pfx
           signtool sign /f cert.pfx /p "$WINDOWS_CERT_PASSWORD" \
             /tr "$WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER" /td sha256 /fd sha256 \
             build/compose/binaries/main-release/*.exe
-          signtool sign /f cert.pfx /p "$WINDOWS_CERT_PASSWORD" \
-            /tr "$WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER" /td sha256 /fd sha256 \
-            build/compose/binaries/main-release/*.msix
 
       - name: Upload Windows EXE installer
         uses: actions/upload-artifact@v4
@@ -228,11 +224,11 @@ jobs:
           name: windows-exe-installer
           path: build/compose/binaries/main-release/exe/*.exe
 
-      - name: Upload Windows MSIX package
+      - name: Upload Windows ZIP archive
         uses: actions/upload-artifact@v4
         with:
-          name: windows-msix-package
-          path: build/compose/binaries/main-release/msix/*.msix
+          name: windows-zip-archive
+          path: build/compose/binaries/main-release/zip/*.zip
 
   desktop_macos:
     name: Desktop (macOS)

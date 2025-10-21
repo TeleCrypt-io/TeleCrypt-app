@@ -219,7 +219,7 @@ compose {
             nativeDistributions {
                 modules("java.net.http", "java.sql", "java.naming", "jdk.accessibility")
                 targetFormats(
-                    // TargetFormat.Exe, // no deeplink support
+                    TargetFormat.Exe, // no deeplink support
                     // TargetFormat.Msi, // no deeplink support
                     TargetFormat.Dmg,
                     // TargetFormat.Pkg, // signing problems
@@ -288,7 +288,7 @@ android {
         // Auto-increment versionCode in CI: prefer GitHub run number, then GitLab pipeline IID, else 1
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toInt()
             ?: System.getenv("CI_PIPELINE_IID")?.toInt()
-            ?: 1
+                    ?: 1
         versionName = appSuffixedVersion
         applicationId = appIdentifier
         setProperty("archivesBaseName", appName)

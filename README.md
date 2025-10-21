@@ -26,7 +26,7 @@ Android, Desktop, and Web artefacts on every merge request and on `main`.
 - **Desktop (macOS/Linux)** — Compose Desktop targets under `src/desktopMain`; Linux and macOS release DMG/ZIP/Flatpak bundles are
   produced by `createReleaseDistributable` (plus `packageReleasePlatformZip`). When `APPLE_ID`/`APPLE_NOTARIZATION_PASSWORD` are
   present the macOS job enables automatic signing and notarisation.
-- **Desktop (Windows)** — Windows artefacts are built via `packageReleaseMsix`/`packageReleaseExe`. To ship signed MSIX/EXE files,
+- **Desktop (Windows)** — Windows artefacts are built via `packageReleasePlatformZip`/`packageReleaseExe`. To ship signed ZIP/EXE files,
   provide the certificate thumbprint and timestamp server URL through repository secrets.
 - **Web** — Kotlin/JS target in `src/webMain` bundled through the helper Gradle project `kotlin-js-store` and exposed as a
   zipped distributable.
@@ -58,7 +58,7 @@ Use a project-local Gradle cache to keep the workspace self-contained:
 | --- | --- | --- |
 | Android (release AAB/APK) | `GRADLE_USER_HOME=$PWD/.gradle ./gradlew bundleRelease assembleRelease` | `build/outputs/bundle/release/<archiveBase>-release.aab`, `build/outputs/apk/release/<archiveBase>-release.apk` |
 | Desktop (current OS) | `GRADLE_USER_HOME=$PWD/.gradle ./gradlew createReleaseDistributable packageReleasePlatformZip` | `build/compose/binaries/main-release/**` |
-| Desktop extras | `./gradlew packageReleaseDmg packageReleaseMsix packageReleaseFlatpakBundle packageReleaseFlatpakSources packageReleaseWebZip` | DMG/MSIX/Flatpak/Web bundles under `build/compose/binaries/main-release/**` |
+| Desktop extras | `./gradlew packageReleaseDmg packageReleaseFlatpakBundle packageReleaseFlatpakSources packageReleaseWebZip` | DMG/Flatpak/Web bundles under `build/compose/binaries/main-release/**` |
 | Web dev | `./gradlew webBrowserDevelopmentRun` | Runs dev server |
 | Web distributable | `./gradlew uploadWebZipDistributable` | Upload-ready zip (also used in CI) |
 | iOS archive (manual) | `cd iosApp && xcodebuild -workspace iosApp.xcworkspace -scheme "Tammy for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive` | `iosApp/build/TeleCrypt.xcarchive` |
@@ -69,7 +69,7 @@ Use a project-local Gradle cache to keep the workspace self-contained:
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on every push to `main`, on each pull request, and via manual `workflow_dispatch`:
   - `Android Release Build` (Ubuntu) — executes `bundleRelease assembleRelease`, publishing AAB/APK artefacts.
   - `Desktop & Web (Linux)` — Compose desktop/web packaging on Linux (`createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip`).
-  - `Desktop (Windows)` — Compose packaging on Windows hosts (`packageReleaseExe packageReleaseMsix`), add signature to all binaries.
+  - `Desktop (Windows)` — Compose packaging on Windows hosts (`packageReleaseExe packageReleasePlatformZip`), add signature to all binaries.
   - `Desktop (macOS)` — DMG/ZIP creation on macOS with automatic signing/notarisation when Apple secrets are present.
   - `iOS Archive` — optional job (enabled by the `ENABLE_IOS_BUILD` secret) running `xcodebuild … archive` on macOS and uploading the `.xcarchive`.
 - **Secrets** live in GitHub Actions (Settings → Secrets and variables → Actions). Never commit raw credentials. Keep the same names if you also mirror the pipeline to another CI.
@@ -106,7 +106,7 @@ accounts/devices are authorised in their consoles.
 
 ### Runner Matrix
 - **Linux (`ubuntu-latest`)**: GitHub-hosted runners cover Android/Linux/Web smoke builds out of the box.
-- **Windows (`windows-latest`)**: GitHub-hosted runners (free, counted x2 toward the minute quota) yield Windows desktop ZIPs; enable MSIX/signing when certificates are configured.
+- **Windows (`windows-latest`)**: GitHub-hosted runners (free, counted x2 toward the minute quota) yield Windows desktop ZIPs and .exe;
 - **macOS (`macos-latest`)**: GitHub-hosted runners (x10 minute multiplier) produce DMG and optional iOS archives. A self-hosted Mac mini/VM is an alternative when quotas become tight.
 
 ## Secrets & Credential Management
