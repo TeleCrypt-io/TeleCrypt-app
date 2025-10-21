@@ -69,35 +69,37 @@ Use a project-local Gradle cache to keep the workspace self-contained:
 - **GitHub Actions** (`.github/workflows/ci.yml`) runs on every push to `main`, on each pull request, and via manual `workflow_dispatch`:
   - `Android Release Build` (Ubuntu) — executes `bundleRelease assembleRelease`, publishing AAB/APK artefacts.
   - `Desktop & Web (Linux)` — Compose desktop/web packaging on Linux (`createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip`).
-  - `Desktop (Windows)` — Compose packaging on Windows hosts (portable ZIP artefacts; MSIX/signing hooks can be enabled later).
+  - `Desktop (Windows)` — Compose packaging on Windows hosts (`packageReleaseExe packageReleaseMsix`), add signature to all binaries.
   - `Desktop (macOS)` — DMG/ZIP creation on macOS with automatic signing/notarisation when Apple secrets are present.
   - `iOS Archive` — optional job (enabled by the `ENABLE_IOS_BUILD` secret) running `xcodebuild … archive` on macOS and uploading the `.xcarchive`.
 - **Secrets** live in GitHub Actions (Settings → Secrets and variables → Actions). Never commit raw credentials. Keep the same names if you also mirror the pipeline to another CI.
 - GitLab CI was retired; GitHub Actions is the canonical automation surface now.
 
 ### Required CI Variables
-| Variable | Purpose | Format |
-| --- | --- | --- |
-| `ANDROID_RELEASE_STORE_FILE_BASE64` | Android signing keystore | Base64-encoded `.jks` |
-| `ANDROID_RELEASE_STORE_PASSWORD` | Keystore password | Plain text |
-| `ANDROID_RELEASE_KEY_ALIAS` | Alias inside keystore | Plain text |
-| `ANDROID_RELEASE_KEY_PASSWORD` | Key password | Plain text |
-| `ANDROID_SERVICE_ACCOUNT_JSON_BASE64` | Play Console service account | Base64-encoded JSON |
-| `APP_STORE_CONNECT_API_KEY` | Fastlane App Store Connect key JSON | Base64-encoded JSON |
-| `APP_STORE_CONNECT_KEY_ID` | App Store Connect key identifier | Plain text |
-| `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect issuer ID | UUID |
-| `APPLE_KEYCHAIN_FILE_BASE64` | Temporary keychain for macOS/iOS jobs | Base64-encoded keychain |
-| `APPLE_KEYCHAIN_PASSWORD` | Password for temporary keychain | Plain text |
-| `APPLE_CERTIFICATE_PASSWORD` | Password used to import the `.p12` | Plain text |
-| `IOS_MOBILEPROVISION_BASE64` | Provisioning profile for App Store builds | Base64-encoded `.mobileprovision` |
-| `APPLE_TEAM_ID` | Apple Developer Team ID | Plain text |
-| `APPLE_ID` | Apple ID for notarisation/TestFlight | Plain text |
-| `APPLE_NOTARIZATION_PASSWORD` | App-specific password (`app-specific-password`) | Plain text |
-| `WINDOWS_CODE_SIGNING_THUMBPRINT` | Windows signing cert fingerprint | HEX string |
-| `WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER` | Timestamp server URL | URL |
-| `SSH_PASSWORD_APP` / `SSH_PASSWORD_WEBSITE` | Legacy SFTP release passwords (only for the old GitLab jobs) | Plain text |
-| `ENABLE_IOS_BUILD` | Toggle iOS job (`true` to enable) | `true` / `false` |
-| `UPLOAD_TO_STORES` | Enables Fastlane upload steps | `true` / `false` |
+| Variable                                                            | Purpose                                                      | Format                            |
+|---------------------------------------------------------------------|--------------------------------------------------------------|-----------------------------------|
+| `ANDROID_RELEASE_STORE_FILE_BASE64`                                 | Android signing keystore                                     | Base64-encoded `.jks`             |
+| `ANDROID_RELEASE_STORE_PASSWORD`                                    | Keystore password                                            | Plain text                        |
+| `ANDROID_RELEASE_KEY_ALIAS`                                         | Alias inside keystore                                        | Plain text                        |
+| `ANDROID_RELEASE_KEY_PASSWORD`                                      | Key password                                                 | Plain text                        |
+| `ANDROID_SERVICE_ACCOUNT_JSON_BASE64`                               | Play Console service account                                 | Base64-encoded JSON               |
+| `APP_STORE_CONNECT_API_KEY`                                         | Fastlane App Store Connect key JSON                          | Base64-encoded JSON               |
+| `APP_STORE_CONNECT_KEY_ID`                                          | App Store Connect key identifier                             | Plain text                        |
+| `APP_STORE_CONNECT_ISSUER_ID`                                       | App Store Connect issuer ID                                  | UUID                              |
+| `APPLE_KEYCHAIN_FILE_BASE64`                                        | Temporary keychain for macOS/iOS jobs                        | Base64-encoded keychain           |
+| `APPLE_KEYCHAIN_PASSWORD`                                           | Password for temporary keychain                              | Plain text                        |
+| `APPLE_CERTIFICATE_PASSWORD`                                        | Password used to import the `.p12`                           | Plain text                        |
+| `IOS_MOBILEPROVISION_BASE64`                                        | Provisioning profile for App Store builds                    | Base64-encoded `.mobileprovision` |
+| `APPLE_TEAM_ID`                                                     | Apple Developer Team ID                                      | Plain text                        |
+| `APPLE_ID`                                                          | Apple ID for notarisation/TestFlight                         | Plain text                        |
+| `APPLE_NOTARIZATION_PASSWORD`                                       | App-specific password (`app-specific-password`)              | Plain text                        |
+| `WINDOWS_CODE_SIGNING_THUMBPRINT`                                   | Windows signing cert fingerprint                             | HEX string                        |
+| `WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER`                             | Timestamp server URL                                         | URL                               |
+| `WINDOWS_CERT_FILE_BASE64`                                          | Windows signing keyfile                                      | Base64-encoded `.pfx`             |
+| `WINDOWS_CERT_PASSWORD`                                             | Windows keyfile password                                     | Plaint text                       |
+| `SSH_PASSWORD_APP` / `SSH_PASSWORD_WEBSITE`                         | Legacy SFTP release passwords (only for the old GitLab jobs) | Plain text                        |
+| `ENABLE_IOS_BUILD`                                                  | Toggle iOS job (`true` to enable)                            | `true` / `false`                  |
+| `UPLOAD_TO_STORES`                                                  | Enables Fastlane upload steps                                | `true` / `false`                  |
 
 Set these in project settings before enabling the respective jobs. For Play/TestFlight uploads, ensure the service
 accounts/devices are authorised in their consoles.
