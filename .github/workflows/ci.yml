@@ -209,7 +209,7 @@ jobs:
 
       - name: Build desktop distributions (Windows)
         shell: bash
-        run: ./gradlew --stacktrace createReleaseDistributable packageReleaseExe packageReleasePlatformZip
+        run: ./gradlew --stacktrace uploadPlatformDistributable
 
       - name: Sign binaries
         run: |

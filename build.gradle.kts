@@ -219,7 +219,7 @@ compose {
             nativeDistributions {
                 modules("java.net.http", "java.sql", "java.naming", "jdk.accessibility")
                 targetFormats(
-                    TargetFormat.Exe, // no deeplink support
+                    //TargetFormat.Exe, // no deeplink support
                     // TargetFormat.Msi, // no deeplink support
                     TargetFormat.Dmg,
                     // TargetFormat.Pkg, // signing problems
