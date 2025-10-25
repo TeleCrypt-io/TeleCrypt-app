@@ -37,7 +37,7 @@ if (isRelease)
         "when creating a release, the appVersion ($appVersion) must the same as the appPublishedVersion($appPublishedVersion)"
     }
 val appSuffixedVersion = withVersionSuffix(appVersion)
-val appName = "TeleCrypt Messenger"
+val appName = "TeleCrypt-Messenger"
 val appIdentifier = "com.zendev.telecrypt"
 val appPackage = "de.connect2x.tammy"
 val privacyInfo = File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
