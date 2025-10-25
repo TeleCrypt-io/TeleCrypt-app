@@ -183,8 +183,6 @@ jobs:
         shell: pwsh
         run: |
           $installDir = "C:\Tools\WindowsSDK"
-          Write-Host "⬇️ Installing Windows SDK into $installDir..."
-
           New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
           $env:ChocolateyInstallArguments = "/quiet /norestart /features OptionId.DeploymentTools /installpath=$installDir"
@@ -205,7 +203,7 @@ jobs:
             Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Directory -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
             exit 1
           }
-      
+
 
       - name: Check makeappx (debug purpose only)
         shell: cmd
@@ -245,24 +243,43 @@ jobs:
         shell: bash
         run: ./gradlew --stacktrace uploadPlatformDistributable
 
-      - name: Sign binaries
+      - name: Sign MSIX packages
+        shell: pwsh
         run: |
-          echo "$WINDOWS_CERT_FILE_BASE64" | base64 --decode > cert.pfx
-          signtool sign /f cert.pfx /p "$WINDOWS_CERT_PASSWORD" \
-            /tr "$WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER" /td sha256 /fd sha256 \
-            build/compose/binaries/main-release/*.exe
+          $certPath = "cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERT_FILE_BASE64))
 
-#      - name: Upload Windows EXE installer
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: windows-exe-installer
-#          path: build/compose/binaries/main-release/exe/*.exe
+          $files = Get-ChildItem "build/compose/binaries/main-release" -Recurse -Include *.msix
+          if (-not $files) {
+            Write-Host "No .msix files found for signing."
+            exit 1
+          }
+
+          foreach ($file in $files) {
+            Write-Host "Signing $($file.FullName)..."
+            & signtool sign /f $certPath /p $env:WINDOWS_CERT_PASSWORD `
+              /tr $env:WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER /td sha256 /fd sha256 `
+              "$($file.FullName)"
+
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "Signing failed for $($file.FullName)"
+              exit 1
+            }
+          }
+
+          Write-Host "All MSIX packages signed successfully."   
+
+      #      - name: Upload Windows EXE installer
+      #        uses: actions/upload-artifact@v4
+      #        with:
+      #          name: windows-exe-installer
+      #          path: build/compose/binaries/main-release/exe/*.exe
 
       - name: Upload Windows MSIX installer
         uses: actions/upload-artifact@v4
         with:
           name: windows-msix-installer
-          path: build/compose/binaries/main-release/*.msix
+          path: build/compose/binaries/main-release/**/*.msix
 
   desktop_macos:
     name: Desktop (macOS)
