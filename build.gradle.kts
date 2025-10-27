@@ -631,9 +631,9 @@ val packageReleaseFlatpakSources by tasks.registering {
 // #####################################################################################################################
 
 fun uploadToPackageRegistry(filePath: Path, distribution: Distribution) {
+    // Some deprecated method form Tammy Gitlab CI.
     val url = distribution.packageRegistryUrl(false)
     if (url.contains("null")) {
-        println("⚠️ Package upload skipped: CI variables not set for GitHub Actions.")
         return
     }
     val httpClient = HttpClient.newHttpClient()
