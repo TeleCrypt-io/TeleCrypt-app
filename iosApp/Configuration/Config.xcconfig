@@ -1,6 +1,6 @@
 TEAM_ID=
 
-PRODUCT_NAME=TeleCrypt-Messenger
+PRODUCT_NAME=TeleCrypt Messenger
 PRODUCT_BUNDLE_IDENTIFIER=io.telecrypt.messenger
 
 CURRENT_PROJECT_VERSION=1

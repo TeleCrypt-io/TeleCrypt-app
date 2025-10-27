@@ -70,7 +70,7 @@ IOS_BUNDLE_ID="$(trim "$IOS_BUNDLE_ID_RAW")"
 ICON_DIR="$(trim "$ICON_DIR")"
 
 if [[ -z "$APP_NAME" ]]; then
-  APP_NAME="TeleCrypt-Messenger"
+  APP_NAME="TeleCrypt Messenger"
 fi
 
 SKIP_ANDROID_ID=false
