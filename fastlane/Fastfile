@@ -98,12 +98,28 @@ platform :ios do
     # Debug: log what we're about to pass to import_certificate
     UI.message("Codesign diag: About to import with cert_password length=#{certificate_password.length}, keychain_password length=#{keychain_password.length}")
     
-    import_certificate(
-      certificate_path: certificate_path,
-      certificate_password: certificate_password,
-      keychain_name: keychain_name,
-      keychain_password: keychain_password
-    )
+    begin
+      import_certificate(
+        certificate_path: certificate_path,
+        certificate_password: certificate_password,
+        keychain_name: keychain_name,
+        keychain_password: keychain_password
+      )
+    rescue StandardError => import_error
+      UI.error("Codesign diag: import_certificate failed — #{import_error.message}")
+      cert_pem = File.join(Dir.tmpdir, "telecrypt_cert.pem")
+      key_pem = File.join(Dir.tmpdir, "telecrypt_key.pem")
+
+      sh("openssl pkcs12 -in #{Shellwords.escape(certificate_path)} -clcerts -nokeys -passin pass:'#{certificate_password}' -out #{Shellwords.escape(cert_pem)}")
+      sh("openssl pkcs12 -in #{Shellwords.escape(certificate_path)} -nocerts -nodes -passin pass:'#{certificate_password}' -out #{Shellwords.escape(key_pem)}")
+
+      sh("security import #{Shellwords.escape(cert_pem)} -k #{Shellwords.escape(keychain_name)} -P '' -T /usr/bin/codesign -T /usr/bin/security")
+      sh("security import #{Shellwords.escape(key_pem)} -k #{Shellwords.escape(keychain_name)} -P '' -T /usr/bin/codesign -T /usr/bin/security")
+      sh("security set-key-partition-list -S apple-tool:,apple: -s -k #{Shellwords.escape(keychain_password)} #{Shellwords.escape(keychain_name)}")
+    ensure
+      FileUtils.rm_f(cert_pem) if defined?(cert_pem)
+      FileUtils.rm_f(key_pem) if defined?(key_pem)
+    end
     # list identities visible to the temporary keychain for easier troubleshooting
     begin
       identities = sh("security find-identity -p codesigning -v #{Shellwords.escape(keychain_name)}", log: false)
