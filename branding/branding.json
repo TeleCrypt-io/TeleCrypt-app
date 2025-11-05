@@ -2,5 +2,6 @@
   "appName": "TeleCrypt Messenger",
   "androidAppId": "com.zendev.telecrypt",
   "iosBundleId": "io.telecrypt.messenger",
-  "iconDir": "branding/icons"
+  "iconDir": "branding/icons",
+  "appleTeamId": "F6CHJX72K5"
 }

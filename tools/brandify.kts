@@ -18,6 +18,11 @@ fun readConfigValue(config: String, key: String, default: String? = null): Strin
         ?: default ?: error("Missing key $key in branding config")
 }
 
+fun readConfigValueOrNull(config: String, key: String): String? {
+    val regex = Regex("\"$key\"\\s*:\\s*\"([^\"]+)\"")
+    return regex.find(config)?.groupValues?.get(1)
+}
+
 val configPath = args.firstOrNull() ?: "branding/branding.json"
 val configFile = File(configPath)
 require(configFile.exists()) { "brandify: config file not found: $configPath" }
@@ -36,6 +41,11 @@ val projectSlug = appName.lowercase()
     .replace(Regex("[^a-z0-9]+"), "-")
     .trim('-')
     .ifBlank { "telecrypt" }
+val teamId = readConfigValueOrNull(configText, "appleTeamId")
+    ?.trim()
+    ?.ifBlank { null }
+    ?: System.getenv("APPLE_TEAM_ID")?.trim()?.ifBlank { null }
+    ?: currentTeamIdFromConfig()
 
 fun replaceRegex(path: Path, regex: Regex, replacement: String) {
     if (!path.exists()) return
@@ -54,6 +64,13 @@ fun replaceLiteral(path: Path, marker: String, replacement: String) {
     }
 }
 
+fun currentTeamIdFromConfig(): String? {
+    val configPath = Path.of("iosApp/Configuration/Config.xcconfig")
+    if (!configPath.exists()) return null
+    val match = Regex("TEAM_ID=([A-Za-z0-9]+)").find(configPath.readText())
+    return match?.groupValues?.getOrNull(1)?.takeIf { it.isNotBlank() }
+}
+
 replaceRegex(Path.of("build.gradle.kts"), Regex("val appName = \"[^\"]+\""), "val appName = \"$appName\"")
 if (!skipAndroid) {
     replaceRegex(Path.of("build.gradle.kts"), Regex("val appIdentifier = \"[^\"]+\""), "val appIdentifier = \"$androidAppId\"")
@@ -65,6 +82,10 @@ if (!skipAndroid) {
 }
 replaceRegex(Path.of("iosApp/Configuration/Config.xcconfig"), Regex("PRODUCT_NAME=.*"), "PRODUCT_NAME=$appName")
 replaceRegex(Path.of("iosApp/Configuration/Config.xcconfig"), Regex("PRODUCT_BUNDLE_IDENTIFIER=.*"), "PRODUCT_BUNDLE_IDENTIFIER=$iosBundleId")
+teamId?.let {
+    replaceRegex(Path.of("iosApp/Configuration/Config.xcconfig"), Regex("TEAM_ID=.*"), "TEAM_ID=$it")
+    replaceRegex(Path.of("iosApp/iosApp.xcodeproj/project.pbxproj"), Regex("DEVELOPMENT_TEAM = [^;\\s]+;"), "DEVELOPMENT_TEAM = $it;")
+}
 replaceLiteral(Path.of("iosApp/iosApp/Info.plist"), "de.connect2x.tammy", iosBundleId)
 
 listOf(
@@ -129,4 +150,5 @@ copyTree(iconDir.resolve("ios").resolve("AppIcon.appiconset"), Path.of("iosApp/i
 copyTree(iconDir.resolve("desktop"), Path.of("src/desktopMain/resources"))
 copyTree(iconDir.resolve("desktop-msix"), Path.of("build/compose/binaries/main-release/msix"))
 
-println("brandify: applied branding for $appName (${if (skipAndroid) "<androidAppId missing>" else androidAppId} / ${iosBundleId.ifBlank { "<iosBundleId missing>" }})")
+val teamSummary = teamId ?: "<teamId missing>"
+println("brandify: applied branding for $appName (${if (skipAndroid) "<androidAppId missing>" else androidAppId} / ${iosBundleId.ifBlank { "<iosBundleId missing>" }}) team=$teamSummary")
