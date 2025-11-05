@@ -98,6 +98,8 @@ platform :ios do
     # Debug: log what we're about to pass to import_certificate
     UI.message("Codesign diag: About to import with cert_password length=#{certificate_password.length}, keychain_password length=#{keychain_password.length}")
     
+    cert_pem = nil
+    key_pem = nil
     begin
       import_certificate(
         certificate_path: certificate_path,
@@ -117,8 +119,8 @@ platform :ios do
       sh("security import #{Shellwords.escape(key_pem)} -k #{Shellwords.escape(keychain_name)} -P '' -T /usr/bin/codesign -T /usr/bin/security")
       sh("security set-key-partition-list -S apple-tool:,apple: -s -k #{Shellwords.escape(keychain_password)} #{Shellwords.escape(keychain_name)}")
     ensure
-      FileUtils.rm_f(cert_pem) if defined?(cert_pem)
-      FileUtils.rm_f(key_pem) if defined?(key_pem)
+      FileUtils.rm_f(cert_pem) if cert_pem && !cert_pem.empty?
+      FileUtils.rm_f(key_pem) if key_pem && !key_pem.empty?
     end
     # list identities visible to the temporary keychain for easier troubleshooting
     begin
