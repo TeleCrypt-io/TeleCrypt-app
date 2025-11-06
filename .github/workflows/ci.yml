@@ -288,6 +288,27 @@ jobs:
       - name: Apply branding
         run: tools/brandify.sh branding/branding.json
 
+      - name: Diagnose iOS signing inputs
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, os
+
+          def print_hash(env_name: str, label: str) -> None:
+              payload = os.environ.get(env_name, "")
+              if not payload:
+                  print(f"{label}=missing")
+                  return
+              try:
+                  decoded = base64.b64decode(payload.encode(), validate=True)
+              except Exception as exc:
+                  print(f"{label}=invalid ({exc})")
+                  return
+              print(f"{label}=" + hashlib.sha256(decoded).hexdigest())
+
+          print_hash("APPLE_KEYCHAIN_FILE_BASE64", "diag_p12_sha256")
+          print_hash("IOS_MOBILEPROVISION_BASE64", "diag_profile_sha256")
+          PY
+
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
         with:
