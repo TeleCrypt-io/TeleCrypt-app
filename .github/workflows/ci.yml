@@ -317,12 +317,15 @@ jobs:
           print_hash("IOS_MOBILEPROVISION_BASE64", "diag_profile_sha256")
           PY
 
-      - name: Pre-build Kotlin frameworks for iOS (cache-only)
-        env:
-          XCODE_TARGET_PLATFORM: iphoneos
-          XCODE_TARGET_ARCHS: arm64
-          NUM_SPRITEKIT_TEXTURE_ATLAS_GENERATION_CORES: 1
-        run: ./gradlew --stacktrace :shared:packForXcode
+      - name: Restore Generated Xcode frameworks (if any)
+        uses: actions/cache@v4
+        with:
+          path: |
+            shared/build/xcode-frameworks
+            composeApp/build/xcode-frameworks
+          key: ${{ runner.os }}-xcode-frameworks-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-frameworks-
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
