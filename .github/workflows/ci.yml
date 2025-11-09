@@ -288,6 +288,14 @@ jobs:
       - name: Apply branding
         run: tools/brandify.sh branding/branding.json
 
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: iosApp/build/DerivedData
+          key: ${{ runner.os }}-xcode-derived-${{ hashFiles('iosApp/iosApp.xcodeproj/project.pbxproj', 'gradle/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-derived-
+
       - name: Diagnose iOS signing inputs
         run: |
           python3 - <<'PY'
@@ -308,6 +316,9 @@ jobs:
           print_hash("APPLE_KEYCHAIN_FILE_BASE64", "diag_p12_sha256")
           print_hash("IOS_MOBILEPROVISION_BASE64", "diag_profile_sha256")
           PY
+
+      - name: Pre-build Kotlin frameworks for iOS
+        run: ./gradlew --stacktrace embedAndSignAppleFrameworkForXcode
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
