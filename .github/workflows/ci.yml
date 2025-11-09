@@ -317,12 +317,12 @@ jobs:
           print_hash("IOS_MOBILEPROVISION_BASE64", "diag_profile_sha256")
           PY
 
-      - name: Pre-build Kotlin frameworks for iOS
+      - name: Pre-build Kotlin frameworks for iOS (cache-only)
         env:
           XCODE_TARGET_PLATFORM: iphoneos
           XCODE_TARGET_ARCHS: arm64
-          ARCHS: arm64
-        run: ./gradlew --stacktrace embedAndSignAppleFrameworkForXcode
+          NUM_SPRITEKIT_TEXTURE_ATLAS_GENERATION_CORES: 1
+        run: ./gradlew --stacktrace :shared:packForXcode
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
