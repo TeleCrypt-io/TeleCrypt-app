@@ -393,7 +393,16 @@ jobs:
           XCODE_TARGET_ARCHS: arm64
           PLATFORM_NAME: iphoneos
           ARCHS: arm64
-        run: ./gradlew --stacktrace --profile :embedAndSignAppleFrameworkForXcode
+          SDK_NAME: iphoneos
+          CONFIGURATION: Release
+          TARGET_BUILD_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
+          FRAMEWORKS_FOLDER_PATH: Frameworks
+          BUILT_PRODUCTS_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
+          EXPANDED_CODE_SIGN_IDENTITY: "-"
+          ACTION: build
+        run: |
+          mkdir -p iosApp/build/XcodePrebuild/Frameworks
+          ./gradlew --stacktrace --profile :embedAndSignAppleFrameworkForXcode
 
       - name: Upload Gradle profile (embed step)
         if: steps.xcode-fw-cache.outputs.cache-hit != 'true'
