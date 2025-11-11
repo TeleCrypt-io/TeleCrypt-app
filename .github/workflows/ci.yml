@@ -330,6 +330,9 @@ jobs:
 
       - name: Pre-build Kotlin frameworks (Gradle)
         if: steps.xcode-fw-cache.outputs.cache-hit != 'true'
+        env:
+          XCODE_TARGET_PLATFORM: iphoneos
+          XCODE_TARGET_ARCHS: arm64
         run: ./gradlew --stacktrace :embedAndSignAppleFrameworkForXcode
 
       - name: Setup Ruby (Fastlane)
