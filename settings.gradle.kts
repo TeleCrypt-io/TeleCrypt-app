@@ -62,6 +62,7 @@ dependencyResolutionManagement {
         maven("https://gitlab.com/api/v4/projects/58749664/packages/maven") // sysnotify
         maven("https://gitlab.com/api/v4/projects/65998892/packages/maven") // androidx
         maven("https://gitlab.com/api/v4/projects/65231927/packages/maven") // kmp-jni
+        maven("https://gitlab.com/api/v4/projects/72850047/packages/maven") // sqlitenity
         maven("https://oss.sonatype.org/content/repositories/snapshots")
         google()
     }
