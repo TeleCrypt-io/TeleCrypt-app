@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## 1.1.32
+
+### Fixed
+
+- Fix web title naming
+
 ## 1.1.31
 
 ### Fixed
