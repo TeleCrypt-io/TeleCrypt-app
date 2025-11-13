@@ -378,7 +378,7 @@ jobs:
           key: ${{ runner.os }}-xcode-derived-${{ hashFiles('iosApp/iosApp.xcodeproj/project.pbxproj', 'gradle/libs.versions.toml', 'iosApp/scripts/embed_frameworks.sh') }}
           restore-keys: |
             ${{ runner.os }}-xcode-derived-
-         save-always: true
+          save-always: true
 
       - name: Detect iOS SDK version
         run: |
