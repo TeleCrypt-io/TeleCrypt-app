@@ -401,7 +401,6 @@ jobs:
           path: |
             shared/build/xcode-frameworks
             composeApp/build/xcode-frameworks
-            iosApp/..Tammy/build/xcode-frameworks
           key: ${{ runner.os }}-xcode-frameworks-${{ hashFiles('gradle/libs.versions.toml', 'iosApp/iosApp.xcodeproj/project.pbxproj') }}
           restore-keys: |
             ${{ runner.os }}-xcode-frameworks-
@@ -442,7 +441,6 @@ jobs:
           path: |
             shared/build/xcode-frameworks
             composeApp/build/xcode-frameworks
-            iosApp/..Tammy/build/xcode-frameworks
 
   ios:
     name: iOS Archive
