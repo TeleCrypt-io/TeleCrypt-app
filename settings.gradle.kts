@@ -36,6 +36,7 @@ pluginManagement {
         mavenCentral()
         mavenLocal()
         maven("https://gitlab.com/api/v4/projects/68438621/packages/maven") // c2x Conventions
+        maven("https://gitlab.com/api/v4/projects/75787729/packages/maven") // compose multiplatform a11y
         google()
     }
 }
@@ -64,12 +65,14 @@ dependencyResolutionManagement {
         maven("https://gitlab.com/api/v4/projects/65231927/packages/maven") // kmp-jni
         maven("https://gitlab.com/api/v4/projects/72850047/packages/maven") // sqlitenity
         maven("https://oss.sonatype.org/content/repositories/snapshots")
+        maven("https://gitlab.com/api/v4/projects/75787860/packages/maven") // compose multiplatform core a11y
+        maven("https://gitlab.com/api/v4/projects/75787729/packages/maven") // compose multiplatform a11y
         google()
     }
 
     versionCatalogs {
         create("sharedLibs") {
-            from("de.connect2x.conventions:c2x-shared-catalog:20251021.133603")
+            from("de.connect2x.conventions:c2x-shared-catalog:20251114.122133")
         }
     }
 }
