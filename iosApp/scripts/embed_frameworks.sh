@@ -20,9 +20,7 @@ if [[ -n "${TARGET_BUILD_DIR}" && -n "${FRAMEWORKS_FOLDER_PATH}" ]]; then
 fi
 
 PREBUILT_DIRS=(
-  "composeApp/build/xcode-frameworks"
-  "shared/build/xcode-frameworks"
-  "iosApp/..Tammy/build/xcode-frameworks"
+  "build/xcode-frameworks"
 )
 
 has_prebuilt=false
