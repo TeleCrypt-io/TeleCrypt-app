@@ -84,6 +84,15 @@ fi
 
 if [[ "${CI_SKIP_GRADLE_EMBED:-}" == "true" && "${CI:-}" == "true" ]]; then
   echo "::error::[embed] refusing to rerun Gradle on CI"
+  echo "::group::[embed] current xcode-frameworks layout"
+  if [ -d build/xcode-frameworks ]; then
+    find build/xcode-frameworks -maxdepth 3 -type d
+  elif [ -d build ]; then
+    find build -maxdepth 3 -type d
+  else
+    echo "build directory missing"
+  fi
+  echo "::endgroup::"
   exit 1
 fi
 
