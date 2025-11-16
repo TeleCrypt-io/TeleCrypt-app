@@ -182,8 +182,15 @@ platform :ios do
       key_content: api_key_content
     )
 
-    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH] || Dir["iosApp/build/*.ipa"].max
-    UI.user_error!("IPA not found — run fastlane ios build first") unless ipa_path
+    ipa_path = lane_context[SharedValues::IPA_OUTPUT_PATH]
+    env_ipa = ENV["IOS_IPA_PATH"]
+    ipa_path ||= env_ipa unless env_ipa.to_s.empty?
+    unless ipa_path
+      ipa_path = Dir["iosApp/build/*.ipa"].max
+    end
+    ipa_path = File.expand_path(ipa_path) if ipa_path
+    UI.user_error!("IPA not found — run fastlane ios build first") unless ipa_path && File.exist?(ipa_path)
+    UI.message("Uploading IPA from #{ipa_path}")
 
     upload_to_testflight(
       api_key: api_key,

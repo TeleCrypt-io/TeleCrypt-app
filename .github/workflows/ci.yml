@@ -605,6 +605,18 @@ jobs:
           CI_SKIP_GRADLE_EMBED: "true"
         run: bundle exec fastlane ios build
 
+      - name: Capture IPA path
+        if: env.UPLOAD_TO_STORES == 'true'
+        run: |
+          IPA=$(ls -t iosApp/build/*.ipa 2>/dev/null | head -n1 || true)
+          if [ -z "${IPA}" ]; then
+            echo "IPA not found in iosApp/build after fastlane build"
+            ls -R iosApp/build || true
+            exit 1
+          fi
+          echo "Detected IPA at ${IPA}"
+          echo "IOS_IPA_PATH=${IPA}" >> "$GITHUB_ENV"
+
       - name: Fastlane iOS beta (optional upload)
         if: env.UPLOAD_TO_STORES == 'true'
         run: bundle exec fastlane ios beta
