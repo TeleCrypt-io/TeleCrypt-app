@@ -521,38 +521,75 @@ jobs:
       - name: Prepare prebuilt frameworks
         run: |
           rm -rf build/xcode-frameworks
-          if [ -d build/ios-prebuilt-frameworks/build/xcode-frameworks ]; then
-            mv build/ios-prebuilt-frameworks/build/xcode-frameworks build/xcode-frameworks
-          elif [ -d build/ios-prebuilt-frameworks/Release ]; then
-            python3 <<'PY'
-import os, shutil, re
-base = 'build/ios-prebuilt-frameworks'
-out_root = os.path.join('build', 'xcode-frameworks')
-os.makedirs(out_root, exist_ok=True)
-for platform in os.listdir(base):
-    plat_path = os.path.join(base, platform)
-    if not os.path.isdir(plat_path):
-        continue
-    match = re.match(r'^(\w+?)(?:-(.*))?$', platform)
-    config = match.group(1) if match else 'Release'
-    sdk = match.group(2) if match and match.group(2) else None
-    for item in os.listdir(plat_path):
-        src = os.path.join(plat_path, item)
-        if os.path.isdir(src) and sdk is None:
-            sdk = item
-            continue
-        dest = os.path.join(out_root, config, sdk or 'unknown', item)
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        if os.path.isdir(src):
-            shutil.copytree(src, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dest)
-PY
-          else
-            echo "missing ios-prebuilt-frameworks artifact"
-            ls -R build
+          ART_ROOT="build/ios-prebuilt-frameworks"
+          if [ ! -d "${ART_ROOT}" ]; then
+            echo "missing ios-prebuilt-frameworks artifact directory at ${ART_ROOT}"
+            ls -R build || true
             exit 1
           fi
+          python3 <<'PY'
+import os
+import shutil
+import sys
+import re
+
+artifact_root = "build/ios-prebuilt-frameworks"
+dest_root = os.path.join("build", "xcode-frameworks")
+if os.path.exists(dest_root):
+    shutil.rmtree(dest_root)
+
+if not os.path.isdir(artifact_root):
+    print(f"missing artifact root: {artifact_root}")
+    sys.exit(1)
+
+CONFIG_NAMES = {
+    "release": "Release",
+    "debug": "Debug",
+    "relwithdebinfo": "RelWithDebInfo",
+    "minsizerel": "MinSizeRel",
+}
+config_re = re.compile(r"^(release|debug|relwithdebinfo|minsizerel)(?:[-_](.+))?$", re.IGNORECASE)
+processed = 0
+
+def copy_into(src: str, dest: str) -> None:
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.copytree(src, dest)
+
+for root, dirs, _ in os.walk(artifact_root):
+    for d in list(dirs):
+        match = config_re.match(d)
+        if not match:
+            continue
+        config = CONFIG_NAMES[match.group(1).lower()]
+        suffix = (match.group(2) or "").strip().strip("/\\")
+        dest_path = os.path.join(dest_root, config)
+        if suffix:
+            dest_path = os.path.join(dest_path, suffix)
+        src_path = os.path.join(root, d)
+        copy_into(src_path, dest_path)
+        processed += 1
+        dirs.remove(d)
+
+if processed == 0:
+    fallback = os.path.join(artifact_root, "build", "xcode-frameworks")
+    if os.path.isdir(fallback):
+        shutil.copytree(fallback, dest_root)
+        processed = 1
+
+if processed == 0:
+    print("failed to normalize ios-prebuilt-frameworks artifact; layout follows:")
+    for current_root, dirs, files in os.walk(artifact_root):
+        rel = os.path.relpath(current_root, artifact_root)
+        indent = "" if rel == "." else "  " * (rel.count(os.sep) + 1)
+        print(f"{indent}{os.path.basename(current_root) if rel != '.' else os.path.basename(artifact_root)}")
+        for name in files:
+            print(f"{indent}  {name}")
+    sys.exit(1)
+
+print(f"normalized {processed} configuration directories into {dest_root}")
+PY
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
