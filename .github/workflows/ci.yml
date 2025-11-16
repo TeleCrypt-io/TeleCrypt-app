@@ -590,7 +590,7 @@ jobs:
               sys.exit(1)
 
           print(f"normalized {processed} configuration directories into {dest_root}")
-PY
+          PY
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
