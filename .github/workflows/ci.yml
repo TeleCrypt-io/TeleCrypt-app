@@ -523,10 +523,11 @@ jobs:
           rm -rf build/xcode-frameworks
           if [ -d build/ios-prebuilt-frameworks/build/xcode-frameworks ]; then
             mv build/ios-prebuilt-frameworks/build/xcode-frameworks build/xcode-frameworks
-          elif [ -d build/ios-prebuilt-frameworks ]; then
+          elif [ -d build/ios-prebuilt-frameworks/Release ]; then
             mv build/ios-prebuilt-frameworks build/xcode-frameworks
           else
             echo "missing ios-prebuilt-frameworks artifact"
+            ls -R build
             exit 1
           fi
 
