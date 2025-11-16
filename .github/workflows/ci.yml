@@ -399,7 +399,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/xcode-frameworks
-          key: ${{ runner.os }}-xcode-frameworks-${{ hashFiles('gradle/libs.versions.toml', 'iosApp/iosApp.xcodeproj/project.pbxproj') }}
+          key: ${{ runner.os }}-xcode-frameworks-${{ hashFiles('gradle/libs.versions.toml', 'iosApp/iosApp.xcodeproj/project.pbxproj', 'build.gradle.kts') }}
           restore-keys: |
             ${{ runner.os }}-xcode-frameworks-
           save-always: true
