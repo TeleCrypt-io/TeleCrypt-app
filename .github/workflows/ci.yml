@@ -516,7 +516,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ios-prebuilt-frameworks
-          path: build
+          path: build/ios-prebuilt-frameworks
 
       - name: Prepare prebuilt frameworks
         run: |
