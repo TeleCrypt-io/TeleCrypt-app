@@ -139,7 +139,7 @@ kotlin {
             export(sharedLibs.essenty.lifecycle)
             export(libs.trixnity.messenger.view)
             baseName = "TammyUI"
-            isStatic = true
+            isStatic = false
         }
     }
     applyDefaultHierarchyTemplate()
