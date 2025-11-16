@@ -521,7 +521,14 @@ jobs:
       - name: Prepare prebuilt frameworks
         run: |
           rm -rf build/xcode-frameworks
-          mv build/ios-prebuilt-frameworks build/xcode-frameworks
+          if [ -d build/ios-prebuilt-frameworks/build/xcode-frameworks ]; then
+            mv build/ios-prebuilt-frameworks/build/xcode-frameworks build/xcode-frameworks
+          elif [ -d build/ios-prebuilt-frameworks ]; then
+            mv build/ios-prebuilt-frameworks build/xcode-frameworks
+          else
+            echo "missing ios-prebuilt-frameworks artifact"
+            exit 1
+          fi
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
