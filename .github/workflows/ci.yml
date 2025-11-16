@@ -528,67 +528,68 @@ jobs:
             exit 1
           fi
           python3 <<'PY'
-import os
-import shutil
-import sys
-import re
+          import os
+          import shutil
+          import sys
+          import re
 
-artifact_root = "build/ios-prebuilt-frameworks"
-dest_root = os.path.join("build", "xcode-frameworks")
-if os.path.exists(dest_root):
-    shutil.rmtree(dest_root)
+          artifact_root = "build/ios-prebuilt-frameworks"
+          dest_root = os.path.join("build", "xcode-frameworks")
+          if os.path.exists(dest_root):
+              shutil.rmtree(dest_root)
 
-if not os.path.isdir(artifact_root):
-    print(f"missing artifact root: {artifact_root}")
-    sys.exit(1)
+          if not os.path.isdir(artifact_root):
+              print(f"missing artifact root: {artifact_root}")
+              sys.exit(1)
 
-CONFIG_NAMES = {
-    "release": "Release",
-    "debug": "Debug",
-    "relwithdebinfo": "RelWithDebInfo",
-    "minsizerel": "MinSizeRel",
-}
-config_re = re.compile(r"^(release|debug|relwithdebinfo|minsizerel)(?:[-_](.+))?$", re.IGNORECASE)
-processed = 0
+          CONFIG_NAMES = {
+              "release": "Release",
+              "debug": "Debug",
+              "relwithdebinfo": "RelWithDebInfo",
+              "minsizerel": "MinSizeRel",
+          }
+          config_re = re.compile(r"^(release|debug|relwithdebinfo|minsizerel)(?:[-_](.+))?$", re.IGNORECASE)
+          processed = 0
 
-def copy_into(src: str, dest: str) -> None:
-    if os.path.exists(dest):
-        shutil.rmtree(dest)
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    shutil.copytree(src, dest)
+          def copy_into(src: str, dest: str) -> None:
+              if os.path.exists(dest):
+                  shutil.rmtree(dest)
+              os.makedirs(os.path.dirname(dest), exist_ok=True)
+              shutil.copytree(src, dest)
 
-for root, dirs, _ in os.walk(artifact_root):
-    for d in list(dirs):
-        match = config_re.match(d)
-        if not match:
-            continue
-        config = CONFIG_NAMES[match.group(1).lower()]
-        suffix = (match.group(2) or "").strip().strip("/\\")
-        dest_path = os.path.join(dest_root, config)
-        if suffix:
-            dest_path = os.path.join(dest_path, suffix)
-        src_path = os.path.join(root, d)
-        copy_into(src_path, dest_path)
-        processed += 1
-        dirs.remove(d)
+          for root, dirs, _ in os.walk(artifact_root):
+              for d in list(dirs):
+                  match = config_re.match(d)
+                  if not match:
+                      continue
+                  config = CONFIG_NAMES[match.group(1).lower()]
+                  suffix = (match.group(2) or "").strip().strip("/\\")
+                  dest_path = os.path.join(dest_root, config)
+                  if suffix:
+                      dest_path = os.path.join(dest_path, suffix)
+                  src_path = os.path.join(root, d)
+                  copy_into(src_path, dest_path)
+                  processed += 1
+                  dirs.remove(d)
 
-if processed == 0:
-    fallback = os.path.join(artifact_root, "build", "xcode-frameworks")
-    if os.path.isdir(fallback):
-        shutil.copytree(fallback, dest_root)
-        processed = 1
+          if processed == 0:
+              fallback = os.path.join(artifact_root, "build", "xcode-frameworks")
+              if os.path.isdir(fallback):
+                  shutil.copytree(fallback, dest_root)
+                  processed = 1
 
-if processed == 0:
-    print("failed to normalize ios-prebuilt-frameworks artifact; layout follows:")
-    for current_root, dirs, files in os.walk(artifact_root):
-        rel = os.path.relpath(current_root, artifact_root)
-        indent = "" if rel == "." else "  " * (rel.count(os.sep) + 1)
-        print(f"{indent}{os.path.basename(current_root) if rel != '.' else os.path.basename(artifact_root)}")
-        for name in files:
-            print(f"{indent}  {name}")
-    sys.exit(1)
+          if processed == 0:
+              print("failed to normalize ios-prebuilt-frameworks artifact; layout follows:")
+              for current_root, dirs, files in os.walk(artifact_root):
+                  rel = os.path.relpath(current_root, artifact_root)
+                  indent = "" if rel == "." else "  " * (rel.count(os.sep) + 1)
+                  name = os.path.basename(current_root) if rel != "." else os.path.basename(artifact_root)
+                  print(f"{indent}{name}")
+                  for fname in files:
+                      print(f"{indent}  {fname}")
+              sys.exit(1)
 
-print(f"normalized {processed} configuration directories into {dest_root}")
+          print(f"normalized {processed} configuration directories into {dest_root}")
 PY
 
       - name: Setup Ruby (Fastlane)
