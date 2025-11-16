@@ -616,13 +616,13 @@ jobs:
           fi
           export TARGET_IPA="${IPA}"
           IPA_ABS=$(python3 <<'PY'
-import os
-path = os.environ.get("TARGET_IPA", "").strip()
-if not path:
-    raise SystemExit("TARGET_IPA not provided")
-print(os.path.abspath(path))
-PY
-)
+            import os
+            path = os.environ.get("TARGET_IPA", "").strip()
+            if not path:
+                raise SystemExit("TARGET_IPA not provided")
+            print(os.path.abspath(path))
+          PY
+          )
           echo "Detected IPA at ${IPA_ABS}"
           echo "IOS_IPA_PATH=${IPA_ABS}" >> "$GITHUB_ENV"
 
