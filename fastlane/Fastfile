@@ -138,11 +138,11 @@ platform :ios do
       configuration: "Release",
       codesigning_identity: "Apple Distribution",
       export_team_id: ENV["APPLE_TEAM_ID"],
-      build_number: build_number,
       xcargs: [
         "CODE_SIGN_STYLE=Manual",
         "CODE_SIGN_IDENTITY='Apple Distribution'",
-        "PROVISIONING_PROFILE_SPECIFIER=#{Shellwords.escape(profile_name)}"
+        "PROVISIONING_PROFILE_SPECIFIER=#{Shellwords.escape(profile_name)}",
+        "CURRENT_PROJECT_VERSION=#{build_number}"
       ].join(" "),
       export_options: {
         provisioningProfiles: {
