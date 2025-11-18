@@ -211,10 +211,12 @@ dependencies {
     debugImplementation(sharedLibs.compose.ui.test.android.manifest)
 }
 
-val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
-    vendor = JvmVendorSpec.AZUL
-}.get().metadata.installationPath.asFile.absolutePath
+val distributionJavaHome = System.getenv("DIST_JAVA_HOME")
+    ?: System.getenv("JAVA_HOME")
+    ?: javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
+        vendor = JvmVendorSpec.AZUL
+    }.get().metadata.installationPath.asFile.absolutePath
 
 compose {
     desktop {
