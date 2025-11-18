@@ -118,6 +118,12 @@ platform :ios do
     bundle_identifier = profile["Entitlements"]["application-identifier"].split('.', 2).last
     UI.message("Using provisioning profile '#{profile_name}' for #{bundle_identifier}")
 
+    build_number = ENV["IOS_BUILD_NUMBER"]
+    build_number = ENV["GITHUB_RUN_NUMBER"] if build_number.to_s.empty?
+    build_number = Time.now.strftime("%Y%m%d%H%M") if build_number.to_s.empty?
+
+    UI.message("Using iOS build number #{build_number}")
+
     ipa_path = build_app(
       project: "iosApp/iosApp.xcodeproj",
       scheme: "Tammy for iOS",
@@ -132,6 +138,7 @@ platform :ios do
       configuration: "Release",
       codesigning_identity: "Apple Distribution",
       export_team_id: ENV["APPLE_TEAM_ID"],
+      build_number: build_number,
       xcargs: [
         "CODE_SIGN_STYLE=Manual",
         "CODE_SIGN_IDENTITY='Apple Distribution'",
