@@ -20,10 +20,9 @@ fi
 
 mkdir -p "${CACHE_DIR}" "${WORKSPACE_DIR}"
 
-readarray -t LAYERS < <(python3 - <<'PY'
-import json, sys
-import pathlib
-config_path = pathlib.Path(sys.argv[1])
+readarray -t LAYERS < <(CONFIG_JSON="${CONFIG_FILE}" python3 <<'PY'
+import json, os, pathlib
+config_path = pathlib.Path(os.environ["CONFIG_JSON"])
 with config_path.open(encoding='utf-8') as f:
     data = json.load(f)
 for layer in data.get('layers', []):
@@ -31,9 +30,9 @@ for layer in data.get('layers', []):
     repo = layer['repo']
     ref = layer['ref']
     target = layer['targetDir']
-    print(f"{name}\0{repo}\0{ref}\0{target}")
+    print(f"{name}\t{repo}\t{ref}\t{target}")
 PY
-"${CONFIG_FILE}")
+)
 
 if [[ ${#LAYERS[@]} -eq 0 ]]; then
   echo "[overlay] No layers defined in ${CONFIG_FILE}" >&2
@@ -43,7 +42,7 @@ fi
 printf '\n[overlay] Preparing layers...\n'
 
 for entry in "${LAYERS[@]}"; do
-  IFS=$'\0' read -r NAME REPO REF TARGET <<<"${entry}"
+  IFS=$'\t' read -r NAME REPO REF TARGET <<<"${entry}"
   CACHE_PATH="${CACHE_DIR}/${NAME}"
   TARGET_PATH="${WORKSPACE_DIR}/${TARGET}"
 
