@@ -1,1 +1,0 @@
-See https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/blob/main/CHANGELOG.md
