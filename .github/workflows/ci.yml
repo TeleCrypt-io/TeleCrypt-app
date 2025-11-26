@@ -194,8 +194,8 @@ jobs:
     name: iOS Archive
     runs-on: macos-latest
     needs: setup
-    # env.* недоступен в job-level if; берем из vars/secrets с дефолтом false
-    if: ${{ vars.ENABLE_IOS_BUILD == 'true' || secrets.ENABLE_IOS_BUILD == 'true' }}
+    # env.* недоступен в job-level if; забираем из vars (или 'false' по умолчанию)
+    if: ${{ vars.ENABLE_IOS_BUILD == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
