@@ -14,6 +14,10 @@ fi
 
 pushd "${WORKSPACE_DIR}" >/dev/null
 
+if [[ -d "${ROOT_DIR}/branding" ]]; then
+  rsync -a --delete "${ROOT_DIR}/branding/" "${WORKSPACE_DIR}/branding/"
+fi
+
 if [[ -f "${BRANDIFY_CONFIG}" && -x "${BRANDIFY_SCRIPT}" ]]; then
   echo "[overlay] Applying branding from ${BRANDIFY_CONFIG}"
   "${BRANDIFY_SCRIPT}" "${BRANDIFY_CONFIG}"
