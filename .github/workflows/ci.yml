@@ -194,7 +194,7 @@ jobs:
     name: iOS Archive
     runs-on: macos-latest
     needs: setup
-    if: env.ENABLE_IOS_BUILD == 'true'
+    if: ${{ env.ENABLE_IOS_BUILD == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
