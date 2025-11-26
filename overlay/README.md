@@ -1,40 +1,19 @@
 # Overlay bootstrap
 
-This directory contains tooling for the upcoming "layer 4" workflow. The goal is to
-prepare a clean workspace that pulls specific commits (SHA) of our forks for each layer
-(Trixnity, Trixnity-Messenger, TeleCrypt) and keeps them in sync automatically.
+Этот каталог — наш оверлей (Layer 4). Он тянет исходники Tammy по зафиксированному SHA, применяет брендинг и готовит workspace для сборки.
 
 ## Files
-- `config.example.json` – sample configuration. Copy to `overlay/config.json` and adjust
-  repository URLs / refs to match the commits you want to pin.
-- `bootstrap.sh` – clones/fetches every layer, checks out the requested ref, and exposes
-  the result under `overlay/workspace/<targetDir>`.
+- `config.example.json` – пример конфига; скопируйте в `overlay/config.json` и укажите нужные URL/ветку.
+- `bootstrap.sh` – клонирует Tammy, checkout указанный ref и раскладывает в `overlay/workspace/layers/telecrypt-app`.
+- `build.sh` – применяет брендинг (`branding/branding.json` + `tools/brandify.sh`) и запускает Gradle‑задачи в workspace.
 
 ## Usage
 ```bash
 cp overlay/config.example.json overlay/config.json   # edit refs/URLs as needed
 ./overlay/bootstrap.sh                               # creates overlay/workspace/...
+./overlay/build.sh                                   # createReleaseDistributable/packageReleasePlatformZip/bundleRelease
+# или свои задачи:
+./overlay/build.sh bundleRelease assembleRelease
 ```
 
-Each entry in the config looks like this:
-```json
-{
-  "name": "trixnity",
-  "repo": "https://github.com/TeleCrypt-io/trixnity.git",
-  "ref": "feature/calls",
-  "targetDir": "layers/trixnity"
-}
-```
-- `name` – logical label used for cache directories.
-- `repo` – git URL (HTTPS or SSH) of our fork.
-- `ref` – branch/commit/tag to check out. You can point to any SHA even if upstream
-  hasn't merged the change yet.
-- `targetDir` – relative path under `overlay/workspace` where the files will be placed.
-
-The script keeps a bare clone cached under `.overlay/cache/<name>` so subsequent runs are
-fast and do not re-download the entire repo. If you change the ref, re-run `bootstrap.sh`
-and the workspace gets updated.
-
-> Note: editing layer 1/2 should still happen in their native repositories. The overlay is
-> responsible for **assembling** the desired versions of each layer so we can build and run
-> TeleCrypt even if upstream hasn't taken our patches.
+Конфиг: один слой `telecrypt-app`, поля `repo`/`ref`/`targetDir`. Кэш bare‑клона лежит в `.overlay/cache/<name>`.

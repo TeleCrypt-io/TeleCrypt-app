@@ -55,17 +55,24 @@ for entry in "${LAYERS[@]}"; do
   echo "[overlay] Fetching updates"
   git -C "${CACHE_PATH}" fetch --prune --tags --quiet
 
-  if git -C "${CACHE_PATH}" rev-parse --verify --quiet "${REF}" >/dev/null; then
-    git -C "${CACHE_PATH}" checkout --quiet "${REF}"
-  else
-    git -C "${CACHE_PATH}" checkout --quiet FETCH_HEAD
+  REMOTE_REF="origin/${REF}"
+  CHECKOUT_TARGET="${REF}"
+  if ! git -C "${CACHE_PATH}" rev-parse --verify --quiet "${REF}" >/dev/null; then
+    if git -C "${CACHE_PATH}" rev-parse --verify --quiet "${REMOTE_REF}" >/dev/null; then
+      CHECKOUT_TARGET="${REMOTE_REF}"
+    else
+      CHECKOUT_TARGET="FETCH_HEAD"
+    fi
   fi
-  git -C "${CACHE_PATH}" reset --hard --quiet "${REF}"
+
+  git -C "${CACHE_PATH}" checkout --quiet "${CHECKOUT_TARGET}"
+  git -C "${CACHE_PATH}" reset --hard --quiet "${CHECKOUT_TARGET}"
 
   SHA=$(git -C "${CACHE_PATH}" rev-parse HEAD)
   echo "[overlay] Checked out ${SHA}"
 
   echo "[overlay] Syncing to workspace/${TARGET}"
+  mkdir -p "${TARGET_PATH}"
   rsync -a --delete --exclude '.git' "${CACHE_PATH}/" "${TARGET_PATH}/"
   echo "[overlay] Ready: ${TARGET_PATH}"
   echo

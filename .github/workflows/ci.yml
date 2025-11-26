@@ -1,45 +1,30 @@
-name: TeleCrypt CI
+name: TeleCrypt Overlay CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "**" ]
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-
 env:
-  GRADLE_OPTS: -Dorg.gradle.daemon=false
-  GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
-  KONAN_DATA_DIR: ${{ github.workspace }}/.konan
-  KOTLIN_DATA_DIR: ${{ github.workspace }}/.kotlin
-  ANDROID_RELEASE_STORE_FILE_BASE64: ${{ secrets.ANDROID_RELEASE_STORE_FILE_BASE64 }}
-  ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
-  ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
-  ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
-  ANDROID_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON_BASE64 }}
-  APPLE_KEYCHAIN_FILE_BASE64: ${{ secrets.APPLE_KEYCHAIN_FILE_BASE64 }}
-  APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
-  APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-  APPLE_ID: ${{ secrets.APPLE_ID }}
-  APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
-  WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER: ${{ secrets.WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER }}
-  WINDOWS_CODE_SIGNING_THUMBPRINT: ${{ secrets.WINDOWS_CODE_SIGNING_THUMBPRINT }}
+  ANDROID_RELEASE_STORE_FILE_BASE64: ${{ secrets.ANDROID_RELEASE_STORE_FILE_BASE64 || '' }}
+  ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD || '' }}
+  ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS || '' }}
+  ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD || '' }}
+  ANDROID_SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON_BASE64 || '' }}
+  APPLE_KEYCHAIN_FILE_BASE64: ${{ secrets.APPLE_KEYCHAIN_FILE_BASE64 || '' }}
+  APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD || '' }}
+  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || '' }}
+  APPLE_ID: ${{ secrets.APPLE_ID || '' }}
+  APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD || '' }}
+  WINDOWS_CODE_SIGNING_THUMBPRINT: ${{ secrets.WINDOWS_CODE_SIGNING_THUMBPRINT || '' }}
+  WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER: ${{ secrets.WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER || '' }}
   WINDOWS_CERT_FILE_BASE64: ${{ secrets.WINDOWS_CERT_FILE_BASE64 || '' }}
   WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD || '' }}
-  APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY || '' }}
-  APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || secrets.KEY_ID || '' }}
-  APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID || secrets.ISSUER_ID || '' }}
   IOS_MOBILEPROVISION_BASE64: ${{ secrets.IOS_MOBILEPROVISION_BASE64 || '' }}
   ENABLE_IOS_BUILD: ${{ secrets.ENABLE_IOS_BUILD || 'false' }}
   UPLOAD_TO_STORES: ${{ secrets.UPLOAD_TO_STORES || 'false' }}
+  WORKSPACE: overlay/workspace/layers/telecrypt-app
 
 jobs:
   setup:
@@ -49,11 +34,7 @@ jobs:
       - name: Echo configuration summary
         run: |
           echo "ENABLE_IOS_BUILD=${ENABLE_IOS_BUILD}"
-          if [[ -n "${APPLE_KEYCHAIN_FILE_BASE64}" ]]; then
-            echo "APPLE_KEYCHAIN_FILE_BASE64: present"
-          else
-            echo "APPLE_KEYCHAIN_FILE_BASE64: missing"
-          fi
+          echo "UPLOAD_TO_STORES=${UPLOAD_TO_STORES}"
 
   android:
     name: Android Release Build
@@ -65,103 +46,36 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Bootstrap overlay
+        run: ./overlay/bootstrap.sh
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: Configure Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: tools platform-tools platforms;android-35 build-tools;35.0.0
 
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-
-      - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
-
       - name: Prepare signing keystore
         if: env.ANDROID_RELEASE_STORE_FILE_BASE64 != ''
+        working-directory: ${{ env.WORKSPACE }}
         run: |
           echo "$ANDROID_RELEASE_STORE_FILE_BASE64" | base64 --decode > android_keystore.jks
 
-      - name: Assemble Android artifacts
-        run: ./gradlew --stacktrace bundleRelease assembleRelease
+      - name: Android build
+        run: ./overlay/build.sh bundleRelease assembleRelease
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-artifacts
           path: |
-            build/outputs/apk/release/*.apk
-            build/outputs/bundle/release/*.aab
+            ${{ env.WORKSPACE }}/build/outputs/apk/release/*.apk
+            ${{ env.WORKSPACE }}/build/outputs/bundle/release/*.aab
 
       - name: Setup Ruby (Fastlane)
         if: env.UPLOAD_TO_STORES == 'true'
@@ -171,10 +85,12 @@ jobs:
 
       - name: Bundle install (Fastlane)
         if: env.UPLOAD_TO_STORES == 'true'
+        working-directory: ${{ env.WORKSPACE }}
         run: bundle install
 
       - name: Fastlane Android internal (optional upload)
         if: env.UPLOAD_TO_STORES == 'true'
+        working-directory: ${{ env.WORKSPACE }}
         run: bundle exec fastlane android internal
 
   desktop_linux:
@@ -187,88 +103,48 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Bootstrap overlay
+        run: ./overlay/bootstrap.sh
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak zip
 
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-
-      - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
-
-      - name: Build desktop and web distributions (Linux)
-        run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip
+      - name: Linux desktop/web build
+        run: ./overlay/build.sh createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip
 
       - name: Upload Linux desktop artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux-artifacts
-          path: build/compose/binaries/main-release/**
+          path: ${{ env.WORKSPACE }}/build/compose/binaries/main-release/**
 
       - name: Upload web artifacts
         uses: actions/upload-artifact@v4
         with:
           name: web-artifacts
-          path: build/compose/binaries/main-release/zip/*.zip
+          path: ${{ env.WORKSPACE }}/build/compose/binaries/main-release/zip/*.zip
 
   desktop_windows:
     name: Desktop (Windows)
     runs-on: windows-latest
     needs: setup
     steps:
-      - name: Install Windows SDK (makeappx)
-        shell: pwsh
-        run: |
-          $installDir = "C:\Tools\WindowsSDK"
-          New-Item -ItemType Directory -Force -Path $installDir | Out-Null
-
-          $env:ChocolateyInstallArguments = "/quiet /norestart /features OptionId.DeploymentTools /installpath=$installDir"
-
-          choco install windows-sdk-10-version-2004-all -y --no-progress
-
-          $makeappx = Get-ChildItem -Recurse -Path $installDir -Filter makeappx.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-
-          if (-not $makeappx) {
-            $makeappx = Get-ChildItem -Recurse -Path "C:\Program Files (x86)\Windows Kits" -Filter makeappx.exe -ErrorAction SilentlyContinue | Select-Object -First 1
-          }
-
-          if ($makeappx) {
-            $makeappxDir = Split-Path $makeappx.FullName -Parent
-            $makeappxDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-            "MAKEAPPX_PATH=$makeappxDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          } else {
-            Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Directory -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-            exit 1
-          }
-
-      - name: Verify makeappx availability
-        shell: cmd
-        run: |
-          echo MAKEAPPX_PATH=%MAKEAPPX_PATH%
-          where makeappx.exe
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Bootstrap overlay
+        shell: bash
+        run: ./overlay/bootstrap.sh
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -276,63 +152,15 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-          save-always: true
-
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-          save-always: true
-
-      - name: Apply branding
+      - name: Windows desktop build
         shell: bash
-        run: tools/brandify.sh branding/branding.json
+        run: ./overlay/build.sh createReleaseDistributable packageReleasePlatformZip packageReleaseMsix
 
-      - name: Build desktop distributions (Windows)
-        shell: bash
-        run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseMsix
-
-      - name: Decode Windows signing certificate
-        if: env.WINDOWS_CERT_FILE_BASE64 != ''
-        shell: pwsh
-        run: |
-          $certPath = "build/cert.pfx"
-          New-Item -ItemType Directory -Force -Path (Split-Path $certPath) | Out-Null
-          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERT_FILE_BASE64))
-
-      - name: Sign MSIX
-        shell: bash
-        run: ./gradlew --stacktrace notarizeReleaseMsix
-
-      - name: Upload Windows desktop artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-artifacts
-          path: build/compose/binaries/main-release/**
-
-      - name: Upload Windows MSIX installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-msix-artifacts
-          path: build/compose/binaries/main-release/**/*.msix
+          path: ${{ env.WORKSPACE }}/build/compose/binaries/main-release/**
 
   desktop_macos:
     name: Desktop (macOS)
@@ -344,304 +172,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Bootstrap overlay
+        run: ./overlay/bootstrap.sh
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+      - name: macOS desktop build
+        run: ./overlay/build.sh createReleaseDistributable packageReleasePlatformZip packageReleaseDmg
 
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-          save-always: true
-
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-          save-always: true
-
-      - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
-
-      - name: Build desktop distributions (macOS)
-        run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseDmg
-
-      - name: Upload macOS desktop artifacts
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-artifacts
-          path: build/compose/binaries/main-release/**
-
-  ios_prebuild:
-    name: Pre-build iOS frameworks
-    runs-on: macos-latest
-    needs: setup
-    env:
-      CI_SKIP_IOS_SIMULATORS: "true"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Cache Gradle state
-        uses: actions/cache@v4
-        with:
-          path: |
-            .gradle/caches
-            .gradle/wrapper
-            .gradle/configuration-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-          save-always: true
-
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-          save-always: true
-
-      - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
-
-      - name: Detect iOS SDK version
-        run: |
-          SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-platform-version 2>/dev/null || echo "")
-          if [ -n "$SDK_VERSION" ]; then
-            echo "IOS_SDK_VERSION=$SDK_VERSION" >> "$GITHUB_ENV"
-            echo "IOS_SDK_NAME=iphoneos$SDK_VERSION" >> "$GITHUB_ENV"
-          else
-            echo "IOS_SDK_NAME=iphoneos" >> "$GITHUB_ENV"
-          fi
-
-      - name: Restore Generated Xcode frameworks (if any)
-        id: xcode-fw-cache
-        uses: actions/cache@v4
-        with:
-          path: build/xcode-frameworks
-          key: ${{ runner.os }}-xcode-frameworks-${{ hashFiles('gradle/libs.versions.toml', 'iosApp/iosApp.xcodeproj/project.pbxproj', 'build.gradle.kts') }}
-          restore-keys: |
-            ${{ runner.os }}-xcode-frameworks-
-          save-always: true
-
-      - name: Pre-build Kotlin frameworks (Gradle)
-        if: steps.xcode-fw-cache.outputs.cache-hit != 'true'
-        env:
-          XCODE_TARGET_PLATFORM: ${{ env.IOS_SDK_NAME || 'iphoneos' }}
-          XCODE_TARGET_ARCHS: arm64
-          PLATFORM_NAME: iphoneos
-          ARCHS: arm64
-          SDK_NAME: ${{ env.IOS_SDK_NAME || 'iphoneos' }}
-          CONFIGURATION: Release
-          TARGET_BUILD_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
-          FRAMEWORKS_FOLDER_PATH: Frameworks
-          BUILT_PRODUCTS_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
-          EXPANDED_CODE_SIGN_IDENTITY: "-"
-          ACTION: build
-        run: |
-          mkdir -p iosApp/build/XcodePrebuild/Frameworks
-          ./gradlew --stacktrace --profile :embedAndSignAppleFrameworkForXcode
-
-      - name: Upload Gradle profile (embed step)
-        if: steps.xcode-fw-cache.outputs.cache-hit != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-embed-profile
-          path: build/reports/profile
-          if-no-files-found: ignore
-
-      - name: Upload prebuilt frameworks
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-prebuilt-frameworks
-          if-no-files-found: error
-          retention-days: 3
-          path: build/xcode-frameworks
+          path: ${{ env.WORKSPACE }}/build/compose/binaries/main-release/**
 
   ios:
     name: iOS Archive
     runs-on: macos-latest
-    needs: [setup, desktop_macos, ios_prebuild]
-    env:
-      CI_SKIP_IOS_SIMULATORS: "true"
+    needs: setup
+    if: env.ENABLE_IOS_BUILD == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Cache Kotlin Native
-        uses: actions/cache@v4
-        with:
-          path: |
-            .konan
-            .kotlin
-          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
-
-      - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
-
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
-        with:
-          path: iosApp/build/DerivedData
-          key: ${{ runner.os }}-xcode-derived-${{ hashFiles('iosApp/iosApp.xcodeproj/project.pbxproj', 'gradle/libs.versions.toml', 'iosApp/scripts/embed_frameworks.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-xcode-derived-
-          save-always: true
-
-      - name: Detect iOS SDK version
-        run: |
-          SDK_VERSION=$(xcrun --sdk iphoneos --show-sdk-platform-version 2>/dev/null || echo "")
-          if [ -n "$SDK_VERSION" ]; then
-            echo "IOS_SDK_VERSION=$SDK_VERSION" >> "$GITHUB_ENV"
-            echo "IOS_SDK_NAME=iphoneos$SDK_VERSION" >> "$GITHUB_ENV"
-          else
-            echo "IOS_SDK_NAME=iphoneos" >> "$GITHUB_ENV"
-          fi
-
-      - name: Diagnose iOS signing inputs
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, os
-
-          def print_hash(env_name: str, label: str) -> None:
-              payload = os.environ.get(env_name, "")
-              if not payload:
-                  print(f"{label}=missing")
-                  return
-              try:
-                  decoded = base64.b64decode(payload.encode(), validate=True)
-              except Exception as exc:
-                  print(f"{label}=invalid ({exc})")
-                  return
-              print(f"{label}=" + hashlib.sha256(decoded).hexdigest())
-
-          print_hash("APPLE_KEYCHAIN_FILE_BASE64", "diag_p12_sha256")
-          print_hash("IOS_MOBILEPROVISION_BASE64", "diag_profile_sha256")
-          PY
-
-      - name: Download prebuilt iOS frameworks
-        uses: actions/download-artifact@v4
-        with:
-          name: ios-prebuilt-frameworks
-          path: build/ios-prebuilt-frameworks
-
-      - name: Prepare prebuilt frameworks
-        run: |
-          rm -rf build/xcode-frameworks
-          ART_ROOT="build/ios-prebuilt-frameworks"
-          if [ ! -d "${ART_ROOT}" ]; then
-            echo "missing ios-prebuilt-frameworks artifact directory at ${ART_ROOT}"
-            ls -R build || true
-            exit 1
-          fi
-          python3 <<'PY'
-          import os
-          import shutil
-          import sys
-          import re
-
-          artifact_root = "build/ios-prebuilt-frameworks"
-          dest_root = os.path.join("build", "xcode-frameworks")
-          if os.path.exists(dest_root):
-              shutil.rmtree(dest_root)
-
-          if not os.path.isdir(artifact_root):
-              print(f"missing artifact root: {artifact_root}")
-              sys.exit(1)
-
-          CONFIG_NAMES = {
-              "release": "Release",
-              "debug": "Debug",
-              "relwithdebinfo": "RelWithDebInfo",
-              "minsizerel": "MinSizeRel",
-          }
-          config_re = re.compile(r"^(release|debug|relwithdebinfo|minsizerel)(?:[-_](.+))?$", re.IGNORECASE)
-          processed = 0
-
-          def copy_into(src: str, dest: str) -> None:
-              if os.path.exists(dest):
-                  shutil.rmtree(dest)
-              os.makedirs(os.path.dirname(dest), exist_ok=True)
-              shutil.copytree(src, dest)
-
-          for root, dirs, _ in os.walk(artifact_root):
-              for d in list(dirs):
-                  match = config_re.match(d)
-                  if not match:
-                      continue
-                  config = CONFIG_NAMES[match.group(1).lower()]
-                  suffix = (match.group(2) or "").strip().strip("/\\")
-                  dest_path = os.path.join(dest_root, config)
-                  if suffix:
-                      dest_path = os.path.join(dest_path, suffix)
-                  src_path = os.path.join(root, d)
-                  copy_into(src_path, dest_path)
-                  processed += 1
-                  dirs.remove(d)
-
-          if processed == 0:
-              fallback = os.path.join(artifact_root, "build", "xcode-frameworks")
-              if os.path.isdir(fallback):
-                  shutil.copytree(fallback, dest_root)
-                  processed = 1
-
-          if processed == 0:
-              print("failed to normalize ios-prebuilt-frameworks artifact; layout follows:")
-              for current_root, dirs, files in os.walk(artifact_root):
-                  rel = os.path.relpath(current_root, artifact_root)
-                  indent = "" if rel == "." else "  " * (rel.count(os.sep) + 1)
-                  name = os.path.basename(current_root) if rel != "." else os.path.basename(artifact_root)
-                  print(f"{indent}{name}")
-                  for fname in files:
-                      print(f"{indent}  {fname}")
-              sys.exit(1)
-
-          print(f"normalized {processed} configuration directories into {dest_root}")
-          PY
+      - name: Bootstrap overlay
+        run: ./overlay/bootstrap.sh
 
       - name: Setup Ruby (Fastlane)
         uses: ruby/setup-ruby@v1
@@ -649,60 +210,23 @@ jobs:
           ruby-version: '3.2'
 
       - name: Bundle install (Fastlane)
+        working-directory: ${{ env.WORKSPACE }}
         run: bundle install
+
+      - name: Apply branding
+        working-directory: ${{ env.WORKSPACE }}
+        run: ../../../../tools/brandify.sh ../../../../branding/branding.json
 
       - name: Fastlane iOS build
         env:
           CI_SKIP_GRADLE_EMBED: "true"
+        working-directory: ${{ env.WORKSPACE }}
         run: bundle exec fastlane ios build
-
-      - name: Capture IPA path
-        if: env.UPLOAD_TO_STORES == 'true'
-        run: |
-          IPA=$(ls -t iosApp/build/*.ipa 2>/dev/null | head -n1 || true)
-          if [ -z "${IPA}" ]; then
-            echo "IPA not found in iosApp/build after fastlane build"
-            ls -R iosApp/build || true
-            exit 1
-          fi
-          export TARGET_IPA="${IPA}"
-          IPA_ABS=$(python3 -c 'import os, sys; path=os.environ.get("TARGET_IPA","").strip(); assert path, "TARGET_IPA not provided"; print(os.path.abspath(path))')
-          echo "Detected IPA at ${IPA_ABS}"
-          echo "IOS_IPA_PATH=${IPA_ABS}" >> "$GITHUB_ENV"
-
-      - name: Fastlane iOS beta (optional upload)
-        if: env.UPLOAD_TO_STORES == 'true'
-        run: bundle exec fastlane ios beta
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-artifacts
           path: |
-            iosApp/build/TeleCrypt.xcarchive
-            iosApp/build/*.ipa
-
-  overlay_build:
-    name: Overlay Bootstrap & Build
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Bootstrap overlay layers
-        run: ./overlay/bootstrap.sh
-
-      - name: Build from overlay workspace
-        run: ./overlay/build.sh
+            ${{ env.WORKSPACE }}/build/TeleCrypt.xcarchive
+            ${{ env.WORKSPACE }}/build/*.ipa
