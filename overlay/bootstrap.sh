@@ -20,7 +20,10 @@ fi
 
 mkdir -p "${CACHE_DIR}" "${WORKSPACE_DIR}"
 
-readarray -t LAYERS < <(CONFIG_JSON="${CONFIG_FILE}" python3 <<'PY'
+LAYERS=()
+while IFS= read -r line; do
+  LAYERS+=("$line")
+done < <(CONFIG_JSON="${CONFIG_FILE}" python3 <<'PY'
 import json, os, pathlib
 config_path = pathlib.Path(os.environ["CONFIG_JSON"])
 with config_path.open(encoding='utf-8') as f:
