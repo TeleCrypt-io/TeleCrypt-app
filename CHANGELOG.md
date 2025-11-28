@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- bump c2x convention plugin to 20251021.133603
-
 ### Deprecated
 
 ### Removed
@@ -20,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## 1.1.33
+
+### Added
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.9.0
+- bump c2x convention plugin to 20251021.133603
 
 ## 1.1.32
 
