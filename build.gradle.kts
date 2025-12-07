@@ -292,11 +292,14 @@ android {
     buildFeatures {
         compose = true
     }
-    compileSdk = sharedLibs.versions.androidCompileSDK.get().toInt()
+    val compileSdkStr = sharedLibs.versions.androidCompileSDK.get()
+    compileSdk = compileSdkStr.toIntOrNull() ?: error("Invalid compileSdk: $compileSdkStr")
 
     defaultConfig {
-        minSdk = sharedLibs.versions.androidMinimalSDK.get().toInt()
-        targetSdk = sharedLibs.versions.androidTargetSDK.get().toInt()
+        val minSdkStr = sharedLibs.versions.androidMinimalSDK.get()
+        minSdk = minSdkStr.toIntOrNull() ?: error("Invalid minSdk: $minSdkStr")
+        val targetSdkStr = sharedLibs.versions.androidTargetSDK.get()
+        targetSdk = targetSdkStr.toIntOrNull() ?: error("Invalid targetSdk: $targetSdkStr")
         // Auto-increment versionCode in CI: prefer GitHub run number, then GitLab pipeline IID, else 1
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toInt()
             ?: System.getenv("CI_PIPELINE_IID")?.toInt()
