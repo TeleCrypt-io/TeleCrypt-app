@@ -19,6 +19,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## 1.1.33
+
+### Added
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.9.0
+- bump c2x convention plugin to 20251021.133603
+
+## 1.1.32
+
+### Fixed
+
+- Fix web title naming
+
+## 1.1.31
+
+### Fixed
+
+- Fix web
+
+## 1.1.30
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.8.9
+
 ## 1.1.29
 
 ### Changed
