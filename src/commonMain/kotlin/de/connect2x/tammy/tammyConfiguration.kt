@@ -2,6 +2,7 @@ package de.connect2x.tammy
 
 import de.connect2x.messenger.compose.view.composeViewModule
 import de.connect2x.messenger.compose.view.notifications.notificationsModule
+import de.connect2x.tammy.telecryptModules.call.callModule
 import de.connect2x.trixnity.messenger.i18n.DefaultLanguages
 import de.connect2x.trixnity.messenger.i18n.I18n
 import de.connect2x.trixnity.messenger.i18n.Languages
@@ -30,6 +31,7 @@ fun tammyConfiguration(
         { composeViewModule(null) },
         { notificationsModule(this@multiMessengerConfig, notificationsDebugEnabled) },
         ::tammyModule,
+        ::callModule,
         // TODO this needs to be removed and fixed, as there is no MatrixMessengerSettingsHolderImpl at MultiMessenger level!
         ::platformMatrixMessengerSettingsHolderModule,
         // TODO there should be a more clean way for I18n
@@ -58,6 +60,7 @@ fun tammyConfiguration(
             { composeViewModule(this) },
             { notificationsModule(this@messengerConfig, notificationsDebugEnabled) },
             ::tammyModule,
+            ::callModule,
         )
 
         when (BuildConfig.flavor) {
