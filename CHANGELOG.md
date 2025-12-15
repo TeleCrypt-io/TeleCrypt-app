@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Upgraded trixnity-messenger to 3.9.1-DEV-61482661
+- Use JDK 25 and JetBrains Runtime for high dpi support on Desktop
 
 ### Deprecated
 
