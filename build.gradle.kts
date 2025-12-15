@@ -261,14 +261,14 @@ compose {
                     if (appleKeychainFile.exists()) {
                         bundleID = appIdentifier
                         signing {
-                            sign = true
-                            keychain = "apple_keychain.keychain"
-                            identity = "connect2x GmbH"
+                            sign.set(true)
+                            keychain.set("apple_keychain.keychain")
+                            identity.set("connect2x GmbH")
                         }
                         notarization {
-                            teamID = System.getenv("APPLE_TEAM_ID")
-                            appleID = System.getenv("APPLE_ID")
-                            password = System.getenv("APPLE_NOTARIZATION_PASSWORD")
+                            teamID.set(System.getenv("APPLE_TEAM_ID"))
+                            appleID.set(System.getenv("APPLE_ID"))
+                            password.set(System.getenv("APPLE_NOTARIZATION_PASSWORD"))
                         }
                     }
                     iconFile.set(project.file("src/desktopMain/resources/logo.icns"))
@@ -312,10 +312,14 @@ android {
             ?: 1
         versionName = appSuffixedVersion
         applicationId = appIdentifier
-        setProperty("archivesBaseName", appName)
+
         resValue("string", "app_name", appName)
         resValue("string", "scheme", appIdentifier)
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    base {
+        archivesName = appName
     }
 
     signingConfigs {

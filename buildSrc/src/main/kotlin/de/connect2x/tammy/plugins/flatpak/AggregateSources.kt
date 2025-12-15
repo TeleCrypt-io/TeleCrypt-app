@@ -1,12 +1,13 @@
 package de.connect2x.tammy.plugins.flatpak
 
-import javax.inject.Inject
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.*
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
-import org.gradle.kotlin.dsl.*
+import javax.inject.Inject
 
 abstract class AggregateSources
 @Inject
@@ -15,19 +16,27 @@ constructor(
     @Internal val fileSystemOperations: FileSystemOperations,
 ) : DefaultTask() {
 
-    @get:Input abstract val applicationId: Property<String>
+    @get:Input
+    abstract val applicationId: Property<String>
 
-    @get:InputFile abstract val metainfo: RegularFileProperty
+    @get:InputFile
+    abstract val metainfo: RegularFileProperty
 
-    @get:InputFile abstract val desktop: RegularFileProperty
+    @get:InputFile
+    abstract val desktop: RegularFileProperty
 
-    @get:InputFile @get:Optional abstract val wrapper: RegularFileProperty
+    @get:InputFile
+    @get:Optional
+    abstract val wrapper: RegularFileProperty
 
-    @get:InputDirectory abstract val icons: DirectoryProperty
+    @get:InputDirectory
+    abstract val icons: DirectoryProperty
 
-    @get:InputDirectory abstract val app: DirectoryProperty
+    @get:InputDirectory
+    abstract val app: DirectoryProperty
 
-    @get:OutputDirectory abstract val destination: DirectoryProperty
+    @get:OutputDirectory
+    abstract val destination: DirectoryProperty
 
     @TaskAction
     fun run() {
@@ -82,8 +91,9 @@ constructor(
                     require(extension == "svg" || extension == "png")
 
                     relativePath =
-                        relativePath.parent.append(
-                            true, resolution, "apps", "$applicationId.$extension")
+                        relativePath.parent!!.append(
+                            true, resolution, "apps", "$applicationId.$extension"
+                        )
                 }
 
                 into("share/icons/hicolor")
