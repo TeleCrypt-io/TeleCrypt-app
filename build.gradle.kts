@@ -221,7 +221,7 @@ dependencies {
 
 val distributionJavaHome = System.getenv("DIST_JAVA_HOME") ?: javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
-    vendor = JvmVendorSpec.JETBRAINS
+    vendor = JvmVendorSpec.ADOPTIUM
 }.get().metadata.installationPath.asFile.absolutePath
 
 compose {
