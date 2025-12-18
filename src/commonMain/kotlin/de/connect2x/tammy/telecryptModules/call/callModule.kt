@@ -6,5 +6,6 @@ import org.koin.dsl.module
 fun callModule() = module {
     includes(
         callUiModule(),
+        callBackendModule(),
     )
 }

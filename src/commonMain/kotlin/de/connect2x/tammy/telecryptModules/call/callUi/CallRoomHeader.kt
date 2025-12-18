@@ -48,6 +48,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedIconButton
 import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
 import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
 import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
+import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
 
@@ -91,6 +92,7 @@ class CallRoomHeader : RoomHeaderView {
 
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
+        val callLauncher: CallLauncher = DI.get()
         Box {
             HeaderSurface {
                 Column {
@@ -189,7 +191,7 @@ class CallRoomHeader : RoomHeaderView {
                         CallButton(
                             onClick = {
                                 scope.launch {
-                                    snackbarHostState.showSnackbar("Call button was clicked!")
+                                    callLauncher.launchCall()
                                 }
                             },
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
