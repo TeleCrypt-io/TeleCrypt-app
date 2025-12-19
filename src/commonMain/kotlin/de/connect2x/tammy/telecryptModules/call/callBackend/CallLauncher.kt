@@ -9,9 +9,9 @@ import org.koin.core.component.inject
  */
 interface CallLauncher {
     /**
-     * Launch Element Call for a specific room
+     * Launch Element Call
      */
-    fun launchCall(roomId: String)
+    fun launchCall()
 
     fun joinByUrl(url: String)
 
@@ -29,18 +29,16 @@ class ElementCallLauncherImpl(
 
     private val matrixClient: MatrixClient by inject()
 
-    override fun launchCall(roomId: String) {
-        // 1. Calculate url for current call
-        // Using Element Call default instance for now: https://call.element.io
-        // Ideally we should use a custom instance or configured one
-        val url = "https://call.element.io/$roomId"
+    override fun launchCall() {
+        // TODO: Get current room ID from context/navigation
+        // For now, opening Element Call home page
+        val url = "https://call.element.io/"
 
-        // 2. Open URL
+        // Open URL
         joinByUrl(url)
 
-        // 3. TODO: Send Matrix Event (m.call.invite or similar)
-        // launching this in background to not block UI
-        // GlobalScope.launch { matrixClient.room.sendMessage(...) }
+        // TODO: Send Matrix Event (m.call.invite or similar)
+        // This requires access to current room context
     }
 
     override fun joinByUrl(url: String) {
@@ -51,3 +49,4 @@ class ElementCallLauncherImpl(
         return true
     }
 }
+
