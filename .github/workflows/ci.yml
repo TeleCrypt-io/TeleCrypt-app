@@ -177,7 +177,7 @@ jobs:
         run: bundle install
 
       - name: Fastlane Android internal (optional upload)
-        if: env.UPLOAD_TO_STORES == 'true'
+        if: env.UPLOAD_TO_STORES == 'true' && github.ref == 'refs/heads/main'
         run: bundle exec fastlane android internal
 
   desktop_linux:
@@ -686,7 +686,7 @@ jobs:
           echo "IOS_IPA_PATH=${IPA_ABS}" >> "$GITHUB_ENV"
 
       - name: Fastlane iOS beta (optional upload)
-        if: env.UPLOAD_TO_STORES == 'true'
+        if: env.UPLOAD_TO_STORES == 'true' && github.ref == 'refs/heads/main'
         run: bundle exec fastlane ios beta
 
       - name: Upload iOS artifacts
