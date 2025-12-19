@@ -10,9 +10,18 @@ import org.koin.dsl.module
 /**
  * Koin module for Element Call integration
  */
+import org.koin.core.module.Module
+
+/**
+ * Koin module for Element Call integration
+ */
 fun callBackendModule() = module {
+    includes(platformCallBackendModule)
     single<CallLauncher> {
-        ElementCallLauncherImpl()
+        ElementCallLauncherImpl(get())
     }
 }
+
+expect val platformCallBackendModule: Module
+
 

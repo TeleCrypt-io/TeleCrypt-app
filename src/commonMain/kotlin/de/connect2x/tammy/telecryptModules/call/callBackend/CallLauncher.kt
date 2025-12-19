@@ -1,14 +1,16 @@
-package de.connect2x.tammy.telecryptModules.call.callBackend
+import net.folivo.trixnity.client.MatrixClient
+import net.folivo.trixnity.core.model.RoomId
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
  * Interface for launching Element Call from Tammy
  */
 interface CallLauncher {
     /**
-     * Launch Element Call
+     * Launch Element Call for a specific room
      */
-    fun launchCall()
-
+    fun launchCall(roomId: String)
 
     fun joinByUrl(url: String)
 
@@ -20,26 +22,31 @@ interface CallLauncher {
     fun isCallAvailable(roomId: String): Boolean
 }
 
-expect class ElementCallLauncherImpl() : CallLauncher {
-    override fun launchCall()
-        // TODO: Implement Element Call launch logic
-        // This should:
-        // 1. Get the current Matrix client
-        // 2. Prepare Element Call configuration (room ID, user credentials, etc.)
-        // 3. Calculate url for current call
-        // 4. Use joinByUrl to reach web interface
+class ElementCallLauncherImpl(
+    private val urlLauncher: UrlLauncher
+) : CallLauncher, KoinComponent {
 
-        // NOTE: Probably implementations of this method will be identical on all platforms
-        // Consider moving this method to another not platform-specific entity
+    private val matrixClient: MatrixClient by inject()
 
-    override fun joinByUrl(url: String)
-        //TODO: Call web implementations on all platforms
-        // This is pure frontend
+    override fun launchCall(roomId: String) {
+        // 1. Calculate url for current call
+        // Using Element Call default instance for now: https://call.element.io
+        // Ideally we should use a custom instance or configured one
+        val url = "https://call.element.io/$roomId"
 
-    override fun isCallAvailable(roomId: String): Boolean
-        // TODO: Implement availability check
-        // This should check if:
-        // 1. The room supports Element Call
-        // 2. The user has necessary permissions
-        // 3. Element Call is properly configured
+        // 2. Open URL
+        joinByUrl(url)
+
+        // 3. TODO: Send Matrix Event (m.call.invite or similar)
+        // launching this in background to not block UI
+        // GlobalScope.launch { matrixClient.room.sendMessage(...) }
+    }
+
+    override fun joinByUrl(url: String) {
+        urlLauncher.openUrl(url)
+    }
+
+    override fun isCallAvailable(roomId: String): Boolean {
+        return true
+    }
 }
