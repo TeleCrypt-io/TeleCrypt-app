@@ -1,21 +1,14 @@
 package de.connect2x.tammy.telecryptModules.call
 
-import callUiModule
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallLauncherImpl
-import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /**
  * Koin module for Element Call integration
  */
 fun callBackendModule() = module {
-    includes(platformCallBackendModule)
     single<CallLauncher> {
-        ElementCallLauncherImpl(get())
+        ElementCallLauncherImpl()
     }
 }
-
-expect val platformCallBackendModule: Module
-
-
