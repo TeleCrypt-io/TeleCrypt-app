@@ -1,0 +1,21 @@
+Windows Registry Editor Version 5.00
+
+; TeleCrypt Custom URL Protocol Registration
+; This allows URLs like com.zendev.telecrypt://... to open the TeleCrypt app
+;
+; IMPORTANT: Before running this file:
+; 1. Replace %EXE_PATH% below with the actual path to your TeleCrypt executable
+;    For example: "C:\Program Files\TeleCrypt\TeleCrypt.exe"
+; 2. Make sure to use double backslashes (\\) in paths
+; 3. Save the file and double-click to import into registry
+
+[HKEY_CLASSES_ROOT\com.zendev.telecrypt]
+@="URL:TeleCrypt Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\com.zendev.telecrypt\shell]
+
+[HKEY_CLASSES_ROOT\com.zendev.telecrypt\shell\open]
+
+[HKEY_CLASSES_ROOT\com.zendev.telecrypt\shell\open\command]
+@="\"%EXE_PATH%\" \"%1\""

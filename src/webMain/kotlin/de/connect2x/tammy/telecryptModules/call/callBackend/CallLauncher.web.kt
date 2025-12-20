@@ -12,7 +12,7 @@ actual class ElementCallLauncherImpl : CallLauncher {
         private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
     }
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
+    override fun launchCall(roomId: String, roomName: String, displayName: String) {
         // Build Element Call URL according to the documentation
         val encodedRoomName = encodeURIComponent(roomName)
         val encodedRoomId = encodeURIComponent(roomId)
@@ -26,12 +26,12 @@ actual class ElementCallLauncherImpl : CallLauncher {
         joinByUrl(url)
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         // Open in new tab
         window.open(url, "_blank")
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on web
         return true
     }

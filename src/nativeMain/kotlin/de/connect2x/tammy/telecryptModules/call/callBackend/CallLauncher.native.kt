@@ -16,7 +16,7 @@ actual class ElementCallLauncherImpl : CallLauncher {
         private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
     }
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
+    override fun launchCall(roomId: String, roomName: String, displayName: String) {
         // Build Element Call URL according to the documentation
         val encodedRoomName = roomName.encodeUrl()
         val encodedRoomId = roomId.encodeUrl()
@@ -30,12 +30,12 @@ actual class ElementCallLauncherImpl : CallLauncher {
         joinByUrl(url)
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         val nsUrl = NSURL.URLWithString(url) ?: return
         UIApplication.sharedApplication.openURL(nsUrl)
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on iOS (Safari is always present)
         return true
     }

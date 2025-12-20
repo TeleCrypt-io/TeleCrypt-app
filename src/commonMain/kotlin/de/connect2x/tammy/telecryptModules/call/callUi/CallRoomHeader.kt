@@ -49,6 +49,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
 import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
 import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
+
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
 
@@ -93,6 +94,8 @@ class CallRoomHeader : RoomHeaderView {
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val callLauncher: CallLauncher = DI.get()
+        // NOTE: MainViewModel.selectedRoomId is not accessible via DI from this scope
+        // TODO: Request trixnity-messenger to expose RoomId in RoomHeaderInfo or via CallUiHook
         Box {
             HeaderSurface {
                 Column {
@@ -191,10 +194,10 @@ class CallRoomHeader : RoomHeaderView {
                         CallButton(
                             onClick = {
                                 scope.launch {
-                                    // TODO: Get actual roomId from navigation context
-                                    // For now, using roomName as a fallback identifier
-                                    val roomId = roomHeaderElement.roomName ?: "unknown-room"
+                                    // NOTE: Using roomName as roomId placeholder
+                                    // TODO: Trixnity needs to expose RoomId in RoomHeaderInfo or CallUiHook
                                     val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
+                                    val roomId = roomName  // Temporary - Element Call needs actual !xxx:server.org format
                                     // TODO: Get current user displayName from MatrixClient/AccountInfo
                                     val displayName = "TeleCrypt User"
                                     callLauncher.launchCall(roomId, roomName, displayName)

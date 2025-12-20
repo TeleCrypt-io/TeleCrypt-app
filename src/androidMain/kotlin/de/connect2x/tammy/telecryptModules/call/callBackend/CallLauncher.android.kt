@@ -19,7 +19,7 @@ actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
         private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
     }
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
+    override fun launchCall(roomId: String, roomName: String, displayName: String) {
         // Build Element Call URL according to the documentation:
         // https://call.element.io/room/#/<room_name>?roomId=!id:domain&displayName=...
         val encodedRoomName = URLEncoder.encode(roomName, "UTF-8")
@@ -34,7 +34,7 @@ actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
         joinByUrl(url)
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -44,7 +44,7 @@ actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
         }
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on Android (browser is always present)
         return true
     }

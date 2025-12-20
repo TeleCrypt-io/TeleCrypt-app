@@ -9,25 +9,26 @@ import java.net.URLEncoder
 actual class ElementCallLauncherImpl : CallLauncher {
 
     companion object {
-        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
+        // Element Call standalone mode - direct room URL
+        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io"
     }
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
-        // Build Element Call URL according to the documentation:
-        // https://call.element.io/room/#/<room_name>?roomId=!id:domain&displayName=...
+    override fun launchCall(roomId: String, roomName: String, displayName: String) {
+        // Element Call standalone mode - creates ad-hoc rooms without needing Matrix roomId
+        // URL format: https://call.element.io/<room_name>?displayName=...
+        // Note: roomId param not used because RoomHeaderInfo doesn't expose it (trixnity limitation)
         val encodedRoomName = URLEncoder.encode(roomName, "UTF-8")
-        val encodedRoomId = URLEncoder.encode(roomId, "UTF-8")
         val encodedDisplayName = URLEncoder.encode(displayName, "UTF-8")
 
+        // Standalone mode URL - creates/joins room by name only
         val url = "$ELEMENT_CALL_BASE_URL/$encodedRoomName?" +
-                "roomId=$encodedRoomId" +
-                "&displayName=$encodedDisplayName" +
+                "displayName=$encodedDisplayName" +
                 "&confineToRoom=true"
 
         joinByUrl(url)
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         val os = System.getProperty("os.name").lowercase()
 
         try {
@@ -48,7 +49,7 @@ actual class ElementCallLauncherImpl : CallLauncher {
         }
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on desktop (browser is always present)
         return true
     }
