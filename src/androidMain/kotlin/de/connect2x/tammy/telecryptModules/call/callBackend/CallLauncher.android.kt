@@ -1,15 +1,51 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
-actual class ElementCallLauncherImpl : CallLauncher {
-    actual override fun launchCall() {
-        TODO("Not yet implemented")
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import java.net.URLEncoder
+
+/**
+ * Android implementation of CallLauncher
+ * Opens Element Call in the device's default browser
+ */
+actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
+
+    private val context: Context by inject()
+
+    companion object {
+        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
+    }
+
+    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
+        // Build Element Call URL according to the documentation:
+        // https://call.element.io/room/#/<room_name>?roomId=!id:domain&displayName=...
+        val encodedRoomName = URLEncoder.encode(roomName, "UTF-8")
+        val encodedRoomId = URLEncoder.encode(roomId, "UTF-8")
+        val encodedDisplayName = URLEncoder.encode(displayName, "UTF-8")
+
+        val url = "$ELEMENT_CALL_BASE_URL/$encodedRoomName?" +
+                "roomId=$encodedRoomId" +
+                "&displayName=$encodedDisplayName" +
+                "&confineToRoom=true"
+
+        joinByUrl(url)
     }
 
     actual override fun joinByUrl(url: String) {
-        TODO("Not yet implemented")
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     actual override fun isCallAvailable(roomId: String): Boolean {
-        TODO("Not yet implemented")
+        // Calls are always available on Android (browser is always present)
+        return true
     }
 }

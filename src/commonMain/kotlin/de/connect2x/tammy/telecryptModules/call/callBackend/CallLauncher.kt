@@ -5,10 +5,16 @@ package de.connect2x.tammy.telecryptModules.call.callBackend
  */
 interface CallLauncher {
     /**
-     * Launch Element Call
+     * Launch Element Call for a specific room
+     * @param roomId The Matrix room ID (e.g., "!roomid:homeserver.org")
+     * @param roomName Display name of the room
+     * @param displayName Display name of the current user
      */
-    fun launchCall()
+    fun launchCall(roomId: String, roomName: String, displayName: String)
 
+    /**
+     * Join a call by URL directly
+     */
     fun joinByUrl(url: String)
 
     /**

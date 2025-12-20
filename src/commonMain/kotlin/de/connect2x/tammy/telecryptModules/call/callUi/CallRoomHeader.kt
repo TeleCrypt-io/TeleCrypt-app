@@ -191,7 +191,13 @@ class CallRoomHeader : RoomHeaderView {
                         CallButton(
                             onClick = {
                                 scope.launch {
-                                    callLauncher.launchCall()
+                                    // TODO: Get actual roomId from navigation context
+                                    // For now, using roomName as a fallback identifier
+                                    val roomId = roomHeaderElement.roomName ?: "unknown-room"
+                                    val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
+                                    // TODO: Get current user displayName from MatrixClient/AccountInfo
+                                    val displayName = "TeleCrypt User"
+                                    callLauncher.launchCall(roomId, roomName, displayName)
                                 }
                             },
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
