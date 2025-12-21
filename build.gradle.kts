@@ -169,6 +169,8 @@ kotlin {
                 }
                 implementation(libs.logback.classic)
                 implementation(sharedLibs.kotlinx.coroutines.swing)
+
+                implementation("com.github.winterreisender:webviewko:0.6.0")
             }
         }
         iosMain {
