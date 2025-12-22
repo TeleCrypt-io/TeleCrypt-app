@@ -49,9 +49,12 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
 import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
 import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
-
+import de.connect2x.trixnity.messenger.viewmodel.MatrixClientViewModelContext
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
+import net.folivo.trixnity.client.MatrixClient
+import net.folivo.trixnity.core.model.RoomId
+import net.folivo.trixnity.core.model.events.m.room.RoomMessageEventContent
 
 
 // exact replica of HeaderSurface from de.connect2x.messenger.compose.view.common
@@ -94,8 +97,6 @@ class CallRoomHeader : RoomHeaderView {
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val callLauncher: CallLauncher = DI.get()
-        // NOTE: MainViewModel.selectedRoomId is not accessible via DI from this scope
-        // TODO: Request trixnity-messenger to expose RoomId in RoomHeaderInfo or via CallUiHook
         Box {
             HeaderSurface {
                 Column {
@@ -194,13 +195,19 @@ class CallRoomHeader : RoomHeaderView {
                         CallButton(
                             onClick = {
                                 scope.launch {
-                                    // NOTE: Using roomName as roomId placeholder
-                                    // TODO: Trixnity needs to expose RoomId in RoomHeaderInfo or CallUiHook
                                     val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
-                                    val roomId = roomName  // Temporary - Element Call needs actual !xxx:server.org format
-                                    // TODO: Get current user displayName from MatrixClient/AccountInfo
-                                    val displayName = "TeleCrypt User"
-                                    callLauncher.launchCall(roomId, roomName, displayName)
+                                    val resolvedRoomId = resolveRoomId(roomHeaderViewModel)
+                                    val roomIdForCall = resolvedRoomId?.full ?: roomName
+                                    val matrixClient = (roomHeaderViewModel as? MatrixClientViewModelContext)?.matrixClient
+                                    val displayName = resolveDisplayName(matrixClient)
+                                    val callUrl = callLauncher.launchCall(
+                                        roomIdForCall,
+                                        roomName,
+                                        displayName,
+                                    )
+                                    if (resolvedRoomId != null && matrixClient != null) {
+                                        sendCallLinkMessage(matrixClient, resolvedRoomId, roomName, callUrl)
+                                    }
                                 }
                             },
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
@@ -220,6 +227,47 @@ class CallRoomHeader : RoomHeaderView {
             )
         }
     }
+}
+
+private fun resolveDisplayName(matrixClient: MatrixClient?): String {
+    val displayName = matrixClient?.displayName?.value?.trim().orEmpty()
+    return displayName.ifEmpty { matrixClient?.userId?.full ?: "TeleCrypt User" }
+}
+
+private suspend fun sendCallLinkMessage(
+    matrixClient: MatrixClient,
+    roomId: RoomId,
+    roomName: String,
+    callUrl: String,
+) {
+    val safeRoomName = roomName.trim().ifEmpty { "Call" }
+    val body = "Call: $safeRoomName\n$callUrl"
+    val formattedBody = buildCallHtml(callUrl, safeRoomName)
+    val content = RoomMessageEventContent.TextBased.Text(
+        body = body,
+        format = MATRIX_HTML_FORMAT,
+        formattedBody = formattedBody,
+        externalUrl = callUrl,
+    )
+    runCatching { matrixClient.api.room.sendMessageEvent(roomId, content) }
+        .onFailure { println("[Call] Failed to send call link: ${it.message}") }
+}
+
+private const val MATRIX_HTML_FORMAT = "org.matrix.custom.html"
+
+private fun buildCallHtml(callUrl: String, roomName: String): String {
+    val escapedUrl = escapeHtml(callUrl)
+    val escapedRoom = escapeHtml(roomName)
+    return "<a href=\"$escapedUrl\">Join call</a> - $escapedRoom"
+}
+
+private fun escapeHtml(value: String): String {
+    return value
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#39;")
 }
 
 @Composable

@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import java.net.URLEncoder
 
 /**
  * Android implementation of CallLauncher
@@ -15,23 +14,10 @@ actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
 
     private val context: Context by inject()
 
-    companion object {
-        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
-    }
-
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String) {
-        // Build Element Call URL according to the documentation:
-        // https://call.element.io/room/#/<room_name>?roomId=!id:domain&displayName=...
-        val encodedRoomName = URLEncoder.encode(roomName, "UTF-8")
-        val encodedRoomId = URLEncoder.encode(roomId, "UTF-8")
-        val encodedDisplayName = URLEncoder.encode(displayName, "UTF-8")
-
-        val url = "$ELEMENT_CALL_BASE_URL/$encodedRoomName?" +
-                "roomId=$encodedRoomId" +
-                "&displayName=$encodedDisplayName" +
-                "&confineToRoom=true"
-
+    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+        val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
+        return url
     }
 
     actual override fun joinByUrl(url: String) {

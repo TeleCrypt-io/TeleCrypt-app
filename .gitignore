@@ -29,3 +29,8 @@ apple_keychain.keychain
 .flatpak-cache
 bin/
 temp
+
+# Local-only files
+CODEX_RULES.md
+run.ps1
+run.bat

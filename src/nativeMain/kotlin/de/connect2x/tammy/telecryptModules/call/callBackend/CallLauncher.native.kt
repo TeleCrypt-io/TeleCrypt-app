@@ -1,9 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import platform.Foundation.NSURL
-import platform.Foundation.NSCharacterSet
-import platform.Foundation.URLQueryAllowedCharacterSet
-import platform.Foundation.stringByAddingPercentEncodingWithAllowedCharacters
 import platform.UIKit.UIApplication
 
 /**
@@ -12,22 +9,10 @@ import platform.UIKit.UIApplication
  */
 actual class ElementCallLauncherImpl : CallLauncher {
 
-    companion object {
-        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
-    }
-
-    override fun launchCall(roomId: String, roomName: String, displayName: String) {
-        // Build Element Call URL according to the documentation
-        val encodedRoomName = roomName.encodeUrl()
-        val encodedRoomId = roomId.encodeUrl()
-        val encodedDisplayName = displayName.encodeUrl()
-
-        val url = "$ELEMENT_CALL_BASE_URL/$encodedRoomName?" +
-                "roomId=$encodedRoomId" +
-                "&displayName=$encodedDisplayName" +
-                "&confineToRoom=true"
-
+    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+        val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
+        return url
     }
 
     override fun joinByUrl(url: String) {
@@ -38,11 +23,5 @@ actual class ElementCallLauncherImpl : CallLauncher {
     override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on iOS (Safari is always present)
         return true
-    }
-
-    private fun String.encodeUrl(): String {
-        return this.stringByAddingPercentEncodingWithAllowedCharacters(
-            NSCharacterSet.URLQueryAllowedCharacterSet
-        ) ?: this
     }
 }

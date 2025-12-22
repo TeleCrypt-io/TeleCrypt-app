@@ -8,22 +8,10 @@ import kotlinx.browser.window
  */
 actual class ElementCallLauncherImpl : CallLauncher {
 
-    companion object {
-        private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#"
-    }
-
-    override fun launchCall(roomId: String, roomName: String, displayName: String) {
-        // Build Element Call URL according to the documentation
-        val encodedRoomName = encodeURIComponent(roomName)
-        val encodedRoomId = encodeURIComponent(roomId)
-        val encodedDisplayName = encodeURIComponent(displayName)
-
-        val url = "$ELEMENT_CALL_BASE_URL/$encodedRoomName?" +
-                "roomId=$encodedRoomId" +
-                "&displayName=$encodedDisplayName" +
-                "&confineToRoom=true"
-
+    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+        val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
+        return url
     }
 
     override fun joinByUrl(url: String) {
@@ -36,6 +24,3 @@ actual class ElementCallLauncherImpl : CallLauncher {
         return true
     }
 }
-
-// JS interop for encodeURIComponent
-private external fun encodeURIComponent(str: String): String

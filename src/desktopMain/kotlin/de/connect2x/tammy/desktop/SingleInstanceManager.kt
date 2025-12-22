@@ -62,6 +62,13 @@ object SingleInstanceManager {
             }
         }
     }
+
+    /**
+     * internally inject a deeplink (e.g. from SsoCallbackServer)
+     */
+    suspend fun injectDeeplink(url: String) {
+        _deeplinkFlow.emit(url)
+    }
     
     private suspend fun handleClient(client: Socket) {
         try {

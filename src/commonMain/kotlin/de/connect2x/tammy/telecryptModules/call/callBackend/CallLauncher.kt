@@ -9,8 +9,9 @@ interface CallLauncher {
      * @param roomId The Matrix room ID (e.g., "!roomid:homeserver.org")
      * @param roomName Display name of the room
      * @param displayName Display name of the current user
+     * @return The URL used to open the call
      */
-    fun launchCall(roomId: String, roomName: String, displayName: String)
+    fun launchCall(roomId: String, roomName: String, displayName: String): String
 
     /**
      * Join a call by URL directly
