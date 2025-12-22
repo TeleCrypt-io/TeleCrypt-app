@@ -8,18 +8,18 @@ import kotlinx.browser.window
  */
 actual class ElementCallLauncherImpl : CallLauncher {
 
-    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+    actual override fun launchCall(roomId: String, roomName: String, displayName: String): String {
         val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
         return url
     }
 
-    override fun joinByUrl(url: String) {
+    actual override fun joinByUrl(url: String) {
         // Open in new tab
         window.open(url, "_blank")
     }
 
-    override fun isCallAvailable(roomId: String): Boolean {
+    actual override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on web
         return true
     }

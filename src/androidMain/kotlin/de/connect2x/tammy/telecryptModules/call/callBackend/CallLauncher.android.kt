@@ -14,7 +14,7 @@ actual class ElementCallLauncherImpl : CallLauncher, KoinComponent {
 
     private val context: Context by inject()
 
-    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+    actual override fun launchCall(roomId: String, roomName: String, displayName: String): String {
         val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
         return url
