@@ -8,7 +8,7 @@ import com.github.winterreisender.webviewko.WebviewKo
 
 fun openWebView(url: String) {
     WebviewKo().run {
-        title("Title")
+        title("telecrypt-messenger call")
         size(800, 600, WebviewKo.WindowHint.Max)
         url(url)
         show()
@@ -73,8 +73,6 @@ actual class ElementCallLauncherImpl : CallLauncher {
                 openUrlInBrowser(url)
             }
         }
-
-
     }
 
     actual override fun isCallAvailable(roomId: String): Boolean {
