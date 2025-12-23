@@ -29,8 +29,3 @@ interface CallLauncher {
 /**
  * Platform-specific implementation of CallLauncher
  */
-expect class ElementCallLauncherImpl() : CallLauncher {
-    override fun launchCall(roomId: String, roomName: String, displayName: String): String
-    override fun joinByUrl(url: String)
-    override fun isCallAvailable(roomId: String): Boolean
-}

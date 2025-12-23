@@ -188,6 +188,8 @@ kotlin {
                 implementation(libs.logback.android)
                 implementation(libs.slf4j.api)
                 implementation(sharedLibs.firebase.messaging)
+                implementation("androidx.browser:browser:1.8.0")
+                implementation("io.insert-koin:koin-android:3.5.6")
             }
         }
 

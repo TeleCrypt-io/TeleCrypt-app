@@ -36,15 +36,15 @@ fun openUrlInBrowser(url: String) {
  * Desktop implementation of CallLauncher
  * Opens Element Call in the system's default browser
  */
-actual class ElementCallLauncherImpl : CallLauncher {
+class ElementCallLauncherImpl : CallLauncher {
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
         val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
         return url
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         if (System.getProperty("os.name").lowercase().contains("linux")) {
             openUrlInBrowser(url)
         } else {
@@ -57,7 +57,7 @@ actual class ElementCallLauncherImpl : CallLauncher {
         }
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on desktop (browser is always present)
         return true
     }

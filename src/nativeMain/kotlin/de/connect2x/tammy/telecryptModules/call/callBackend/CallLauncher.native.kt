@@ -7,20 +7,20 @@ import platform.UIKit.UIApplication
  * iOS/Native implementation of CallLauncher
  * Opens Element Call in Safari or the default browser
  */
-actual class ElementCallLauncherImpl : CallLauncher {
+class ElementCallLauncherImpl : CallLauncher {
 
-    actual override fun launchCall(roomId: String, roomName: String, displayName: String): String {
+    override fun launchCall(roomId: String, roomName: String, displayName: String): String {
         val url = buildElementCallUrl(roomId, roomName, displayName)
         joinByUrl(url)
         return url
     }
 
-    actual override fun joinByUrl(url: String) {
+    override fun joinByUrl(url: String) {
         val nsUrl = NSURL.URLWithString(url) ?: return
         UIApplication.sharedApplication.openURL(nsUrl)
     }
 
-    actual override fun isCallAvailable(roomId: String): Boolean {
+    override fun isCallAvailable(roomId: String): Boolean {
         // Calls are always available on iOS (Safari is always present)
         return true
     }
