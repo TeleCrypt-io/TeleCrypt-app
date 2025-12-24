@@ -1,14 +1,16 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
-private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/#/room/"
+private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#/"
 
 internal fun buildElementCallUrl(roomId: String, roomName: String, displayName: String): String {
-    val roomIdentifier = if (isMatrixRoomId(roomId)) roomId else roomName
-    val encodedRoomId = encodeComponent(roomIdentifier)
+    val alias = roomName.trim().ifEmpty { "call" }
+    val encodedAlias = encodeComponent(alias)
+    val encodedRoomId = encodeComponent(roomId)
     val encodedDisplayName = encodeComponent(displayName)
 
-    return "$ELEMENT_CALL_BASE_URL$encodedRoomId?" +
-        "displayName=$encodedDisplayName&confineToRoom=true"
+    val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
+    return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
+        "${roomIdParam}displayName=$encodedDisplayName&confineToRoom=true"
 }
 
 private fun isMatrixRoomId(roomId: String): Boolean {
