@@ -49,6 +49,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
 import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
 import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
+import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
 import de.connect2x.trixnity.messenger.viewmodel.MatrixClientViewModelContext
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
@@ -205,8 +206,15 @@ class CallRoomHeader : RoomHeaderView {
                                         roomName,
                                         displayName,
                                     )
+                                    val shareUrl = buildElementCallUrl(
+                                        roomIdForCall,
+                                        roomName,
+                                        displayName,
+                                        intent = "join_existing",
+                                        sendNotificationType = null,
+                                    )
                                     if (resolvedRoomId != null && matrixClient != null) {
-                                        sendCallLinkMessage(matrixClient, resolvedRoomId, roomName, callUrl)
+                                        sendCallLinkMessage(matrixClient, resolvedRoomId, roomName, shareUrl)
                                     }
                                 }
                             },
