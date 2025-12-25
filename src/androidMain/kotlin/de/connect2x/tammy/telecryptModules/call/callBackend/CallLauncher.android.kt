@@ -8,6 +8,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.browser.customtabs.CustomTabsIntent
 
 class ElementCallActivity : AppCompatActivity() {
 
@@ -16,13 +17,16 @@ class ElementCallActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        webView = WebView(this)
-        setContentView(webView)
-
         val url = intent.getStringExtra("EXTRA_CALL_URL") ?: return finish()
-
-        configureWebView()
-        webView.loadUrl(url)
+        try {
+            webView = WebView(this)
+            setContentView(webView)
+            configureWebView()
+            webView.loadUrl(url)
+        } catch (_: Throwable) {
+            openInCustomTabs(url)
+            finish()
+        }
     }
 
     private fun configureWebView() {
@@ -40,6 +44,16 @@ class ElementCallActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = WebViewClient()
+    }
+
+    private fun openInCustomTabs(url: String) {
+        val uri = android.net.Uri.parse(url)
+        try {
+            val customTabsIntent = CustomTabsIntent.Builder().build()
+            customTabsIntent.launchUrl(this, uri)
+        } catch (_: Exception) {
+            startActivity(Intent(Intent.ACTION_VIEW, uri))
+        }
     }
 }
 
