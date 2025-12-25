@@ -10,7 +10,8 @@ internal fun buildElementCallUrl(roomId: String, roomName: String, displayName: 
 
     val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
-        "${roomIdParam}displayName=$encodedDisplayName&confineToRoom=true"
+        "${roomIdParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
+        "sendNotificationType=ring&intent=start_call"
 }
 
 private fun isMatrixRoomId(roomId: String): Boolean {
