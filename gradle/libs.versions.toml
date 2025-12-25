@@ -12,6 +12,7 @@ slf4j = "2.0.17" # https://github.com/qos-ch/slf4j/tags
 logbackAndroid = "3.0.0" # https://github.com/tony19/logback-android/releases
 okio = "3.16.1" # https://square.github.io/okio/changelog
 screengrab = "2.1.1"
+uiVersion = "1.10.0"
 
 [libraries]
 
@@ -23,6 +24,7 @@ logback-android = { module = "com.github.tony19:logback-android", version.ref = 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 screengrab = { module = "tools.fastlane:screengrab", version.ref = "screengrab" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "uiVersion" }
 
 [plugins]
 

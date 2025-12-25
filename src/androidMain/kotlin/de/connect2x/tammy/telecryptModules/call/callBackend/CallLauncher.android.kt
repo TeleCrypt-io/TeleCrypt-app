@@ -2,15 +2,46 @@ package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.browser.customtabs.CustomTabColorSchemeParams
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.graphics.toColorInt
-import androidx.core.net.toUri
-import io.github.oshai.kotlinlogging.KotlinLogging
+import android.os.Bundle
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.appcompat.app.AppCompatActivity
 
-private val log = KotlinLogging.logger { }
+class ElementCallActivity : AppCompatActivity() {
 
+    private lateinit var webView: WebView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        webView = WebView(this)
+        setContentView(webView)
+
+        val url = intent.getStringExtra("EXTRA_CALL_URL") ?: return finish()
+
+        configureWebView()
+        webView.loadUrl(url)
+    }
+
+    private fun configureWebView() {
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            databaseEnabled = true
+        }
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: PermissionRequest) {
+                request.grant(request.resources)
+            }
+        }
+
+        webView.webViewClient = WebViewClient()
+    }
+}
 
 /**
  * Android implementation of CallLauncher
@@ -25,32 +56,11 @@ class ElementCallLauncherImpl(private val appContext: Context) : CallLauncher {
     }
 
     override fun joinByUrl(url: String) {
-        val uri = url.toUri()
-
-        val elementGreen = "#0DBD8B".toColorInt()
-
-        val colorParams = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(elementGreen)
-            .build()
-
-        val customTabsIntent = CustomTabsIntent.Builder()
-            .setShowTitle(false)
-            .setUrlBarHidingEnabled(true)
-            .setInstantAppsEnabled(false)
-            .setDefaultColorSchemeParams(colorParams)
-            .build()
-
-        customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
-        customTabsIntent.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-        try {
-            appContext.packageManager.getPackageInfo("com.android.chrome", 0)
-            customTabsIntent.intent.setPackage("com.android.chrome")
+        val intent = Intent(appContext, ElementCallActivity::class.java).apply {
+            putExtra("EXTRA_CALL_URL", url)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        catch  (_: PackageManager.NameNotFoundException){
-            log.warn { "no Chrome" } // TODO try access other CustomTabs browsers
-        }
-        customTabsIntent.launchUrl(appContext, uri)
+        appContext.startActivity(intent)
     }
 
 
