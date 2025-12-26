@@ -3,20 +3,17 @@ package de.connect2x.tammy.telecryptModules.call.callBackend
 import com.github.winterreisender.webviewko.WebviewKo
 
 fun openWebView(url: String) {
-    WebviewKo().run {
-        title("telecrypt-messenger call")
-        size(800, 600, WebviewKo.WindowHint.Max)
-        init(
-            "window.addEventListener('load', () => {" +
-                "try { window.focus(); } catch (e) {}" +
-            "});"
-        )
-        show()
-        navigate(url)
-        dispatch { webview: WebviewKo ->
-            webview.eval("try { window.focus(); } catch (e) {}")
-        }
-    }
+    val webview = WebviewKo()
+    webview.title("telecrypt-messenger call")
+    webview.size(800, 600, WebviewKo.WindowHint.Max)
+    webview.init(
+        "window.addEventListener('load', () => {" +
+            "try { window.focus(); } catch (e) {}" +
+        "});"
+    )
+    webview.show()
+    webview.navigate(url)
+    webview.dispatch { w -> w.eval("try { window.focus(); } catch (e) {}") }
 }
 
 fun openUrlInBrowser(url: String) {
