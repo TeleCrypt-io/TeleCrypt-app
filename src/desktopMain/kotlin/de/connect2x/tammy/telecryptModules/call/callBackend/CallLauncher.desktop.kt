@@ -13,7 +13,9 @@ fun openWebView(url: String) {
         )
         show()
         navigate(url)
-        dispatch { webview -> webview.eval("try { window.focus(); } catch (e) {}") }
+        dispatch { webview: WebviewKo ->
+            webview.eval("try { window.focus(); } catch (e) {}")
+        }
     }
 }
 
