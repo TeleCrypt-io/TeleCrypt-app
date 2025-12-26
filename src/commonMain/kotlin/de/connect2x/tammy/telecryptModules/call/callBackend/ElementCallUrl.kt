@@ -17,9 +17,10 @@ internal fun buildElementCallUrl(
 
     val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
     val viaServersParam = buildViaServersParam(roomId)
+    val homeserverParam = buildHomeserverParam(roomId)
     val notificationParam = sendNotificationType?.let { "sendNotificationType=${encodeComponent(it)}&" } ?: ""
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
-        "${roomIdParam}${viaServersParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
+        "${roomIdParam}${viaServersParam}${homeserverParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
         "${notificationParam}intent=$encodedIntent"
 }
 
@@ -36,6 +37,17 @@ private fun buildViaServersParam(roomId: String): String {
         return ""
     }
     return "viaServers=${encodeComponent(server)}&"
+}
+
+private fun buildHomeserverParam(roomId: String): String {
+    if (!isMatrixRoomId(roomId)) {
+        return ""
+    }
+    val server = roomId.substringAfter(":", "")
+    if (server.isBlank()) {
+        return ""
+    }
+    return "homeserver=${encodeComponent("https://$server")}&"
 }
 
 private fun encodeComponent(value: String): String {
