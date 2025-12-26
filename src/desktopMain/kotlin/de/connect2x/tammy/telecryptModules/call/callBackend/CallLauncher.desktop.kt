@@ -13,7 +13,6 @@ fun openWebView(url: String) {
     )
     webview.show()
     webview.navigate(url)
-    webview.dispatch { w -> w.eval("try { window.focus(); } catch (e) {}") }
 }
 
 fun openUrlInBrowser(url: String) {
