@@ -6,8 +6,14 @@ fun openWebView(url: String) {
     WebviewKo().run {
         title("telecrypt-messenger call")
         size(800, 600, WebviewKo.WindowHint.Max)
-        url(url)
+        init(
+            "window.addEventListener('load', () => {" +
+                "try { window.focus(); } catch (e) {}" +
+            "});"
+        )
         show()
+        navigate(url)
+        dispatch { it.eval("try { window.focus(); } catch (e) {}") }
     }
 }
 
