@@ -10,6 +10,9 @@ import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 
+private const val EXTRA_CALL_URL = "EXTRA_CALL_URL"
+private const val EXTRA_CALL_SESSION_SCRIPT = "EXTRA_CALL_SESSION_SCRIPT"
+
 class ElementCallActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
@@ -17,11 +20,12 @@ class ElementCallActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val url = intent.getStringExtra("EXTRA_CALL_URL") ?: return finish()
+        val url = intent.getStringExtra(EXTRA_CALL_URL) ?: return finish()
+        val sessionScript = intent.getStringExtra(EXTRA_CALL_SESSION_SCRIPT)
         try {
             webView = WebView(this)
             setContentView(webView)
-            configureWebView()
+            configureWebView(sessionScript)
             webView.loadUrl(url)
         } catch (_: Throwable) {
             openInCustomTabs(url)
@@ -29,7 +33,7 @@ class ElementCallActivity : AppCompatActivity() {
         }
     }
 
-    private fun configureWebView() {
+    private fun configureWebView(sessionScript: String?) {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -43,7 +47,13 @@ class ElementCallActivity : AppCompatActivity() {
             }
         }
 
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                if (!sessionScript.isNullOrBlank()) {
+                    view.evaluateJavascript(sessionScript, null)
+                }
+            }
+        }
     }
 
     private fun openInCustomTabs(url: String) {
@@ -70,8 +80,15 @@ class ElementCallLauncherImpl(private val appContext: Context) : CallLauncher {
     }
 
     override fun joinByUrl(url: String) {
+        joinByUrlWithSession(url, null)
+    }
+
+    override fun joinByUrlWithSession(url: String, session: ElementCallSession?) {
         val intent = Intent(appContext, ElementCallActivity::class.java).apply {
-            putExtra("EXTRA_CALL_URL", url)
+            putExtra(EXTRA_CALL_URL, url)
+            if (session != null) {
+                putExtra(EXTRA_CALL_SESSION_SCRIPT, buildElementCallSessionInitScript(session))
+            }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         appContext.startActivity(intent)

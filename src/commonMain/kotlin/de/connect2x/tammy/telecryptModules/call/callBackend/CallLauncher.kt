@@ -19,6 +19,13 @@ interface CallLauncher {
     fun joinByUrl(url: String)
 
     /**
+     * Join a call using a Matrix session (avoids guest registration prompts)
+     */
+    fun joinByUrlWithSession(url: String, session: ElementCallSession?) {
+        joinByUrl(url)
+    }
+
+    /**
      * Check if Element Call is available for the given room
      * @param roomId The Matrix room ID to check
      * @return true if Element Call can be launched for this room

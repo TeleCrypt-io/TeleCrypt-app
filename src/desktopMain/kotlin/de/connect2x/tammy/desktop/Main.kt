@@ -32,6 +32,10 @@ import kotlin.reflect.KClass
 import java.net.URLDecoder
 import java.net.URLEncoder
 import org.koin.core.scope.Scope
+import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
+import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
+import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
+import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
 
 /**
  * Main entry point for TeleCrypt Desktop.
@@ -114,6 +118,9 @@ class SsoRuntimeHandler(
                 if (url.contains("loginToken")) {
                     println("[SsoRuntimeHandler] Received SSO callback: $url")
                     handleSsoCallback(url)
+                } else if (url.startsWith("com.zendev.telecrypt://call")) {
+                    println("[SsoRuntimeHandler] Received call deeplink: $url")
+                    handleCallDeepLink(url)
                 }
             }
         }
@@ -174,6 +181,39 @@ class SsoRuntimeHandler(
             println("[SsoRuntimeHandler] Failed to process SSO: ${e.message}")
             e.printStackTrace()
         }
+    }
+
+    private suspend fun handleCallDeepLink(callUrl: String) {
+        val parsed = runCatching { Url(callUrl) }.getOrNull() ?: return
+        val roomId = parsed.parameters["roomId"] ?: return
+        val roomName = parsed.parameters["roomName"] ?: "Call"
+        val mode = parsed.parameters["mode"]?.lowercase()
+        val callLauncher = awaitInstance(CallLauncher::class) ?: return
+        val matrixClient = awaitInstance(MatrixClient::class)
+        val session = resolveElementCallSession(matrixClient)
+        if (session == null) {
+            println("[SsoRuntimeHandler] Call session unavailable. Please re-login.")
+            return
+        }
+        val displayName = session?.displayName ?: resolveDisplayName(matrixClient)
+        val homeserverUrl = session?.homeserver?.ifBlank { null }
+            ?: resolveHomeserverUrl(matrixClient).ifBlank { null }
+        val url = buildElementCallUrl(
+            roomId,
+            roomName,
+            displayName,
+            intent = "join_existing",
+            sendNotificationType = null,
+            skipLobby = true,
+            homeserver = homeserverUrl,
+            callMode = mode,
+        )
+        callLauncher.joinByUrlWithSession(url, session)
+    }
+
+    private fun resolveDisplayName(matrixClient: MatrixClient?): String {
+        val displayName = matrixClient?.displayName?.value?.trim().orEmpty()
+        return displayName.ifEmpty { matrixClient?.userId?.full ?: "TeleCrypt User" }
     }
 
     private suspend fun resumeViaSettings(state: String, loginToken: String): Boolean {

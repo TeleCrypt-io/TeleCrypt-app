@@ -8,6 +8,13 @@ internal fun buildElementCallUrl(
     displayName: String,
     intent: String = "start_call",
     sendNotificationType: String? = "ring",
+    skipLobby: Boolean? = null,
+    waitForCallPickup: Boolean? = null,
+    homeserver: String? = null,
+    hideScreensharing: Boolean? = true,
+    autoLeave: Boolean? = null,
+    callMode: String? = null,
+    autoJoin: Boolean? = true,
 ): String {
     val alias = roomName.trim().ifEmpty { "call" }
     val encodedAlias = encodeComponent(alias)
@@ -17,11 +24,24 @@ internal fun buildElementCallUrl(
 
     val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
     val viaServersParam = buildViaServersParam(roomId)
-    val homeserverParam = buildHomeserverParam(roomId)
+    val resolvedHomeserver = homeserver
+        ?.takeIf { it.isNotBlank() }
+        ?: deriveHomeserverFromRoomId(roomId)
+    val homeserverParam = resolvedHomeserver?.let { "homeserver=${encodeComponent(it)}&" } ?: ""
     val notificationParam = sendNotificationType?.let { "sendNotificationType=${encodeComponent(it)}&" } ?: ""
+    val skipLobbyParam = skipLobby?.let { "skipLobby=${encodeComponent(it.toString())}&" } ?: ""
+    val waitForPickupParam = waitForCallPickup?.let {
+        "waitForCallPickup=${encodeComponent(it.toString())}&"
+    } ?: ""
+    val hideScreenshareParam = hideScreensharing?.let { "hideScreensharing=${encodeComponent(it.toString())}&" } ?: ""
+    val autoLeaveParam = autoLeave?.let { "autoLeave=${encodeComponent(it.toString())}&" } ?: ""
+    val callModeParam = callMode?.takeIf { it.isNotBlank() }?.let {
+        "telecryptCallMode=${encodeComponent(it)}&"
+    } ?: ""
+    val autoJoinParam = autoJoin?.let { "telecryptAutoJoin=${encodeComponent(it.toString())}&" } ?: ""
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
         "${roomIdParam}${viaServersParam}${homeserverParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
-        "${notificationParam}intent=$encodedIntent"
+        "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${autoLeaveParam}${callModeParam}${autoJoinParam}intent=$encodedIntent"
 }
 
 private fun isMatrixRoomId(roomId: String): Boolean {
@@ -39,15 +59,15 @@ private fun buildViaServersParam(roomId: String): String {
     return "viaServers=${encodeComponent(server)}&"
 }
 
-private fun buildHomeserverParam(roomId: String): String {
+private fun deriveHomeserverFromRoomId(roomId: String): String? {
     if (!isMatrixRoomId(roomId)) {
-        return ""
+        return null
     }
-    val server = roomId.substringAfter(":", "")
+    val server = roomId.substringAfter(":", "").trim()
     if (server.isBlank()) {
-        return ""
+        return null
     }
-    return "homeserver=${encodeComponent("https://$server")}&"
+    return "https://$server"
 }
 
 private fun encodeComponent(value: String): String {

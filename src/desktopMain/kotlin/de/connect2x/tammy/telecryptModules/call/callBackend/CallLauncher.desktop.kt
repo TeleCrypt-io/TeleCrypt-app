@@ -1,44 +1,11 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import com.github.winterreisender.webviewko.WebviewKo
-import com.github.winterreisender.webviewko.WebviewKoAWT
-import java.awt.EventQueue
-import java.awt.Toolkit
-import java.util.function.Consumer
-import javax.swing.JFrame
-import javax.swing.WindowConstants
+import com.github.winterreisender.webviewko.WebviewKo.WindowHint
+import java.io.File
+import kotlin.concurrent.thread
 
-fun openWebView(url: String) {
-    EventQueue.invokeLater {
-        val frame = JFrame("telecrypt-messenger call")
-        frame.defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
-        val screen = Toolkit.getDefaultToolkit().screenSize
-        frame.setSize((screen.width * 0.75).toInt(), (screen.height * 0.75).toInt())
-        frame.setLocationRelativeTo(null)
-        frame.isAlwaysOnTop = true
-        frame.isAlwaysOnTop = false
-        frame.toFront()
-        frame.requestFocus()
-
-        val view = WebviewKoAWT(
-            0,
-            null,
-            Consumer<WebviewKo> { webview ->
-                webview.title("telecrypt-messenger call")
-                webview.init(
-                    "window.addEventListener('load', () => {" +
-                        "try { window.focus(); } catch (e) {}" +
-                    "});"
-                )
-                webview.navigate(url)
-            }
-        )
-        frame.add(view)
-        frame.isVisible = true
-        frame.toFront()
-        frame.requestFocus()
-    }
-}
+private const val CALL_WINDOW_TITLE = "TeleCrypt Call"
 
 fun openUrlInBrowser(url: String) {
     val os = System.getProperty("os.name").lowercase()
@@ -61,6 +28,105 @@ fun openUrlInBrowser(url: String) {
     }
 }
 
+private fun openExternalCallWindow(url: String) {
+    val os = System.getProperty("os.name").lowercase()
+    if (!os.contains("win")) {
+        openUrlInBrowser(url)
+        return
+    }
+    val browser = findWindowsAppBrowser()
+    if (browser == null) {
+        openUrlInBrowser(url)
+        return
+    }
+    val process = ProcessBuilder(
+        browser,
+        "--app=$url",
+        "--new-window",
+    ).start()
+    bringProcessToFront(process.pid())
+}
+
+private fun openCallWindow(url: String, session: ElementCallSession?) {
+    if (session != null && tryOpenEmbeddedWindow(url, session)) {
+        return
+    }
+    openExternalCallWindow(url)
+}
+
+private fun tryOpenEmbeddedWindow(url: String, session: ElementCallSession): Boolean {
+    return runCatching {
+        val initScript = buildElementCallSessionInitScript(session)
+        thread(start = true, isDaemon = false, name = "ElementCallWebview") {
+            val webview = WebviewKo(0, null)
+            webview.title(CALL_WINDOW_TITLE)
+            webview.size(1280, 800, WindowHint.None)
+            webview.init(initScript)
+            webview.navigate(url)
+            webview.show()
+            thread(start = true, isDaemon = true, name = "ElementCallBringToFront") {
+                repeat(6) {
+                    Thread.sleep(400)
+                    bringWindowToFrontByTitle(CALL_WINDOW_TITLE)
+                }
+            }
+            thread(start = true, isDaemon = true, name = "ElementCallInjectSession") {
+                repeat(8) {
+                    Thread.sleep(600)
+                    webview.dispatch { eval(initScript) }
+                }
+            }
+            webview.start()
+            webview.destroy()
+        }
+    }.isSuccess
+}
+
+private fun findWindowsAppBrowser(): String? {
+    val programFiles = System.getenv("ProgramFiles").orEmpty()
+    val programFilesX86 = System.getenv("ProgramFiles(x86)").orEmpty()
+    val candidates = listOf(
+        "$programFiles\\Microsoft\\Edge\\Application\\msedge.exe",
+        "$programFilesX86\\Microsoft\\Edge\\Application\\msedge.exe",
+        "$programFiles\\Google\\Chrome\\Application\\chrome.exe",
+        "$programFilesX86\\Google\\Chrome\\Application\\chrome.exe",
+    )
+    return candidates.firstOrNull { it.isNotBlank() && File(it).exists() }
+}
+
+private fun bringProcessToFront(pid: Long) {
+    try {
+        Runtime.getRuntime().exec(
+            arrayOf(
+                "powershell",
+                "-Command",
+                "\$ws = New-Object -ComObject WScript.Shell; Start-Sleep -Milliseconds 300; \$ws.AppActivate($pid) | Out-Null",
+            )
+        )
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+private fun bringWindowToFrontByTitle(title: String) {
+    val os = System.getProperty("os.name").lowercase()
+    if (!os.contains("win")) {
+        return
+    }
+    val escapedTitle = title.replace("'", "''")
+    try {
+        Runtime.getRuntime().exec(
+            arrayOf(
+                "powershell",
+                "-Command",
+                "\$ws = New-Object -ComObject WScript.Shell; Start-Sleep -Milliseconds 500; \$ws.AppActivate('$escapedTitle') | Out-Null",
+            )
+        )
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
 /**
  * Desktop implementation of CallLauncher
  * Opens Element Call in the system's default browser
@@ -74,16 +140,11 @@ class ElementCallLauncherImpl : CallLauncher {
     }
 
     override fun joinByUrl(url: String) {
-        if (System.getProperty("os.name").lowercase().contains("linux")) {
-            openUrlInBrowser(url)
-        } else {
-            try {
-                openWebView(url)
-            } catch (e: Throwable) {
-                println(e.message)
-                openUrlInBrowser(url)
-            }
-        }
+        openCallWindow(url, null)
+    }
+
+    override fun joinByUrlWithSession(url: String, session: ElementCallSession?) {
+        openCallWindow(url, session)
     }
 
     override fun isCallAvailable(roomId: String): Boolean {
