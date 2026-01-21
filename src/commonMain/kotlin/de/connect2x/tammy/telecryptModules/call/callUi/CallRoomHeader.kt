@@ -123,7 +123,10 @@ class CallRoomHeader : RoomHeaderView {
                     return@launch
                 }
                 val displayName = session.displayName.ifBlank { resolveDisplayName(matrixClient) }
-                val homeserverUrl = session.homeserver.ifBlank { null }
+                val homeserverUrl = session.homeserver.ifBlank {
+                    resolveHomeserverUrl(matrixClient).ifBlank { "" }
+                }.ifBlank { null }
+                val callMode = mode.name.lowercase()
                 val intent = if (isDirectChat) "start_call_dm" else "start_call"
                 val sendNotificationType = if (isDirectChat) "ring" else "notification"
                 val waitForCallPickup = isDirectChat
@@ -136,7 +139,7 @@ class CallRoomHeader : RoomHeaderView {
                     skipLobby = true,
                     waitForCallPickup = waitForCallPickup,
                     homeserver = homeserverUrl,
-                    callMode = mode.name.lowercase(),
+                    callMode = callMode,
                 )
                 println("[Call] Launching Element Call: $callUrl")
                 println("[Call] Session user=${session.userId} device=${session.deviceId} hs=${session.homeserver}")

@@ -196,8 +196,9 @@ class SsoRuntimeHandler(
             return
         }
         val displayName = session?.displayName ?: resolveDisplayName(matrixClient)
-        val homeserverUrl = session?.homeserver?.ifBlank { null }
-            ?: resolveHomeserverUrl(matrixClient).ifBlank { null }
+        val homeserverUrl = session?.homeserver?.ifBlank {
+            resolveHomeserverUrl(matrixClient).ifBlank { "" }
+        }?.ifBlank { null }
         val url = buildElementCallUrl(
             roomId,
             roomName,
@@ -303,7 +304,11 @@ class SsoRuntimeHandler(
             if (method != null) {
                 method.isAccessible = true
                 val flow = runCatching { method.invoke(handler) }.getOrNull()
-                return flow as? MutableSharedFlow<Url>
+                if (flow is MutableSharedFlow<*>) {
+                    @Suppress("UNCHECKED_CAST")
+                    return flow as MutableSharedFlow<Url>
+                }
+                return null
             }
             clazz = clazz.superclass
         }

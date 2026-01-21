@@ -41,8 +41,12 @@ val appSuffixedVersion = withVersionSuffix(appVersion)
 val appName = "TeleCrypt Messenger"
 val appIdentifier = "com.zendev.telecrypt"
 val appPackage = "de.connect2x.tammy"
-val privacyInfo = File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
-val imprint = File("website/content/imprint.de-DE.md").readText().substringAfterMarkdownFrontMatter()
+val privacyInfo = rootDir.resolve("website/content/privacy.de-DE.md")
+    .readText()
+    .substringAfterMarkdownFrontMatter()
+val imprint = rootDir.resolve("website/content/imprint.de-DE.md")
+    .readText()
+    .substringAfterMarkdownFrontMatter()
 
 group = "de.connect2x"
 version = appSuffixedVersion

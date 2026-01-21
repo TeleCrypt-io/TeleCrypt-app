@@ -70,12 +70,6 @@ private fun tryOpenEmbeddedWindow(url: String, session: ElementCallSession): Boo
                     bringWindowToFrontByTitle(CALL_WINDOW_TITLE)
                 }
             }
-            thread(start = true, isDaemon = true, name = "ElementCallInjectSession") {
-                repeat(8) {
-                    Thread.sleep(600)
-                    webview.dispatch { eval(initScript) }
-                }
-            }
             webview.start()
             webview.destroy()
         }
