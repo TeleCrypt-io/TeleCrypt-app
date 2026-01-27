@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DoorFront
+import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Badge
@@ -26,6 +27,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,13 +57,15 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedIconButton
 import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
 import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
 import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
-import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
-import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
-import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
-import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
+import de.connect2x.tammy.telecryptModules.call.CallMode
+import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
+import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
+import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncEventHandler
+import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
 import net.folivo.trixnity.client.MatrixClient
+import net.folivo.trixnity.client.store.AccountStore
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.events.m.room.RoomMessageEventContent
 
@@ -106,49 +110,58 @@ class CallRoomHeader : RoomHeaderView {
 
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
-        val callLauncher: CallLauncher = DI.get()
+        val callCoordinator: CallCoordinator = DI.get()
+        val rtcWatcher: MatrixRtcWatcher = DI.get()
+        val incomingCallManager: IncomingCallManager = DI.get()
         var showCallDialog by remember { mutableStateOf(false) }
+        val resolvedRoomId = resolveRoomId(roomHeaderViewModel)
+        val contextMatrixClient = resolveMatrixClient(roomHeaderViewModel)
+        val rtcSyncHandler = remember(contextMatrixClient) {
+            contextMatrixClient?.let { client ->
+                runCatching { client.di.get<MatrixRtcSyncEventHandler>() }.getOrNull()
+                    ?: runCatching {
+                        val accountStore = client.di.get<AccountStore>()
+                        MatrixRtcSyncEventHandler(client.api.sync, rtcWatcher, accountStore)
+                    }.getOrNull()
+            }
+        }
+        LaunchedEffect(resolvedRoomId, contextMatrixClient) {
+            val userId = contextMatrixClient?.userId?.full ?: "null"
+            println(
+                "[Call] RTC wiring room=${resolvedRoomId?.full ?: "null"} " +
+                    "matrixClient=$userId handlerReady=${rtcSyncHandler != null}"
+            )
+        }
+        LaunchedEffect(rtcSyncHandler) {
+            rtcSyncHandler?.startInCoroutineScope(this)
+        }
+        val incomingState = resolvedRoomId
+            ?.let { rtcWatcher.roomState(it).collectAsState().value }
+        val incomingCallId = incomingState?.activeCallId
+
         val startCall: (CallMode) -> Unit = { mode ->
             scope.launch {
                 val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
-                val resolvedRoomId = resolveRoomId(roomHeaderViewModel)
                 val matrixClient = resolveMatrixClient(roomHeaderViewModel)
                 if (resolvedRoomId == null || matrixClient == null) {
                     snackbarHostState.showSnackbar("Call unavailable. Open the room and try again.")
                     return@launch
                 }
-                val session = resolveElementCallSession(matrixClient)
-                if (session == null) {
-                    snackbarHostState.showSnackbar("Call unavailable. Please re-login.")
+                val startResult = callCoordinator.startCall(
+                    matrixClient = matrixClient,
+                    roomId = resolvedRoomId,
+                    roomName = roomName,
+                    isDirect = isDirectChat,
+                    mode = mode,
+                )
+                if (!startResult.ok) {
+                    snackbarHostState.showSnackbar(
+                        startResult.userMessage ?: "Call unavailable. Try again."
+                    )
                     return@launch
                 }
-                val displayName = session.displayName.ifBlank { resolveDisplayName(matrixClient) }
-                val homeserverUrl = session.homeserver.ifBlank {
-                    resolveHomeserverUrl(matrixClient).ifBlank { "" }
-                }.ifBlank { null }
-                val callMode = mode.name.lowercase()
-                val intent = if (isDirectChat) "start_call_dm" else "start_call"
-                val sendNotificationType = if (isDirectChat) "ring" else "notification"
-                val waitForCallPickup = isDirectChat
-                val callUrl = buildElementCallUrl(
-                    resolvedRoomId.full,
-                    roomName,
-                    displayName,
-                    intent = intent,
-                    sendNotificationType = sendNotificationType,
-                    skipLobby = true,
-                    waitForCallPickup = waitForCallPickup,
-                    homeserver = homeserverUrl,
-                    callMode = callMode,
-                )
-                println("[Call] Launching Element Call: $callUrl")
-                println("[Call] Session user=${session.userId} device=${session.deviceId} hs=${session.homeserver}")
-                callLauncher.joinByUrlWithSession(callUrl, session)
-                val deepLink = buildTelecryptCallDeepLink(
-                    resolvedRoomId.full,
-                    roomName,
-                    mode,
-                )
+                val deepLink = startResult.deepLink
+                    ?: return@launch
                 sendCallLinkMessage(
                     matrixClient,
                     resolvedRoomId,
@@ -253,12 +266,36 @@ class CallRoomHeader : RoomHeaderView {
                             }
                         }
 
-                        CallButton(
-                            onClick = {
-                                showCallDialog = true
-                            },
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-                        )
+                        // Close dialog if call ends or is declined
+                        LaunchedEffect(incomingState?.rtcActive) {
+                            if (incomingState?.rtcActive == false) {
+                                showCallDialog = false
+                            }
+                        }
+
+                        if (incomingState?.localJoined == true) {
+                            EndCallButton(
+                                onClick = {
+                                    scope.launch {
+                                        val roomId = resolvedRoomId ?: return@launch
+                                        val client = contextMatrixClient ?: return@launch
+                                        callCoordinator.leaveCall(
+                                            matrixClient = client,
+                                            roomId = roomId,
+                                            endForAll = false
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                            )
+                        } else {
+                            CallButton(
+                                onClick = {
+                                    showCallDialog = true
+                                },
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                            )
+                        }
                         RoomExtras(roomHeaderViewModel, showSettingsButton)
                         Spacer(Modifier.size(8.dp))
                     }
@@ -313,11 +350,6 @@ class CallRoomHeader : RoomHeaderView {
     }
 }
 
-private fun resolveDisplayName(matrixClient: MatrixClient?): String {
-    val displayName = matrixClient?.displayName?.value?.trim().orEmpty()
-    return displayName.ifEmpty { matrixClient?.userId?.full ?: "TeleCrypt User" }
-}
-
 private suspend fun sendCallLinkMessage(
     matrixClient: MatrixClient,
     roomId: RoomId,
@@ -333,7 +365,6 @@ private suspend fun sendCallLinkMessage(
         body = body,
         format = MATRIX_HTML_FORMAT,
         formattedBody = formattedBody,
-        externalUrl = deepLink,
     )
     runCatching { matrixClient.api.room.sendMessageEvent(roomId, content) }
         .onFailure { println("[Call] Failed to send call link: ${it.message}") }
@@ -357,47 +388,6 @@ private fun escapeHtml(value: String): String {
         .replace("'", "&#39;")
 }
 
-private fun buildTelecryptCallDeepLink(roomId: String, roomName: String, mode: CallMode): String {
-    val encodedRoomId = encodeQueryComponent(roomId)
-    val encodedRoomName = encodeQueryComponent(roomName)
-    val encodedMode = encodeQueryComponent(mode.name.lowercase())
-    return "com.zendev.telecrypt://call?roomId=$encodedRoomId&roomName=$encodedRoomName&mode=$encodedMode"
-}
-
-private fun encodeQueryComponent(value: String): String {
-    val bytes = value.encodeToByteArray()
-    val out = StringBuilder(bytes.size * 3)
-    for (byte in bytes) {
-        val b = byte.toInt() and 0xFF
-        val ch = b.toChar()
-        if (isUnreserved(ch)) {
-            out.append(ch)
-        } else {
-            out.append('%')
-            out.append(HEX[b ushr 4])
-            out.append(HEX[b and 0x0F])
-        }
-    }
-    return out.toString()
-}
-
-private fun isUnreserved(ch: Char): Boolean {
-    return (ch in 'A'..'Z') ||
-        (ch in 'a'..'z') ||
-        (ch in '0'..'9') ||
-        ch == '-' || ch == '.' || ch == '_' || ch == '~'
-}
-
-private val HEX = charArrayOf(
-    '0', '1', '2', '3', '4', '5', '6', '7',
-    '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-)
-
-private enum class CallMode {
-    AUDIO,
-    VIDEO,
-}
-
 private fun callModeLabel(mode: CallMode): String {
     return when (mode) {
         CallMode.AUDIO -> "Audio call"
@@ -417,5 +407,23 @@ fun CallButton(
     )
     {
         Icon(Icons.Default.Phone, "Call Button")
+    }
+}
+@Composable
+fun EndCallButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ThemedIconButton(
+        style = MaterialTheme.components.commonIconButton,
+        onClick = onClick,
+        modifier = modifier
+    )
+    {
+        Icon(
+            imageVector = Icons.Default.CallEnd,
+            contentDescription = "End Call",
+            tint = MaterialTheme.colorScheme.error
+        )
     }
 }

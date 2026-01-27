@@ -1,9 +1,11 @@
-package de.connect2x.messenger.compose.view.theme
+package de.connect2x.tammy.telecryptModules.call.callUi
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import de.connect2x.messenger.compose.view.theme.*
+
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Density
 import de.connect2x.messenger.compose.view.common.deriveFromHue
@@ -59,13 +61,27 @@ class CallTheme : Theme {
     ) {
         val accentColor = Color(0,0,1,1)
         val accentHue = accentColor.hue
+        val primaryContainer = md_theme_light_primaryContainer.deriveFromHue(accentHue)
+        val secondary = md_theme_light_secondary.deriveFromHue(accentHue)
+        val surfaceVariant = md_theme_light_surfaceVariant.deriveFromHue(accentHue)
+        val outline = md_theme_light_outline.deriveFromHue(accentHue)
+        val inverseOnSurface = md_theme_light_inverseOnSurface.deriveFromHue(accentHue)
+        val inverseSurface = md_theme_light_inverseSurface.deriveFromHue(accentHue)
+        val inversePrimary = md_theme_light_inversePrimary.deriveFromHue(accentHue)
+        val surfaceDim = md_theme_light_surfaceDim.deriveFromHue(accentHue)
+        val surfaceBright = md_theme_light_surfaceBright.deriveFromHue(accentHue)
+        val surfaceContainerLowest = md_theme_light_surfaceContainerLowest.deriveFromHue(accentHue)
+        val surfaceContainerLow = md_theme_light_surfaceContainerLow.deriveFromHue(accentHue)
+        val surfaceContainer = md_theme_light_surfaceContainer.deriveFromHue(accentHue)
+        val surfaceContainerHigh = md_theme_light_surfaceContainerHigh.deriveFromHue(accentHue)
+        val surfaceContainerHighest = md_theme_light_surfaceContainerHighest.deriveFromHue(accentHue)
         ThemeImpl().create(
             ColorScheme(
                 primary = accentColor,
                 onPrimary = md_theme_light_onPrimary,
-                primaryContainer = md_theme_light_primaryContainer.deriveFromHue(accentHue),
+                primaryContainer = primaryContainer,
                 onPrimaryContainer = md_theme_light_onPrimaryContainer,
-                secondary = md_theme_light_secondary.deriveFromHue(accentHue),
+                secondary = secondary,
                 onSecondary = md_theme_light_onSecondary,
                 secondaryContainer = md_theme_light_secondaryContainer,
                 onSecondaryContainer = md_theme_light_onSecondaryContainer,
@@ -81,22 +97,34 @@ class CallTheme : Theme {
                 onBackground = md_theme_light_onBackground,
                 surface = md_theme_light_surface,
                 onSurface = md_theme_light_onSurface,
-                surfaceVariant = md_theme_light_surfaceVariant.deriveFromHue(accentHue),
+                surfaceVariant = surfaceVariant,
                 onSurfaceVariant = md_theme_light_onSurfaceVariant,
-                outline = md_theme_light_outline.deriveFromHue(accentHue),
-                inverseOnSurface = md_theme_light_inverseOnSurface.deriveFromHue(accentHue),
-                inverseSurface = md_theme_light_inverseSurface.deriveFromHue(accentHue),
-                inversePrimary = md_theme_light_inversePrimary.deriveFromHue(accentHue),
+                outline = outline,
+                inverseOnSurface = inverseOnSurface,
+                inverseSurface = inverseSurface,
+                inversePrimary = inversePrimary,
                 surfaceTint = md_theme_light_surfaceTint,
                 outlineVariant = md_theme_light_outlineVariant,
                 scrim = md_theme_light_scrim,
-                surfaceDim = md_theme_light_surfaceDim.deriveFromHue(accentHue),
-                surfaceBright = md_theme_light_surfaceBright.deriveFromHue(accentHue),
-                surfaceContainerLowest = md_theme_light_surfaceContainerLowest.deriveFromHue(accentHue),
-                surfaceContainerLow = md_theme_light_surfaceContainerLow.deriveFromHue(accentHue),
-                surfaceContainer = md_theme_light_surfaceContainer.deriveFromHue(accentHue),
-                surfaceContainerHigh = md_theme_light_surfaceContainerHigh.deriveFromHue(accentHue),
-                surfaceContainerHighest = md_theme_light_surfaceContainerHighest.deriveFromHue(accentHue),
+                surfaceDim = surfaceDim,
+                surfaceBright = surfaceBright,
+                surfaceContainerLowest = surfaceContainerLowest,
+                surfaceContainerLow = surfaceContainerLow,
+                surfaceContainer = surfaceContainer,
+                surfaceContainerHigh = surfaceContainerHigh,
+                surfaceContainerHighest = surfaceContainerHighest,
+                primaryFixed = primaryContainer,
+                primaryFixedDim = primaryContainer,
+                onPrimaryFixed = md_theme_light_onPrimaryContainer,
+                onPrimaryFixedVariant = md_theme_light_onPrimary,
+                secondaryFixed = secondary,
+                secondaryFixedDim = secondary,
+                onSecondaryFixed = md_theme_light_onSecondary,
+                onSecondaryFixedVariant = md_theme_light_onSecondary,
+                tertiaryFixed = md_theme_light_tertiary,
+                tertiaryFixedDim = md_theme_light_tertiary,
+                onTertiaryFixed = md_theme_light_onTertiary,
+                onTertiaryFixedVariant = md_theme_light_onTertiary,
             ),
             messengerColors,
             messengerDpConstants,
@@ -105,7 +133,10 @@ class CallTheme : Theme {
             typography,
             density,
             componentStyles,
-            content
-        )
+        ) {
+            content()
+            IncomingCallScreen()
+        }
+
     }
 }

@@ -34,15 +34,16 @@ private fun openExternalCallWindow(url: String) {
         openUrlInBrowser(url)
         return
     }
-    val browser = findWindowsAppBrowser()
-    if (browser == null) {
-        openUrlInBrowser(url)
-        return
-    }
+    val browser = findWindowsAppBrowser() ?: return openUrlInBrowser(url)
+    
+    val rootPath = System.getenv("TRIXNITY_MESSENGER_ROOT_PATH") ?: "./app-data"
+    val browserDataPath = File(rootPath, "browser-data").absolutePath
+    
     val process = ProcessBuilder(
         browser,
         "--app=$url",
         "--new-window",
+        "--user-data-dir=$browserDataPath"
     ).start()
     bringProcessToFront(process.pid())
 }

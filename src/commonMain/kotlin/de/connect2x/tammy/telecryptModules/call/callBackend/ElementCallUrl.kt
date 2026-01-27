@@ -14,14 +14,16 @@ internal fun buildElementCallUrl(
     hideScreensharing: Boolean? = true,
     autoLeave: Boolean? = null,
     callMode: String? = null,
-    autoJoin: Boolean? = true,
+    autoJoin: Boolean? = false,
+    disableAudio: Boolean? = null,
+    disableVideo: Boolean? = null,
 ): String {
     val alias = roomName.trim().ifEmpty { "call" }
     val encodedAlias = encodeComponent(alias)
     val encodedRoomId = encodeComponent(roomId)
     val encodedDisplayName = encodeComponent(displayName)
     val encodedIntent = encodeComponent(intent)
-
+ 
     val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
     val viaServersParam = buildViaServersParam(roomId)
     val resolvedHomeserver = homeserver
@@ -39,9 +41,14 @@ internal fun buildElementCallUrl(
         "telecryptCallMode=${encodeComponent(it)}&"
     } ?: ""
     val autoJoinParam = autoJoin?.let { "telecryptAutoJoin=${encodeComponent(it.toString())}&" } ?: ""
+    
+    val disableAudioParam = disableAudio?.let { "disableAudio=${it}&" } ?: ""
+    val disableVideoParam = disableVideo?.let { "disableVideo=${it}&" } ?: ""
+
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
         "${roomIdParam}${viaServersParam}${homeserverParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
-        "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${autoLeaveParam}${callModeParam}${autoJoinParam}intent=$encodedIntent"
+        "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${autoLeaveParam}${callModeParam}${autoJoinParam}" +
+        "${disableAudioParam}${disableVideoParam}intent=$encodedIntent"
 }
 
 private fun isMatrixRoomId(roomId: String): Boolean {

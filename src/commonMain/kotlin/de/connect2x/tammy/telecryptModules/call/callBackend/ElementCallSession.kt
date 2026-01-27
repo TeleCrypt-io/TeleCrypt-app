@@ -127,9 +127,10 @@ fun buildElementCallSessionInitScript(session: ElementCallSession): String {
               const mode = getParam("telecryptCallMode");
               if (mode !== "audio") return;
               const btn = document.querySelector('[data-testid="incall_videomute"]');
-              if (btn) {
-                btn.click();
-              }
+              if (!btn) return;
+              const pressed = btn.getAttribute("aria-pressed");
+              if (pressed === "true") return;
+              btn.click();
             } catch (e) {}
           }
           function hideScreenshare() {
