@@ -1,0 +1,23 @@
+{
+    "$schema": "https://gitlab.com/connect2x/lognity/-/raw/main/schema/Lognity%20Config%20V1.json",
+    "version": 1,
+    "level": "INFO",
+    "enabled": true,
+    "appenders": [
+        {
+            "type": "system_console",
+            "name": "console",
+            "pattern": "{{levelColor}}>> {{levelSymbol}} [{{hh}}:{{mm}}:{{ss}}.{{SSS}}] ({{name}} @ {{threadId}}) {{message}}{{r}}",
+            "formatter": "default"
+        },
+        {
+            "type": "rolling_file",
+            "base_path": "{MESSENGER_DIR}/logs/messenger.log",
+            "name": "file",
+            "pattern": "[{{level}}] {{hh}}:{{mm}}:{{ss}}.{{SSS}} ({{name}} @ {{threadId}}) {{message}}{{r}}",
+            "formatter": "default",
+            "max_file_size": 10485760,
+            "file_count": 8
+        }
+    ]
+}

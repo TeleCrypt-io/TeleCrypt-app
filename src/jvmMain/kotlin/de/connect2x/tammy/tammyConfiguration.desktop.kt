@@ -4,7 +4,7 @@ import de.connect2x.trixnity.messenger.util.RootPath
 import okio.Path.Companion.toPath
 
 internal actual fun getDevRootPath(): RootPath? =
-    System.getenv("TRIXNITY_MESSENGER_ROOT_PATH")
+    System.getenv("TAMMY_ROOT_PATH")
         ?.trim()
         ?.takeIf { it.isNotEmpty() }
         ?.let { RootPath(it.toPath()) }

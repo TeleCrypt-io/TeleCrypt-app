@@ -1,0 +1,14 @@
+{
+    "$schema": "https://gitlab.com/connect2x/lognity/-/raw/main/schema/Lognity%20Config%20V1.json",
+    "version": 1,
+    "level": "DEBUG",
+    "enabled": true,
+    "appenders": [
+        {
+            "type": "logcat",
+            "name": "console",
+            "pattern": "{{message}}{{r}}",
+            "formatter": "default"
+        }
+    ]
+}
