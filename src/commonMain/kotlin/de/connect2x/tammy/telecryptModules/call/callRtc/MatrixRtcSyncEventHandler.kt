@@ -1,5 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcSlotEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
@@ -11,21 +14,24 @@ import kotlinx.serialization.json.JsonPrimitive
 import net.folivo.trixnity.client.store.AccountStore
 import net.folivo.trixnity.clientserverapi.client.SyncApiClient
 import net.folivo.trixnity.core.EventHandler
-import net.folivo.trixnity.core.subscribeEachEventAsFlow
+import net.folivo.trixnity.core.model.RoomId
+import net.folivo.trixnity.core.model.UserId
 import net.folivo.trixnity.core.model.events.ClientEvent
 import net.folivo.trixnity.core.model.events.UnknownEventContent
+import net.folivo.trixnity.core.subscribeEachEventAsFlow
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.runCatching
 
 class MatrixRtcSyncEventHandler(
     private val syncApi: SyncApiClient,
-    private val watcher: MatrixRtcWatcher,
+    private val rtcService: MatrixRtcService,
     private val accountStore: AccountStore,
     private val nowMs: () -> Long = ::currentTimeMillis,
 ) : EventHandler {
     private val started = AtomicBoolean(false)
     private val loggedFirstEvent = AtomicBoolean(false)
     @Volatile
-    private var localUserId: String? = null
+    private var localUserId: UserId? = null
     @Volatile
     private var localDeviceId: String? = null
 
@@ -36,7 +42,7 @@ class MatrixRtcSyncEventHandler(
         println("[Call] MatrixRtcSyncEventHandler started")
         scope.launch {
             accountStore.getAccountAsFlow().collectLatest { account ->
-                localUserId = account?.userId?.full
+                localUserId = account?.userId
                 localDeviceId = account?.deviceId
             }
         }
@@ -93,8 +99,8 @@ class MatrixRtcSyncEventHandler(
             val slotId = event.stateKey.takeIf { it.isNotBlank() } ?: MATRIX_RTC_DEFAULT_SLOT_ID
             val callId = parseCallId(raw)
             println("[Call] RTC slot update room=${roomId.full} slot=$slotId callId=$callId")
-            watcher.applySlotUpdate(
-                MatrixRtcSlotUpdate(
+            rtcService.applySlotEvent(
+                MatrixRtcSlotEvent(
                     roomId = roomId,
                     slotId = slotId,
                     callId = callId,
@@ -105,24 +111,24 @@ class MatrixRtcSyncEventHandler(
         }
         if (normalized == MatrixRtcEventTypes.MEMBER) {
             val stickyKey = event.stateKey.takeIf { it.isNotBlank() }
-            val sender = event.sender?.full ?: return
-            println("[Call] RTC member state event room=${roomId.full} sender=$sender")
-            applyMemberRaw(roomId, sender, raw, stickyKey)
+            val sender = event.sender ?: return
+            println("[Call] RTC member state event room=${roomId.full} sender=${sender.full}")
+            applyMemberRaw(roomId, sender.full, raw, stickyKey)
         }
     }
 
     private fun handleMemberEvent(event: ClientEvent.EphemeralEvent<*>, raw: JsonObject) {
         val roomId = event.roomId ?: return
-        val sender = event.sender?.full ?: return
-        println("[Call] RTC member ephemeral room=${roomId.full} sender=$sender")
-        applyMemberRaw(roomId, sender, raw, null)
+        val sender = event.sender ?: return
+        println("[Call] RTC member ephemeral room=${roomId.full} sender=${sender.full}")
+        applyMemberRaw(roomId, sender.full, raw, null)
     }
 
     private fun handleMemberMessageEvent(event: ClientEvent.RoomEvent.MessageEvent<*>, raw: JsonObject) {
         val roomId = event.roomId ?: return
-        val sender = event.sender?.full ?: return
-        println("[Call] RTC member message room=${roomId.full} sender=$sender")
-        applyMemberRaw(roomId, sender, raw, null)
+        val sender = event.sender ?: return
+        println("[Call] RTC member message room=${roomId.full} sender=${sender.full}")
+        applyMemberRaw(roomId, sender.full, raw, null)
     }
 
     private fun handleMemberAccountDataEvent(
@@ -131,12 +137,12 @@ class MatrixRtcSyncEventHandler(
     ) {
         val roomId = event.roomId
         val sender = localUserId ?: return
-        println("[Call] RTC member account data room=${roomId.full} sender=$sender")
-        applyMemberRaw(roomId, sender, raw, event.key)
+        println("[Call] RTC member account data room=${roomId.full} sender=${sender.full}")
+        applyMemberRaw(roomId, sender.full, raw, event.key)
     }
 
     private fun applyMemberRaw(
-        roomId: net.folivo.trixnity.core.model.RoomId,
+        roomId: RoomId,
         senderUserId: String,
         raw: JsonObject,
         stateKey: String?,
@@ -149,13 +155,13 @@ class MatrixRtcSyncEventHandler(
         val claimedUserId = member?.string("claimed_user_id")
         val claimedDeviceId = member?.string("claimed_device_id")
         val memberId = member?.string("id")
-        val userId = claimedUserId ?: senderUserId
+        val userId = parseUserId(claimedUserId ?: senderUserId) ?: return
         val deviceId = claimedDeviceId ?: memberId?.substringAfter("device:", "")
             ?.takeIf { it.isNotBlank() }
         val connected = raw.boolean("disconnected") != true
         val expiresAtMs = resolveExpiresAtMs(raw)
-        watcher.applyMemberUpdate(
-            MatrixRtcMemberUpdate(
+        rtcService.applyMemberEvent(
+            MatrixRtcMemberEvent(
                 roomId = roomId,
                 slotId = slotId,
                 callId = callId,
@@ -169,11 +175,15 @@ class MatrixRtcSyncEventHandler(
         )
     }
 
-    private fun isLocalMember(userId: String, deviceId: String?): Boolean {
+    private fun isLocalMember(userId: UserId, deviceId: String?): Boolean {
         val localUser = localUserId ?: return false
         if (localUser != userId) return false
         val localDevice = localDeviceId ?: return true
         return deviceId == null || deviceId == localDevice
+    }
+
+    private fun parseUserId(value: String): UserId? {
+        return runCatching { UserId(value) }.getOrNull()
     }
 
     private fun parseCallId(raw: JsonObject): String? {

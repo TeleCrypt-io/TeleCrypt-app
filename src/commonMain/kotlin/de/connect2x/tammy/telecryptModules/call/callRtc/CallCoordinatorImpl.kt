@@ -118,12 +118,13 @@ class CallCoordinatorImpl(
                 userMessage = "Call unavailable. Please re-login.",
             )
         val state = watcher.roomState(roomId).value
-        val callId = state.activeCallId
+        val sessionState = state.session
             ?: return CallStartResult(
                 ok = false,
                 userMessage = "No active call in this room.",
             )
-        val slotId = state.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
+        val callId = sessionState.callId
+        val slotId = sessionState.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
         stopActiveSession(matrixClient, roomId, endForAll = false)
         val transports = resolveRtcTransports(matrixClient)
         startMemberRefresh(matrixClient, roomId, slotId, callId, transports)

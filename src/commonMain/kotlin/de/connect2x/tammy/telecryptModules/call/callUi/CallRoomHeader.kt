@@ -60,6 +60,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncEventHandler
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
@@ -112,6 +113,7 @@ class CallRoomHeader : RoomHeaderView {
         val scope = rememberCoroutineScope()
         val callCoordinator: CallCoordinator = DI.get()
         val rtcWatcher: MatrixRtcWatcher = DI.get()
+        val rtcService: MatrixRtcService = DI.get()
         val incomingCallManager: IncomingCallManager = DI.get()
         var showCallDialog by remember { mutableStateOf(false) }
         val resolvedRoomId = resolveRoomId(roomHeaderViewModel)
@@ -121,7 +123,7 @@ class CallRoomHeader : RoomHeaderView {
                 runCatching { client.di.get<MatrixRtcSyncEventHandler>() }.getOrNull()
                     ?: runCatching {
                         val accountStore = client.di.get<AccountStore>()
-                        MatrixRtcSyncEventHandler(client.api.sync, rtcWatcher, accountStore)
+                MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore)
                     }.getOrNull()
             }
         }
@@ -137,7 +139,7 @@ class CallRoomHeader : RoomHeaderView {
         }
         val incomingState = resolvedRoomId
             ?.let { rtcWatcher.roomState(it).collectAsState().value }
-        val incomingCallId = incomingState?.activeCallId
+        val incomingCallId = incomingState?.session?.callId
 
         val startCall: (CallMode) -> Unit = { mode ->
             scope.launch {

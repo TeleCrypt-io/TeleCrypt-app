@@ -42,6 +42,8 @@ import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
  * Provides Runtime SSO Injection to handle state loss on restart.
  */
 fun main(args: Array<String>) {
+    val allowMultiInstance = System.getenv("TRIXNITY_MESSENGER_MULTI_INSTANCE") == "1" ||
+        !System.getenv("TRIXNITY_MESSENGER_ROOT_PATH").isNullOrBlank()
     // Check if we have a pending SSO callback from previous session
     val pendingCallbackFile = File(System.getProperty("java.io.tmpdir"), "telecrypt_sso_callback.txt")
     val pendingCallback = if (pendingCallbackFile.exists()) {
@@ -54,26 +56,39 @@ fun main(args: Array<String>) {
     val deeplinkUrl = args.firstOrNull { it.startsWith("com.zendev.telecrypt://") }
         ?: pendingCallback
     
-    // Try to become the primary instance
-    if (!SingleInstanceManager.tryAcquireLock()) {
-        if (deeplinkUrl != null) {
-            println("[Main] Another instance running, forwarding deeplink...")
-            SingleInstanceManager.sendDeeplinkToRunningInstance(deeplinkUrl)
-        } else {
-            SingleInstanceManager.sendDeeplinkToRunningInstance("focus")
+    // Try to become the primary instance unless explicitly disabled.
+    if (!allowMultiInstance) {
+        if (!SingleInstanceManager.tryAcquireLock()) {
+            if (deeplinkUrl != null) {
+                println("[Main] Another instance running, forwarding deeplink...")
+                SingleInstanceManager.sendDeeplinkToRunningInstance(deeplinkUrl)
+            } else {
+                SingleInstanceManager.sendDeeplinkToRunningInstance("focus")
+            }
+            exitProcess(0)
         }
-        exitProcess(0)
+        println("[Main] Primary instance starting...")
+    } else {
+        println("[Main] Multi-instance mode enabled (no single-instance lock).")
     }
     
-    println("[Main] Primary instance starting...")
+    // Isolate WebView data directories to prevent conflicts between instances
+    val rootPath = System.getenv("TRIXNITY_MESSENGER_ROOT_PATH") ?: "./app-data"
+    val webviewDataPath = File(rootPath, "webview-data").absolutePath
+    // We can't easily change env vars in a running JVM, but we can set it for child processes 
+    // and some libraries check system properties. Winreisender WebviewKo uses the C library, 
+    // which checks the environment variable. 
+    // For WebView2 on Windows, this is the magic variable:
+    System.setProperty("WEBVIEW2_USER_DATA_FOLDER", webviewDataPath)
     
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
-    // Start local HTTP server to receive SSO callbacks
-    SsoCallbackServer.start(scope)
-    
-    // Start listening for deeplinks from other instances
-    SingleInstanceManager.startListening(scope)
+    // Start local HTTP server to receive SSO callbacks (only for primary instance).
+    if (!allowMultiInstance) {
+        SsoCallbackServer.start(scope)
+        // Start listening for deeplinks from other instances
+        SingleInstanceManager.startListening(scope)
+    }
     
     startMessenger(
         configuration = tammyConfiguration {
@@ -98,8 +113,10 @@ fun main(args: Array<String>) {
     )
     
     // Cleanup on exit
-    SsoCallbackServer.stop()
-    SingleInstanceManager.shutdown()
+    if (!allowMultiInstance) {
+        SsoCallbackServer.stop()
+        SingleInstanceManager.shutdown()
+    }
 }
 
 /**
@@ -208,6 +225,7 @@ class SsoRuntimeHandler(
             skipLobby = true,
             homeserver = homeserverUrl,
             callMode = mode,
+            autoJoin = true,
         )
         callLauncher.joinByUrlWithSession(url, session)
     }

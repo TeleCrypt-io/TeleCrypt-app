@@ -1,5 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcRoomState
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ class IncomingCallManager(
         }
         scope.launch {
             watcher.allRoomStates.collect { state ->
-                val callId = state.activeCallId
+                val callId = state.session?.callId
                 if (state.incoming && callId != null) {
                     if (state.localJoined) {
                         if (_incomingCall.value?.callId == callId) {
@@ -66,7 +67,7 @@ class IncomingCallManager(
     }
 
     private suspend fun processIncomingState(state: MatrixRtcRoomState) {
-        val callId = state.activeCallId ?: return
+        val callId = state.session?.callId ?: return
         if (_incomingCall.value?.callId == callId) return
         if (_incomingCall.value != null) return
 
@@ -75,8 +76,8 @@ class IncomingCallManager(
         } ?: return
 
         // Use the simplified name resolution for stability
-        val memberState = state.activeMembers.firstOrNull { !it.isLocal }
-        val callerName = memberState?.userId ?: "Unknown User"
+        val memberState = state.participants.firstOrNull { !it.isLocal }
+        val callerName = memberState?.userId?.full ?: "Unknown User"
         
         var isDirect = false
         var roomName = state.roomId.full

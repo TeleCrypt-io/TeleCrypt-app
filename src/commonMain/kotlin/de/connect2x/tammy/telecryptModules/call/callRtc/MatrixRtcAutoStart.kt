@@ -1,5 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +14,7 @@ import net.folivo.trixnity.core.model.UserId
 
 class MatrixRtcAutoStart(
     private val matrixClients: MatrixClients,
-    private val watcher: MatrixRtcWatcher,
+    private val rtcService: MatrixRtcService,
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val handlers = mutableMapOf<String, HandlerEntry>()
@@ -49,7 +50,7 @@ class MatrixRtcAutoStart(
             return null
         }
         ensureRtcFilters(client, userKey, accountStore)
-        return MatrixRtcSyncEventHandler(client.api.sync, watcher, accountStore)
+        return MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore)
     }
 
     private suspend fun ensureRtcFilters(

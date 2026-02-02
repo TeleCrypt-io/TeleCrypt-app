@@ -31,7 +31,6 @@ fun tammyConfiguration(
         { composeViewModule(null) },
         { notificationsModule(this@multiMessengerConfig, notificationsDebugEnabled) },
         ::tammyModule,
-        ::callModule,
         // TODO this needs to be removed and fixed, as there is no MatrixMessengerSettingsHolderImpl at MultiMessenger level!
         ::platformMatrixMessengerSettingsHolderModule,
         // TODO there should be a more clean way for I18n
@@ -41,7 +40,8 @@ fun tammyConfiguration(
                 single<Languages> { DefaultLanguages }
                 single<I18n> { object : I18n(get(), get(), get(), get()) {} }
             }
-        })
+        },
+    )
     // MatrixMultiMessengerConfiguration flavors
     when (BuildConfig.flavor) {
         Flavor.PROD -> {}
