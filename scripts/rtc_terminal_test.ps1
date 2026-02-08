@@ -57,7 +57,8 @@ print(json.dumps({
 function Normalize-Homeserver([string]$baseUrl) {
     $trimmed = $baseUrl.Trim()
     if ([string]::IsNullOrWhiteSpace($trimmed)) { return "" }
-    $noMatrix = $trimmed.Split("/_matrix")[0]
+    $matrixPathIndex = $trimmed.IndexOf("/_matrix")
+    $noMatrix = if ($matrixPathIndex -ge 0) { $trimmed.Substring(0, $matrixPathIndex) } else { $trimmed }
     return $noMatrix.TrimEnd("/")
 }
 
