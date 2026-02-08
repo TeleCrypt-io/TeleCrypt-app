@@ -240,12 +240,29 @@ class CallCoordinatorImpl(
         callId: String?,
     ) {
         val content = callId?.let { buildSlotContent(it) } ?: JsonObject(emptyMap())
-        val event = UnknownEventContent(content, MatrixRtcEventTypes.SLOT)
-        runCatching {
-            matrixClient.api.room.sendStateEvent(roomId, event, slotId)
-        }.onFailure { error ->
-            println("[Call] Failed to publish slot: ${error.message}")
+        if (sendSlotStateEvent(matrixClient, roomId, slotId, content, MatrixRtcEventTypes.SLOT)) {
+            return
         }
+        if (sendSlotStateEvent(matrixClient, roomId, slotId, content, MatrixRtcEventTypes.UNSTABLE_SLOT)) {
+            return
+        }
+        println("[Call] Failed to publish slot with both stable and unstable event types.")
+    }
+
+    private suspend fun sendSlotStateEvent(
+        matrixClient: MatrixClient,
+        roomId: RoomId,
+        slotId: String,
+        content: JsonObject,
+        eventType: String,
+    ): Boolean {
+        val event = UnknownEventContent(content, eventType)
+        return runCatching {
+            matrixClient.api.room.sendStateEvent(roomId, event, slotId)
+            true
+        }.onFailure { error ->
+            println("[Call] Failed to publish slot type=$eventType: ${error.message}")
+        }.getOrDefault(false)
     }
 
     private suspend fun publishMember(
