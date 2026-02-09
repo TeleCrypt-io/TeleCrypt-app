@@ -1,8 +1,10 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcEventParser
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcSlotEvent
+import de.connect2x.tammy.trixnityProposal.callRtc.MATRIX_RTC_DEFAULT_SLOT_ID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
@@ -97,23 +99,23 @@ class MatrixRtcSyncEventHandler(
         val roomId = event.roomId ?: return
         if (normalized == MatrixRtcEventTypes.SLOT) {
             val slotId = event.stateKey.takeIf { it.isNotBlank() } ?: MATRIX_RTC_DEFAULT_SLOT_ID
-            val callId = parseCallId(raw)
-            println("[Call] RTC slot update room=${roomId.full} slot=$slotId callId=$callId")
-            rtcService.applySlotEvent(
-                MatrixRtcSlotEvent(
-                    roomId = roomId,
-                    slotId = slotId,
-                    callId = callId,
-                    open = callId != null,
-                )
-            )
+            val slotEvent = MatrixRtcEventParser.parseSlotEvent(roomId, slotId, raw)
+            println("[Call] RTC slot update room=${roomId.full} slot=$slotId callId=${slotEvent.callId}")
+            rtcService.applySlotEvent(slotEvent)
             return
         }
         if (normalized == MatrixRtcEventTypes.MEMBER) {
             val stickyKey = event.stateKey.takeIf { it.isNotBlank() }
             val sender = event.sender ?: return
             println("[Call] RTC member state event room=${roomId.full} sender=${sender.full}")
-            applyMemberRaw(roomId, sender.full, raw, stickyKey)
+            applyMemberRaw(
+                roomId = roomId,
+                senderUserId = sender.full,
+                raw = raw,
+                stateKey = stickyKey,
+                originTimestampMs = event.originTimestamp,
+                unsignedAgeMs = event.unsigned?.age,
+            )
         }
     }
 
@@ -121,14 +123,28 @@ class MatrixRtcSyncEventHandler(
         val roomId = event.roomId ?: return
         val sender = event.sender ?: return
         println("[Call] RTC member ephemeral room=${roomId.full} sender=${sender.full}")
-        applyMemberRaw(roomId, sender.full, raw, null)
+        applyMemberRaw(
+            roomId = roomId,
+            senderUserId = sender.full,
+            raw = raw,
+            stateKey = null,
+            originTimestampMs = null,
+            unsignedAgeMs = null,
+        )
     }
 
     private fun handleMemberMessageEvent(event: ClientEvent.RoomEvent.MessageEvent<*>, raw: JsonObject) {
         val roomId = event.roomId ?: return
         val sender = event.sender ?: return
         println("[Call] RTC member message room=${roomId.full} sender=${sender.full}")
-        applyMemberRaw(roomId, sender.full, raw, null)
+        applyMemberRaw(
+            roomId = roomId,
+            senderUserId = sender.full,
+            raw = raw,
+            stateKey = null,
+            originTimestampMs = event.originTimestamp,
+            unsignedAgeMs = event.unsigned?.age,
+        )
     }
 
     private fun handleMemberAccountDataEvent(
@@ -138,7 +154,14 @@ class MatrixRtcSyncEventHandler(
         val roomId = event.roomId
         val sender = localUserId ?: return
         println("[Call] RTC member account data room=${roomId.full} sender=${sender.full}")
-        applyMemberRaw(roomId, sender.full, raw, event.key)
+        applyMemberRaw(
+            roomId = roomId,
+            senderUserId = sender.full,
+            raw = raw,
+            stateKey = event.key,
+            originTimestampMs = null,
+            unsignedAgeMs = null,
+        )
     }
 
     private fun applyMemberRaw(
@@ -146,86 +169,22 @@ class MatrixRtcSyncEventHandler(
         senderUserId: String,
         raw: JsonObject,
         stateKey: String?,
+        originTimestampMs: Long?,
+        unsignedAgeMs: Long?,
     ) {
-        val slotId = raw.string("slot_id")?.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
-            ?: MATRIX_RTC_DEFAULT_SLOT_ID
-        val callId = parseCallId(raw) ?: return
-        val stickyKey = raw.string("sticky_key") ?: stateKey ?: return
-        val member = raw.obj("member")
-        val claimedUserId = member?.string("claimed_user_id")
-        val claimedDeviceId = member?.string("claimed_device_id")
-        val memberId = member?.string("id")
-        val userId = parseUserId(claimedUserId ?: senderUserId) ?: return
-        val deviceId = claimedDeviceId ?: memberId?.substringAfter("device:", "")
-            ?.takeIf { it.isNotBlank() }
-        val connected = raw.boolean("disconnected") != true
-        val expiresAtMs = resolveExpiresAtMs(raw)
-        rtcService.applyMemberEvent(
-            MatrixRtcMemberEvent(
-                roomId = roomId,
-                slotId = slotId,
-                callId = callId,
-                stickyKey = stickyKey,
-                userId = userId,
-                deviceId = deviceId,
-                expiresAtMs = expiresAtMs,
-                isLocal = isLocalMember(userId, deviceId),
-                connected = connected,
-            )
-        )
+        val memberEvent = MatrixRtcEventParser.parseMemberEvent(
+            roomId = roomId,
+            senderUserId = senderUserId,
+            content = raw,
+            stateKey = stateKey,
+            localUserId = localUserId,
+            localDeviceId = localDeviceId,
+            nowMs = nowMs,
+            originTimestampMs = originTimestampMs,
+            unsignedAgeMs = unsignedAgeMs,
+        ) ?: return
+        rtcService.applyMemberEvent(memberEvent)
     }
-
-    private fun isLocalMember(userId: UserId, deviceId: String?): Boolean {
-        val localUser = localUserId ?: return false
-        if (localUser != userId) return false
-        val localDevice = localDeviceId ?: return true
-        return deviceId == null || deviceId == localDevice
-    }
-
-    private fun parseUserId(value: String): UserId? {
-        return runCatching { UserId(value) }.getOrNull()
-    }
-
-    private fun parseCallId(raw: JsonObject): String? {
-        val application = raw.obj("application") ?: return null
-        val appType = application.string("type")
-        if (appType != "m.call") return null
-        val callObject = application.obj("m.call") ?: return null
-        return callObject.string("id")?.takeIf { it.isNotBlank() }
-    }
-
-    private fun resolveExpiresAtMs(raw: JsonObject): Long {
-        val now = nowMs()
-        val absolute = findLong(raw, ABSOLUTE_EXPIRY_KEYS)
-        if (absolute != null) {
-            return normalizeTimestamp(absolute.value)
-        }
-        val duration = findLong(raw, DURATION_EXPIRY_KEYS)
-        if (duration != null) {
-            return now + normalizeDuration(duration.value, duration.key)
-        }
-        return 0L
-    }
-
-    private fun findLong(raw: JsonObject, keys: List<String>): KeyedLong? {
-        for (key in keys) {
-            val value = raw.long(key)
-            if (value != null) {
-                return KeyedLong(key, value)
-            }
-        }
-        return null
-    }
-
-    private fun normalizeTimestamp(value: Long): Long {
-        return if (value < MILLIS_THRESHOLD) value * 1000 else value
-    }
-
-    private fun normalizeDuration(value: Long, key: String): Long {
-        return if (key.contains("ms")) value else normalizeTimestamp(value)
-    }
-
-    private data class KeyedLong(val key: String, val value: Long)
 
     private fun JsonObject.string(key: String): String? = get(key).asString()
 
@@ -254,16 +213,5 @@ class MatrixRtcSyncEventHandler(
         }
     }
 
-    private companion object {
-        private const val MILLIS_THRESHOLD = 1_000_000_000_000L
-        private val ABSOLUTE_EXPIRY_KEYS = listOf("expires_ts", "expires_ts_ms", "expires_at")
-        private val DURATION_EXPIRY_KEYS = listOf(
-            "expires",
-            "expires_in",
-            "ttl",
-            "expires_ms",
-            "expires_in_ms",
-            "ttl_ms",
-        )
-    }
+    private companion object
 }
