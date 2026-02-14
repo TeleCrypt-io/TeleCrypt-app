@@ -43,6 +43,8 @@ data class MatrixRtcParticipant(
     val expiresAtMs: Long,
     val isLocal: Boolean,
 ) {
+    fun deviceKey(): String = deviceId ?: stickyKey
+
     fun isExpired(nowMs: Long): Boolean {
         if (expiresAtMs <= 0L) return false
         return nowMs >= expiresAtMs
@@ -60,7 +62,10 @@ data class MatrixRtcAggregatedParticipant(
     val userId: UserId,
     val deviceParticipants: List<MatrixRtcParticipant>,
     val devicesCount: Int,
-    val anyLocal: Boolean,
+    val connectedDevicesCount: Int = devicesCount,
+    val localDevicesCount: Int = deviceParticipants.count { it.isLocal && it.connected },
+    val anyLocal: Boolean = localDevicesCount > 0,
+    val anyConnected: Boolean = connectedDevicesCount > 0,
 )
 
 /**

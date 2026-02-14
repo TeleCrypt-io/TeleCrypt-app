@@ -130,11 +130,16 @@ class MatrixRtcService(
         val aggregatedParticipants = participants
             .groupBy { it.userId }
             .map { (userId, devices) ->
+                val connectedDevicesCount = devices.count { it.connected }
+                val localDevicesCount = devices.count { it.isLocal && it.connected }
                 MatrixRtcAggregatedParticipant(
                     userId = userId,
-                    deviceParticipants = devices.sortedBy { it.stickyKey },
+                    deviceParticipants = devices.sortedBy { it.deviceKey() },
                     devicesCount = devices.size,
-                    anyLocal = devices.any { it.isLocal },
+                    connectedDevicesCount = connectedDevicesCount,
+                    localDevicesCount = localDevicesCount,
+                    anyLocal = localDevicesCount > 0,
+                    anyConnected = connectedDevicesCount > 0,
                 )
             }
             .sortedBy { it.userId.full }
