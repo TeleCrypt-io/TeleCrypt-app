@@ -78,4 +78,104 @@ class MatrixRtcServiceTest {
         assertFalse(service.observeRoom(roomId).value.rtcActive)
         assertEquals(0, service.observeRoom(roomId).value.participantsCount)
     }
+
+    @Test
+    fun multiDeviceParticipantsAggregateByUserId() {
+        val store = InMemoryMatrixRtcCallStateStore()
+        val service = MatrixRtcService(store) { 0L }
+        val roomId = RoomId("!r:example.org")
+        val userId = UserId("@same:example.org")
+
+        service.applySlotEvent(MatrixRtcSlotEvent(roomId, "slot", "call-1", true))
+        service.applyMemberEvent(
+            MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = "slot",
+                callId = "call-1",
+                stickyKey = "sticky-A",
+                userId = userId,
+                deviceId = "DEV-A",
+                expiresAtMs = 0L,
+                isLocal = false,
+                connected = true,
+            )
+        )
+        service.applyMemberEvent(
+            MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = "slot",
+                callId = "call-1",
+                stickyKey = "sticky-B",
+                userId = userId,
+                deviceId = "DEV-B",
+                expiresAtMs = 0L,
+                isLocal = false,
+                connected = true,
+            )
+        )
+
+        val state = service.observeRoom(roomId).value
+        assertEquals(2, state.participantsCount)
+        assertEquals(1, state.aggregatedParticipantsCount)
+        assertEquals(userId, state.aggregatedParticipants.single().userId)
+        assertEquals(2, state.aggregatedParticipants.single().devicesCount)
+    }
+
+    @Test
+    fun disconnectRemovesOnlyOneStickyKey() {
+        val store = InMemoryMatrixRtcCallStateStore()
+        val service = MatrixRtcService(store) { 0L }
+        val roomId = RoomId("!r:example.org")
+        val userId = UserId("@same:example.org")
+
+        service.applySlotEvent(MatrixRtcSlotEvent(roomId, "slot", "call-1", true))
+        service.applyMemberEvent(
+            MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = "slot",
+                callId = "call-1",
+                stickyKey = "sticky-A",
+                userId = userId,
+                deviceId = "DEV-A",
+                expiresAtMs = 0L,
+                isLocal = false,
+                connected = true,
+            )
+        )
+        service.applyMemberEvent(
+            MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = "slot",
+                callId = "call-1",
+                stickyKey = "sticky-B",
+                userId = userId,
+                deviceId = "DEV-B",
+                expiresAtMs = 0L,
+                isLocal = false,
+                connected = true,
+            )
+        )
+        assertEquals(2, service.observeRoom(roomId).value.participantsCount)
+        assertEquals(1, service.observeRoom(roomId).value.aggregatedParticipantsCount)
+
+        service.applyMemberEvent(
+            MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = "slot",
+                callId = "call-1",
+                stickyKey = "sticky-A",
+                userId = userId,
+                deviceId = "DEV-A",
+                expiresAtMs = 0L,
+                isLocal = false,
+                connected = false,
+            )
+        )
+
+        val state = service.observeRoom(roomId).value
+        assertEquals(1, state.participantsCount)
+        assertEquals(1, state.aggregatedParticipantsCount)
+        assertEquals(1, state.aggregatedParticipants.single().devicesCount)
+        assertEquals("sticky-B", state.participants.single().stickyKey)
+    }
 }

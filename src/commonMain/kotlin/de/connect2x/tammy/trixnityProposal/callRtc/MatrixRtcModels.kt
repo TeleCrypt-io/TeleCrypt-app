@@ -50,6 +50,20 @@ data class MatrixRtcParticipant(
 }
 
 /**
+ * Aggregated view of a participant across devices.
+ *
+ * A single Matrix user may have multiple concurrent RTC participants (one per device),
+ * represented as distinct sticky keys. Aggregation is therefore done by [userId] and
+ * retains the underlying device-level participants.
+ */
+data class MatrixRtcAggregatedParticipant(
+    val userId: UserId,
+    val deviceParticipants: List<MatrixRtcParticipant>,
+    val devicesCount: Int,
+    val anyLocal: Boolean,
+)
+
+/**
  * Summary of the currently open call session.
  */
 data class MatrixRtcCallSession(
@@ -77,6 +91,8 @@ data class MatrixRtcRoomState(
     val session: MatrixRtcCallSession?,
     val participants: List<MatrixRtcParticipant>,
     val participantsCount: Int,
+    val aggregatedParticipants: List<MatrixRtcAggregatedParticipant> = emptyList(),
+    val aggregatedParticipantsCount: Int = 0,
     val localJoined: Boolean,
     val rtcActive: Boolean,
     val incoming: Boolean,
