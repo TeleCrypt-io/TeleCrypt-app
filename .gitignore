@@ -18,6 +18,7 @@ out/
 
 
 app-data/
+app-data-2/
 .kotlin
 local.properties
 
@@ -38,3 +39,6 @@ PLAN.md
 RUNBOOK.md
 SPEC.md
 TEAM_INBOX.md
+logs/
+.tmp/
+.tmp-element-call/
