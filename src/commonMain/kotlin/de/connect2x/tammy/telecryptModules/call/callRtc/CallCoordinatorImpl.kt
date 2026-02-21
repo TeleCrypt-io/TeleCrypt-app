@@ -404,9 +404,9 @@ class CallCoordinatorImpl(
         val deviceId = matrixClient.deviceId
         val expiresAtMs = nowMs() + MEMBER_TTL_MS
         val member = buildJsonObject {
+            put("id", JsonPrimitive(stickyKey))
             val deviceValue = deviceId.takeIf { it.isNotBlank() }
             if (deviceValue != null) {
-                put("id", JsonPrimitive("device:$deviceValue"))
                 put("claimed_device_id", JsonPrimitive(deviceValue))
             }
             put("claimed_user_id", JsonPrimitive(userId))
