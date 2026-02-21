@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Call theme now uses updated Material3 fixed color roles to avoid deprecated constructor usage
+- Avoid unchecked cast warnings when reflecting URL handler flow
+
 ### Security
 
 ## 1.1.33

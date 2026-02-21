@@ -67,6 +67,7 @@ dependencyResolutionManagement {
         maven("https://oss.sonatype.org/content/repositories/snapshots")
         maven("https://gitlab.com/api/v4/projects/75787860/packages/maven") // compose multiplatform core a11y
         maven("https://gitlab.com/api/v4/projects/75787729/packages/maven") // compose multiplatform a11y
+        maven("https://gitlab.com/api/v4/projects/38224197/packages/maven") // webviewko for web view window for calls
         google()
     }
 

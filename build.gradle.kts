@@ -41,8 +41,12 @@ val appSuffixedVersion = withVersionSuffix(appVersion)
 val appName = "TeleCrypt Messenger"
 val appIdentifier = "com.zendev.telecrypt"
 val appPackage = "de.connect2x.tammy"
-val privacyInfo = File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
-val imprint = File("website/content/imprint.de-DE.md").readText().substringAfterMarkdownFrontMatter()
+val privacyInfo = rootDir.resolve("website/content/privacy.de-DE.md")
+    .readText()
+    .substringAfterMarkdownFrontMatter()
+val imprint = rootDir.resolve("website/content/imprint.de-DE.md")
+    .readText()
+    .substringAfterMarkdownFrontMatter()
 
 group = "de.connect2x"
 version = appSuffixedVersion
@@ -169,6 +173,8 @@ kotlin {
                 }
                 implementation(libs.logback.classic)
                 implementation(sharedLibs.kotlinx.coroutines.swing)
+
+                implementation("com.github.winterreisender:webviewko:0.6.0")
             }
         }
         iosMain {
@@ -186,6 +192,8 @@ kotlin {
                 implementation(libs.logback.android)
                 implementation(libs.slf4j.api)
                 implementation(sharedLibs.firebase.messaging)
+                implementation("androidx.browser:browser:1.8.0")
+                implementation("io.insert-koin:koin-android:3.5.6")
             }
         }
 
