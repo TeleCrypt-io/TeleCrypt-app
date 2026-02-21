@@ -157,6 +157,23 @@ Per room, derive:
 - `rtcActive` (slotOpen && activeMembers not empty)
 - `incoming` (rtcActive && !localJoined && activeCallId is new)
 
+### Participants and aggregation
+MatrixRTC membership is device-level:
+- Each device participant is identified by `sticky_key` (and may also carry `device_id`).
+- A single Matrix `user_id` may have multiple concurrent participants (multiple devices).
+
+Device identity note:
+- Some events may omit `device_id`. For local state/UI, treat `deviceKey = device_id ?: sticky_key`.
+
+TeleCrypt's derived room state therefore exposes two views:
+- `participants`: device-level participants (one entry per `sticky_key`).
+- `aggregatedParticipants`: user-level aggregation of those device participants, grouped by `user_id`.
+
+Aggregation invariants:
+- Room state only keeps participants that belong to the active `(slot_id, call_id)` session.
+- Expired participants are removed from state.
+- A member "disconnect" update removes only the matching `sticky_key` (other devices remain).
+
 Incoming detection:
 - Maintain `lastSeenCallId` per room.
 - If activeCallId differs from lastSeenCallId and localJoined is false,

@@ -43,11 +43,30 @@ data class MatrixRtcParticipant(
     val expiresAtMs: Long,
     val isLocal: Boolean,
 ) {
+    fun deviceKey(): String = deviceId ?: stickyKey
+
     fun isExpired(nowMs: Long): Boolean {
         if (expiresAtMs <= 0L) return false
         return nowMs >= expiresAtMs
     }
 }
+
+/**
+ * Aggregated view of a participant across devices.
+ *
+ * A single Matrix user may have multiple concurrent RTC participants (one per device),
+ * represented as distinct sticky keys. Aggregation is therefore done by [userId] and
+ * retains the underlying device-level participants.
+ */
+data class MatrixRtcAggregatedParticipant(
+    val userId: UserId,
+    val deviceParticipants: List<MatrixRtcParticipant>,
+    val devicesCount: Int,
+    val connectedDevicesCount: Int = devicesCount,
+    val localDevicesCount: Int = deviceParticipants.count { it.isLocal && it.connected },
+    val anyLocal: Boolean = localDevicesCount > 0,
+    val anyConnected: Boolean = connectedDevicesCount > 0,
+)
 
 /**
  * Summary of the currently open call session.
@@ -77,6 +96,8 @@ data class MatrixRtcRoomState(
     val session: MatrixRtcCallSession?,
     val participants: List<MatrixRtcParticipant>,
     val participantsCount: Int,
+    val aggregatedParticipants: List<MatrixRtcAggregatedParticipant> = emptyList(),
+    val aggregatedParticipantsCount: Int = 0,
     val localJoined: Boolean,
     val rtcActive: Boolean,
     val incoming: Boolean,

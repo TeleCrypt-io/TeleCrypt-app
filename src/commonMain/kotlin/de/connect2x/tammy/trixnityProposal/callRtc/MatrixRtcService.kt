@@ -19,6 +19,8 @@ class MatrixRtcService(
             session = null,
             participants = emptyList(),
             participantsCount = 0,
+            aggregatedParticipants = emptyList(),
+            aggregatedParticipantsCount = 0,
             localJoined = false,
             rtcActive = false,
             incoming = false,
@@ -92,19 +94,24 @@ class MatrixRtcService(
     private fun refresh(roomId: RoomId) {
         val holder = holderFor(roomId)
         val now = nowMs()
-        purgeExpiredParticipants(holder, now)
+        purgeNonActiveAndExpiredParticipants(holder, now)
         val newState = buildState(holder, now)
         holder.state.value = newState
         _allRoomStates.tryEmit(newState)
     }
 
-    private fun purgeExpiredParticipants(holder: RoomHolder, nowMs: Long) {
+    private fun purgeNonActiveAndExpiredParticipants(holder: RoomHolder, nowMs: Long) {
+        val activeCallId = holder.activeCallId
+        val activeSlotId = holder.slotId
         val iterator = holder.participants.iterator()
         while (iterator.hasNext()) {
             val participant = iterator.next().value
-            if (participant.isExpired(nowMs)) {
-                iterator.remove()
-            }
+            val keepForActiveSession = holder.slotOpen &&
+                !activeCallId.isNullOrBlank() &&
+                participant.slotId == activeSlotId &&
+                participant.callId == activeCallId
+            val remove = !keepForActiveSession || participant.isExpired(nowMs)
+            if (remove) iterator.remove()
         }
     }
 
@@ -119,6 +126,24 @@ class MatrixRtcService(
                     !participant.isExpired(nowMs)
             }
         }
+
+        val aggregatedParticipants = participants
+            .groupBy { it.userId }
+            .map { (userId, devices) ->
+                val connectedDevicesCount = devices.count { it.connected }
+                val localDevicesCount = devices.count { it.isLocal && it.connected }
+                MatrixRtcAggregatedParticipant(
+                    userId = userId,
+                    deviceParticipants = devices.sortedBy { it.deviceKey() },
+                    devicesCount = devices.size,
+                    connectedDevicesCount = connectedDevicesCount,
+                    localDevicesCount = localDevicesCount,
+                    anyLocal = localDevicesCount > 0,
+                    anyConnected = connectedDevicesCount > 0,
+                )
+            }
+            .sortedBy { it.userId.full }
+
         val localJoined = participants.any { it.isLocal }
         val rtcActive = holder.slotOpen && participants.isNotEmpty()
         val lastSeenCallId = callStateStore.getLastSeenCallId(holder.roomId)
@@ -142,6 +167,8 @@ class MatrixRtcService(
             session = session,
             participants = participants,
             participantsCount = participants.size,
+            aggregatedParticipants = aggregatedParticipants,
+            aggregatedParticipantsCount = aggregatedParticipants.size,
             localJoined = localJoined,
             rtcActive = rtcActive,
             incoming = incoming,
