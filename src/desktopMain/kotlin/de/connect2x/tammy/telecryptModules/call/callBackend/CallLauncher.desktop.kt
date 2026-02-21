@@ -57,6 +57,17 @@ private fun openCallWindow(url: String, session: ElementCallSession?) {
 
 private fun tryOpenEmbeddedWindow(url: String, session: ElementCallSession): Boolean {
     return runCatching {
+        val os = System.getProperty("os.name").lowercase()
+        if (os.contains("nix") || os.contains("nux")) {
+            ProcessBuilder(
+                "chromium",
+                "--app=${url}",
+                "--new-window",
+                "--disable-extensions"
+            ).start()
+            return true
+        }
+
         val initScript = buildElementCallSessionInitScript(session)
         thread(start = true, isDaemon = false, name = "ElementCallWebview") {
             val webview = WebviewKo(0, null)
