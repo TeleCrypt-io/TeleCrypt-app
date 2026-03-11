@@ -1,9 +1,6 @@
 package de.connect2x.tammy.trixnityProposal.callRtc
 
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import kotlin.runCatching
@@ -13,8 +10,18 @@ object MatrixRtcEventParser {
         roomId: RoomId,
         slotId: String,
         content: JsonObject,
+    ): MatrixRtcSlotEvent = parseSlotEvent(
+        roomId = roomId,
+        slotId = slotId,
+        content = MatrixRtcRawEventContentMapper.slot(content),
+    )
+
+    fun parseSlotEvent(
+        roomId: RoomId,
+        slotId: String,
+        content: MatrixRtcSlotContentSource,
     ): MatrixRtcSlotEvent {
-        if (content.isEmpty()) {
+        if (content.applicationType == null && content.callId == null) {
             return MatrixRtcSlotEvent(
                 roomId = roomId,
                 slotId = slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID },
@@ -23,8 +30,7 @@ object MatrixRtcEventParser {
             )
         }
 
-        val application = content.obj("application")
-        val appType = application?.string("type")
+        val appType = content.applicationType
         if (appType != APP_TYPE_M_CALL) {
             return MatrixRtcSlotEvent(
                 roomId = roomId,
@@ -34,7 +40,7 @@ object MatrixRtcEventParser {
             )
         }
 
-        val callId = parseCallIdFromApplication(application)
+        val callId = content.callId
         return MatrixRtcSlotEvent(
             roomId = roomId,
             slotId = slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID },
@@ -53,38 +59,55 @@ object MatrixRtcEventParser {
         nowMs: () -> Long,
         originTimestampMs: Long? = null,
         unsignedAgeMs: Long? = null,
+    ): MatrixRtcMemberEvent? = parseMemberEvent(
+        roomId = roomId,
+        senderUserId = senderUserId,
+        content = MatrixRtcRawEventContentMapper.member(content),
+        stateKey = stateKey,
+        localUserId = localUserId,
+        localDeviceId = localDeviceId,
+        nowMs = nowMs,
+        originTimestampMs = originTimestampMs,
+        unsignedAgeMs = unsignedAgeMs,
+    )
+
+    fun parseMemberEvent(
+        roomId: RoomId,
+        senderUserId: String,
+        content: MatrixRtcMemberContentSource,
+        stateKey: String?,
+        localUserId: UserId?,
+        localDeviceId: String?,
+        nowMs: () -> Long,
+        originTimestampMs: Long? = null,
+        unsignedAgeMs: Long? = null,
     ): MatrixRtcMemberEvent? {
         val localNow = nowMs()
         val serverNow = originTimestampMs?.let { origin -> origin + (unsignedAgeMs ?: 0L) }
         val now = serverNow ?: localNow
         val slotId = (
-            content.string("slot_id")
-                ?: content.string("slotId")
-                ?: content.string("slot")
+            content.slotId
         )?.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID } ?: MATRIX_RTC_DEFAULT_SLOT_ID
 
         val stickyKey = (
-            content.string("sticky_key")
-                ?: content.string("stickyKey")
-                ?: content.string("msc4354_sticky_key")
+            content.stickyKey
+                ?: content.unstableStickyKey
                 ?: stateKey
         )?.takeIf { it.isNotBlank() } ?: return null
 
-        if (content.boolean("disconnected") == true) {
+        if (content.disconnected) {
             return disconnectEvent(roomId, slotId, stickyKey, senderUserId, content, localUserId, localDeviceId)
         }
 
-        val application = content.obj("application")
-        val appType = application?.string("type")
+        val appType = content.applicationType
         if (appType != null && appType != APP_TYPE_M_CALL) {
             return null
         }
 
-        val callId = parseCallIdFromApplication(application)
-        val member = content.obj("member")
-        val memberId = member?.string("id")
-        val claimedUserId = member?.string("claimed_user_id")
-        val claimedDeviceId = member?.string("claimed_device_id")
+        val callId = content.callId
+        val memberId = content.memberId
+        val claimedUserId = content.claimedUserId
+        val claimedDeviceId = content.claimedDeviceId
 
         val userId = (
             claimedUserId?.let { parseUserId(it) }
@@ -101,7 +124,7 @@ object MatrixRtcEventParser {
             stickyKey = stickyKey,
             callId = callId,
             memberId = memberId,
-            rtcTransports = content["rtc_transports"] as? JsonArray ?: content["transports"] as? JsonArray,
+            rtcTransportTypes = content.rtcTransportTypes,
         )
 
         val expiresAtMs = resolveExpiresAtMs(content, now = now, originTimestampMs = originTimestampMs)
@@ -123,11 +146,11 @@ object MatrixRtcEventParser {
         slotId: String,
         stickyKey: String,
         senderUserId: String,
-        content: JsonObject,
+        content: MatrixRtcMemberContentSource,
         localUserId: UserId?,
         localDeviceId: String?,
     ): MatrixRtcMemberEvent? {
-        val claimedUserId = content.obj("member")?.string("claimed_user_id")
+        val claimedUserId = content.claimedUserId
         val userId = (
             claimedUserId?.let { parseUserId(it) }
                 ?: parseUserId(senderUserId)
@@ -150,36 +173,13 @@ object MatrixRtcEventParser {
         stickyKey: String,
         callId: String?,
         memberId: String?,
-        rtcTransports: JsonArray?,
+        rtcTransportTypes: List<String>,
     ): Boolean {
         if (slotId.isBlank()) return false
         if (callId.isNullOrBlank()) return false
         if (memberId.isNullOrBlank()) return false
         if (stickyKey != memberId) return false
-        if (rtcTransports == null) return false
-        if (rtcTransports.isEmpty()) return false
-        val hasAnyTypedTransport = rtcTransports.any { element ->
-            val obj = element as? JsonObject ?: return@any false
-            val type = obj.string("type")
-            !type.isNullOrBlank()
-        }
-        return hasAnyTypedTransport
-    }
-
-    private fun parseCallIdFromApplication(application: JsonObject?): String? {
-        if (application == null) return null
-        val appType = application.string("type")
-        if (appType != APP_TYPE_M_CALL) return null
-
-        val dotted = application.string("m.call.id")
-        if (!dotted.isNullOrBlank()) return dotted
-
-        val nested = application.obj("m.call")
-        return (
-            nested?.string("id")
-                ?: nested?.string("call_id")
-                ?: nested?.string("callId")
-        )?.takeIf { it.isNotBlank() }
+        return rtcTransportTypes.any { it.isNotBlank() }
     }
 
     private fun isLocalMember(userId: UserId, deviceId: String?, localUserId: UserId?, localDeviceId: String?): Boolean {
@@ -193,13 +193,13 @@ object MatrixRtcEventParser {
         return runCatching { UserId(value) }.getOrNull()
     }
 
-    private fun resolveExpiresAtMs(raw: JsonObject, now: Long, originTimestampMs: Long?): Long {
-        val absolute = findLong(raw, ABSOLUTE_EXPIRY_KEYS)
+    private fun resolveExpiresAtMs(content: MatrixRtcMemberContentSource, now: Long, originTimestampMs: Long?): Long {
+        val absolute = findLong(content.expiryCandidates, ABSOLUTE_EXPIRY_KEYS)
         if (absolute != null) {
             val ts = normalizeTimestamp(absolute.value)
             return if (ts <= 0L) now else ts
         }
-        val duration = findLong(raw, DURATION_EXPIRY_KEYS)
+        val duration = findLong(content.expiryCandidates, DURATION_EXPIRY_KEYS)
         if (duration != null) {
             val delta = normalizeDuration(duration.value, duration.key)
             val base = originTimestampMs ?: now
@@ -209,15 +209,10 @@ object MatrixRtcEventParser {
         return 0L
     }
 
-    private fun findLong(raw: JsonObject, keys: List<String>): KeyedLong? {
-        for (key in keys) {
-            val value = raw.long(key)
-            if (value != null) {
-                return KeyedLong(key, value)
-            }
+    private fun findLong(candidates: List<MatrixRtcExpiryCandidate>, keys: List<String>): KeyedLong? =
+        candidates.firstNotNullOfOrNull { candidate ->
+            if (candidate.key in keys) KeyedLong(candidate.key, candidate.value) else null
         }
-        return null
-    }
 
     private fun normalizeTimestamp(value: Long): Long {
         return if (value < MILLIS_THRESHOLD) value * 1000 else value
@@ -229,45 +224,9 @@ object MatrixRtcEventParser {
 
     private data class KeyedLong(val key: String, val value: Long)
 
-    private fun JsonObject.string(key: String): String? = get(key).asString()
-
-    private fun JsonObject.long(key: String): Long? = get(key).asLong()
-
-    private fun JsonObject.boolean(key: String): Boolean? = get(key).asBoolean()
-
-    private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject
-
-    private fun JsonElement?.asString(): String? {
-        val primitive = this as? JsonPrimitive ?: return null
-        return primitive.content.takeIf { it.isNotBlank() }
-    }
-
-    private fun JsonElement?.asLong(): Long? {
-        val primitive = this as? JsonPrimitive ?: return null
-        return primitive.content.toLongOrNull()
-    }
-
-    private fun JsonElement?.asBoolean(): Boolean? {
-        val primitive = this as? JsonPrimitive ?: return null
-        return when (primitive.content.lowercase()) {
-            "true" -> true
-            "false" -> false
-            else -> null
-        }
-    }
-
-    private const val APP_TYPE_M_CALL = "m.call"
+    private const val APP_TYPE_M_CALL = MATRIX_RTC_APP_TYPE_CALL
     private const val MILLIS_THRESHOLD = 1_000_000_000_000L
 
-    private val ABSOLUTE_EXPIRY_KEYS = listOf("expires_ts", "expires_ts_ms", "expires_at")
-    private val DURATION_EXPIRY_KEYS = listOf(
-        "expires",
-        "expires_in",
-        "ttl",
-        "expires_ms",
-        "expires_in_ms",
-        "ttl_ms",
-        "sticky_duration_ttl_ms",
-        "msc4354_sticky_duration_ttl_ms",
-    )
+    private val ABSOLUTE_EXPIRY_KEYS = MATRIX_RTC_ABSOLUTE_EXPIRY_KEYS
+    private val DURATION_EXPIRY_KEYS = MATRIX_RTC_DURATION_EXPIRY_KEYS
 }

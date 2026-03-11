@@ -15,6 +15,20 @@ import kotlin.test.assertTrue
 class MatrixRtcEventParserTest {
     private val roomId = RoomId("!r:example.org")
 
+    @Test
+    fun slotParsesTypedFriendlyContentSource() {
+        val slot = MatrixRtcEventParser.parseSlotEvent(
+            roomId = roomId,
+            slotId = "m.call#ROOM",
+            content = MatrixRtcSlotContentSource(
+                applicationType = "m.call",
+                callId = "call-typed",
+            ),
+        )
+        assertTrue(slot.open)
+        assertEquals("call-typed", slot.callId)
+    }
+
     private fun memberContent(vararg pairs: Pair<String, kotlinx.serialization.json.JsonElement>): JsonObject {
         return JsonObject(pairs.toMap())
     }
@@ -100,6 +114,33 @@ class MatrixRtcEventParserTest {
         assertNotNull(member)
         assertFalse(member.connected)
         assertEquals("sticky", member.stickyKey)
+    }
+
+    @Test
+    fun memberParsesTypedFriendlyContentSource() {
+        val member = MatrixRtcEventParser.parseMemberEvent(
+            roomId = roomId,
+            senderUserId = "@alice:example.org",
+            content = MatrixRtcMemberContentSource(
+                slotId = "m.call#ROOM",
+                stickyKey = "xyz",
+                applicationType = "m.call",
+                callId = "call-typed",
+                memberId = "xyz",
+                claimedUserId = "@alice:example.org",
+                claimedDeviceId = "DEV1",
+                rtcTransportTypes = listOf("livekit"),
+            ),
+            stateKey = null,
+            localUserId = UserId("@alice:example.org"),
+            localDeviceId = "DEV1",
+            nowMs = { 0L },
+        )
+        assertNotNull(member)
+        assertTrue(member.connected)
+        assertEquals("call-typed", member.callId)
+        assertEquals("DEV1", member.deviceId)
+        assertTrue(member.isLocal)
     }
 
     @Test
