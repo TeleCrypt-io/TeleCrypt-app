@@ -280,25 +280,17 @@ class SsoRuntimeHandler(
         val ssoState = match.ssoState
 
         val matrixClients = match.matrixClients ?: awaitInstance(MatrixClients::class) ?: return false
-        val i18n = awaitInstance(I18n::class) ?: return false
         val deviceName = awaitInstance(GetDefaultDeviceDisplayName::class)?.invoke()
             ?: "TeleCrypt Desktop"
-        val addState = MutableStateFlow<AddMatrixAccountState>(AddMatrixAccountState.Connecting)
 
         return runCatching {
             matrixClients.create(
                 MatrixClientAuthProviderData.classicLoginWithToken(
                     baseUrl = Url(ssoState.serverUrl),
-                    token = loginToken
+                    token = loginToken,
+                    initialDeviceDisplayName = deviceName
                 ).getOrThrow()
             )
-//            matrixClients.loginCatching(
-//                ssoState.serverUrl,
-//                loginToken,
-//                deviceName,
-//                addState,
-//                i18n,
-//            ) {}
             settingsHolder.update(MatrixMessengerSettingsBase.serializer()) { current ->
                 current.copy(ssoLoginState = null)
             }
