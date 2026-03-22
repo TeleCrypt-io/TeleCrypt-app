@@ -1,5 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.MatrixClientAuthProviderDataSerializerMappings
+import de.connect2x.trixnity.clientserverapi.client.MatrixClientAuthProviderDataStore
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -9,7 +12,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import net.folivo.trixnity.client.MatrixClient
 
 data class MatrixRtcTransport(
     val type: String,
@@ -18,8 +20,10 @@ data class MatrixRtcTransport(
 )
 
 suspend fun discoverRtcTransports(matrixClient: MatrixClient): List<MatrixRtcTransport> {
+    val authProvider = matrixClient.di.get<MatrixClientAuthProviderDataStore>()
+
     val client = matrixClient.api.baseClient.baseClient
-    val baseUrl = matrixClient.api.baseClient.baseUrl ?: return emptyList()
+    val baseUrl = authProvider.getAuthData()?.baseUrl ?: return emptyList()
     val json = matrixClient.api.json
     val stable = fetchRtcTransports(client, baseUrl, json, STABLE_PATH)
     if (stable.isNotEmpty()) {

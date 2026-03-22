@@ -51,13 +51,12 @@ import androidx.compose.ui.unit.sp
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCall
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
-import de.connect2x.messenger.compose.view.DI
 import kotlinx.coroutines.launch
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import de.connect2x.messenger.compose.view.get
-import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.CallMode
+import de.connect2x.trixnity.messenger.compose.view.DI
+import de.connect2x.trixnity.messenger.compose.view.get
 
 /**
  * Full-screen incoming call overlay (Telegram-style).

@@ -1,7 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.clientserverapi.model.user.displayName
 
 data class ElementCallSession(
     val userId: String,
@@ -27,8 +28,9 @@ suspend fun resolveElementCallSession(matrixClient: MatrixClient?): ElementCallS
     if (accessToken.isEmpty() || homeserver.isEmpty()) {
         return null
     }
-    val displayNameFromClient = matrixClient.displayName.value?.trim().orEmpty()
-    val displayName = account.displayName?.trim().orEmpty().ifEmpty {
+
+    val displayNameFromClient = matrixClient.profile.value?.displayName?.trim().orEmpty()
+    val displayName = account.profile?.displayName?.trim().orEmpty().ifEmpty {
         displayNameFromClient.ifEmpty { account.userId.full }
     }
     return ElementCallSession(

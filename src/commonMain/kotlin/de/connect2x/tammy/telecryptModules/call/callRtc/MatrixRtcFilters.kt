@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import net.folivo.trixnity.clientserverapi.model.users.Filters
-
+import de.connect2x.trixnity.clientserverapi.model.user.Filters
 internal val MATRIX_RTC_EVENT_TYPES = setOf(
     MatrixRtcEventTypes.SLOT,
     MatrixRtcEventTypes.MEMBER,

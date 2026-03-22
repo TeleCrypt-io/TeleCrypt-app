@@ -4,12 +4,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
-import de.connect2x.messenger.compose.view.theme.*
-
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Density
-import de.connect2x.messenger.compose.view.common.deriveFromHue
-import de.connect2x.messenger.compose.view.common.hue
 import de.connect2x.tammy.md_theme_light_background
 import de.connect2x.tammy.md_theme_light_error
 import de.connect2x.tammy.md_theme_light_errorContainer
@@ -45,6 +41,9 @@ import de.connect2x.tammy.md_theme_light_surfaceTint
 import de.connect2x.tammy.md_theme_light_surfaceVariant
 import de.connect2x.tammy.md_theme_light_tertiary
 import de.connect2x.tammy.md_theme_light_tertiaryContainer
+import de.connect2x.trixnity.messenger.compose.view.common.deriveFromHue
+import de.connect2x.trixnity.messenger.compose.view.common.hue
+import de.connect2x.trixnity.messenger.compose.view.theme.*
 
 class CallTheme : Theme {
     @Composable

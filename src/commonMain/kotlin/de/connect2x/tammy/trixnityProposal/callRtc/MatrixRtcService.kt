@@ -1,15 +1,16 @@
 package de.connect2x.tammy.trixnityProposal.callRtc
 
+import de.connect2x.trixnity.core.model.RoomId
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import net.folivo.trixnity.core.model.RoomId
+import kotlin.time.Clock.System
 
 class MatrixRtcService(
     private val callStateStore: MatrixRtcCallStateStore,
-    private val nowMs: () -> Long = System::currentTimeMillis,
+    private val nowMs: () -> Long = System.now()::toEpochMilliseconds,
 ) {
     private fun initialRoomState(roomId: RoomId): MatrixRtcRoomState {
         return MatrixRtcRoomState(

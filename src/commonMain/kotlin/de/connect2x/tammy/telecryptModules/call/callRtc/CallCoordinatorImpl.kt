@@ -6,6 +6,14 @@ import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.clientserverapi.model.user.displayName
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.model.events.block.EventContentBlock
+import de.connect2x.trixnity.core.model.events.block.EventContentBlocks
+import de.connect2x.trixnity.core.serialization.events.EventContentSerializer
+import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,14 +29,12 @@ import io.ktor.http.contentType
 import io.ktor.http.encodeURLPath
 import io.ktor.http.isSuccess
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.core.model.RoomId
 import kotlin.random.Random
 
 class CallCoordinatorImpl(
@@ -256,7 +262,8 @@ class CallCoordinatorImpl(
         content: JsonObject,
         eventType: String,
     ): Boolean {
-        val event = UnknownEventContent(content, eventType)
+        val eventBlocks = EventContentBlocks(EventContentBlock.Unknown(eventType, content))
+        val event = UnknownEventContent(content, eventBlocks, eventType)
         return runCatching {
             matrixClient.api.room.sendStateEvent(roomId, event, slotId)
             true
@@ -351,7 +358,7 @@ class CallCoordinatorImpl(
         content: JsonObject,
         stickyDurationMs: Long,
     ): Boolean {
-        val baseUrl = matrixClient.api.baseClient.baseUrl ?: return false
+        val baseUrl = matrixClient.api.baseUrl ?: return false
         val url = buildStickySendUrl(baseUrl, roomId.full, eventType, buildTxnId(), stickyDurationMs)
         val body = matrixClient.api.json.encodeToString(JsonObject.serializer(), content)
         val response = runCatching {
@@ -370,7 +377,12 @@ class CallCoordinatorImpl(
         content: JsonObject,
     ) {
         val stateKey = stickyKey?.takeIf { it.isNotBlank() } ?: STICKY_KEY_PREFIX
-        val event = UnknownEventContent(content, MatrixRtcEventTypes.MEMBER)
+
+        val eventBlocks = Json.decodeFromJsonElement(
+            EventContentBlocks.Serializer(setOf()),
+            content
+        )
+        val event = UnknownEventContent(content, eventBlocks, MatrixRtcEventTypes.MEMBER)
         runCatching {
             matrixClient.api.room.sendStateEvent(roomId, event, stateKey)
         }.onFailure { error ->
@@ -444,7 +456,7 @@ class CallCoordinatorImpl(
         val bytes = ByteArray(16) { Random.nextInt(0, 256).toByte() }
         bytes[6] = (bytes[6].toInt() and 0x0F or 0x40).toByte()
         bytes[8] = (bytes[8].toInt() and 0x3F or 0x80).toByte()
-        return bytes.joinToString(separator = "") { "%02x".format(it.toInt() and 0xFF) }
+        return bytes.joinToString(separator = "") { (it.toInt() and 0xFF).toHexString() }
             .replaceFirst(
                 "(.{8})(.{4})(.{4})(.{4})(.{12})".toRegex(),
                 "$1-$2-$3-$4-$5",
@@ -512,7 +524,7 @@ class CallCoordinatorImpl(
 
 private fun resolveDisplayName(matrixClient: MatrixClient, sessionName: String): String {
     val displayName = sessionName.trim().ifEmpty {
-        matrixClient.displayName.value?.trim().orEmpty()
+        matrixClient.profile.value?.displayName?.trim().orEmpty()
     }
     return displayName.ifEmpty { matrixClient.userId.full }
 }

@@ -6,6 +6,8 @@ import de.connect2x.lognity.config.CoreConfigExtension
 import de.connect2x.lognity.config.SerializableConfig
 import de.connect2x.lognity.config.extension.ConfigExtension
 import de.connect2x.lognity.config.setDefaultConfig
+import de.connect2x.tammy.desktop.SingleInstanceManager
+import de.connect2x.tammy.desktop.SsoCallbackServer
 import de.connect2x.trixnity.messenger.compose.view.startMultiMessenger
 import de.connect2x.trixnity.messenger.util.getAppPath
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,19 +25,15 @@ import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.system.exitProcess
 import org.koin.dsl.module
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.clientserverapi.model.authentication.LoginType
 import de.connect2x.trixnity.messenger.MatrixClients
 import de.connect2x.trixnity.messenger.MatrixMessengerSettingsBase
 import de.connect2x.trixnity.messenger.MatrixMessengerSettingsHolder
 import de.connect2x.trixnity.messenger.i18n.I18n
 import de.connect2x.trixnity.messenger.settings.update
 import de.connect2x.trixnity.messenger.util.GetDefaultDeviceDisplayName
-import de.connect2x.trixnity.messenger.util.UrlHandler
+import de.connect2x.trixnity.messenger.util.UriHandler
 import de.connect2x.trixnity.messenger.viewmodel.connecting.AddMatrixAccountState
-import de.connect2x.trixnity.messenger.viewmodel.connecting.loginCatching
 import de.connect2x.trixnity.messenger.viewmodel.connecting.SSOLoginViewModel
-import de.connect2x.trixnity.messenger.viewmodel.connecting.SSOState
 import io.ktor.http.Url
 import org.koin.core.Koin
 import kotlin.reflect.KClass
@@ -46,6 +44,13 @@ import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.clientserverapi.client.ClassicMatrixClientAuthProviderData
+import de.connect2x.trixnity.clientserverapi.client.MatrixClientAuthProviderData
+import de.connect2x.trixnity.clientserverapi.client.classicLoginWith
+import de.connect2x.trixnity.clientserverapi.client.classicLoginWithToken
+import de.connect2x.trixnity.clientserverapi.model.authentication.LoginType
+import de.connect2x.trixnity.clientserverapi.model.user.displayName
 
 
 /**
@@ -123,8 +128,8 @@ object Main {
 
         startMultiMessenger(if (deeplinkUrl != null) arrayOf(deeplinkUrl) else args) {
             tammyConfiguration {
-                urlProtocol = "http"
-                urlHost = "localhost:47824"
+//                urlProtocol = "http"
+//                urlHost = "localhost:47824"
 
                 // Inject Runtime Handler using Koin
                 modulesFactories += {
@@ -136,9 +141,6 @@ object Main {
                     }
                 }
 
-                messengerConfiguration {
-                    ssoRedirectPath = "sso"
-                }
             }
         }
 
@@ -201,7 +203,7 @@ class SsoRuntimeHandler(
 
                 val ssoViewModel = awaitInstance(SSOLoginViewModel::class)
                 if (ssoViewModel != null && state.isNotEmpty()) {
-                    ssoViewModel.resumeLogin(resumeUrl)
+                    ssoViewModel.resumeLogin(resumeUrl.toString())
                     println("[SsoRuntimeHandler] SSO resumeLogin invoked")
                     return
                 }
@@ -265,7 +267,7 @@ class SsoRuntimeHandler(
     }
 
     private fun resolveDisplayName(matrixClient: MatrixClient?): String {
-        val displayName = matrixClient?.displayName?.value?.trim().orEmpty()
+        val displayName = matrixClient?.profile?.value?.displayName?.trim().orEmpty()
         return displayName.ifEmpty { matrixClient?.userId?.full ?: "TeleCrypt User" }
     }
 
@@ -284,15 +286,21 @@ class SsoRuntimeHandler(
         val addState = MutableStateFlow<AddMatrixAccountState>(AddMatrixAccountState.Connecting)
 
         return runCatching {
-            matrixClients.loginCatching(
-                ssoState.serverUrl,
-                loginToken,
-                deviceName,
-                addState,
-                i18n,
-            ) {}
+            matrixClients.create(
+                MatrixClientAuthProviderData.classicLoginWithToken(
+                    baseUrl = Url(ssoState.serverUrl),
+                    token = loginToken
+                ).getOrThrow()
+            )
+//            matrixClients.loginCatching(
+//                ssoState.serverUrl,
+//                loginToken,
+//                deviceName,
+//                addState,
+//                i18n,
+//            ) {}
             settingsHolder.update(MatrixMessengerSettingsBase.serializer()) { current ->
-                current.copy(ssoState = null)
+                current.copy(ssoLoginState = null)
             }
             true
         }.onFailure {
@@ -306,7 +314,7 @@ class SsoRuntimeHandler(
 
     private data class SsoStateMatch(
         val settingsHolder: MatrixMessengerSettingsHolder,
-        val ssoState: SSOState,
+        val ssoState: MatrixMessengerSettingsBase.SSOLoginState,
         val matrixClients: MatrixClients?,
     )
 
@@ -320,7 +328,7 @@ class SsoRuntimeHandler(
         val rootHolder = runCatching { koin.getOrNull<MatrixMessengerSettingsHolder>() }.getOrNull()
         if (rootHolder != null) {
             rootHolder.waitForInit()
-            val ssoState = rootHolder.value.base.ssoState
+            val ssoState = rootHolder.value.base.ssoLoginState
             if (ssoState != null && ssoState.state == state) {
                 val clients = runCatching { koin.getOrNull<MatrixClients>() }.getOrNull()
                 return SsoStateMatch(rootHolder, ssoState, clients)
@@ -335,7 +343,7 @@ class SsoRuntimeHandler(
         val settingsHolder = runCatching { scope.get<MatrixMessengerSettingsHolder>(null, null) }.getOrNull()
             ?: return null
         settingsHolder.waitForInit()
-        val ssoState = settingsHolder.value.base.ssoState ?: return null
+        val ssoState = settingsHolder.value.base.ssoLoginState ?: return null
         if (ssoState.state != state) {
             return null
         }
@@ -344,12 +352,12 @@ class SsoRuntimeHandler(
     }
 
     private fun emitUrlToHandler(url: Url): Boolean {
-        val handler = findInstance(UrlHandler::class) ?: return false
+        val handler = findInstance(UriHandler::class) ?: return false
         val flow = findUrlHandlerFlow(handler) ?: return false
         return runCatching { flow.tryEmit(url) }.getOrDefault(false)
     }
 
-    private fun findUrlHandlerFlow(handler: UrlHandler): MutableSharedFlow<Url>? {
+    private fun findUrlHandlerFlow(handler: UriHandler): MutableSharedFlow<Url>? {
         var clazz: Class<*>? = handler.javaClass
         while (clazz != null) {
             val method = clazz.declaredMethods.firstOrNull { it.name == "getUrlHandlerFlow" }

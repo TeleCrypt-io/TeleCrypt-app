@@ -42,33 +42,40 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import de.connect2x.messenger.compose.view.DI
-import de.connect2x.messenger.compose.view.common.UserState
-import de.connect2x.messenger.compose.view.common.icons.PublicIcon
-import de.connect2x.messenger.compose.view.common.icons.UnencryptedIcon
-import de.connect2x.messenger.compose.view.common.modifier.minHeaderHeight
-import de.connect2x.messenger.compose.view.get
-import de.connect2x.messenger.compose.view.i18n.I18nView
-import de.connect2x.messenger.compose.view.theme.components
-import de.connect2x.messenger.compose.view.theme.components.AvatarPresenceBadge
-import de.connect2x.messenger.compose.view.theme.components.SurfaceStyle
-import de.connect2x.messenger.compose.view.theme.components.ThemedButton
-import de.connect2x.messenger.compose.view.theme.components.ThemedIconButton
-import de.connect2x.messenger.compose.view.theme.components.ThemedLabel
-import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
-import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncEventHandler
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
+import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcRoomState
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.events.m.room.RoomMessageEventContent
+import de.connect2x.trixnity.messenger.compose.view.DI
+import de.connect2x.trixnity.messenger.compose.view.common.UserState
+import de.connect2x.trixnity.messenger.compose.view.common.icons.PublicIcon
+import de.connect2x.trixnity.messenger.compose.view.common.icons.UnencryptedIcon
+import de.connect2x.trixnity.messenger.compose.view.common.modifier.minHeaderHeight
+import de.connect2x.trixnity.messenger.compose.view.get
+import de.connect2x.trixnity.messenger.compose.view.i18n.I18nView
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.RoomBackButton
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.RoomExtras
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.RoomHeaderView
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.RoomName
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.RoomTopic
+import de.connect2x.trixnity.messenger.compose.view.room.timeline.UsersTyping
+import de.connect2x.trixnity.messenger.compose.view.theme.components
+import de.connect2x.trixnity.messenger.compose.view.theme.components.AvatarPresenceBadge
+import de.connect2x.trixnity.messenger.compose.view.theme.components.SurfaceStyle
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedButton
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedIconButton
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedLabel
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedSurface
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
 import kotlinx.coroutines.launch
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.client.store.AccountStore
-import net.folivo.trixnity.core.model.RoomId
-import net.folivo.trixnity.core.model.events.m.room.RoomMessageEventContent
 
 
 // exact replica of HeaderSurface from de.connect2x.messenger.compose.view.common
@@ -119,7 +126,7 @@ class CallRoomHeader : RoomHeaderView {
         val resolvedRoomId = resolveRoomId(roomHeaderViewModel)
         val contextMatrixClient = resolveMatrixClient(roomHeaderViewModel)
         val rtcSyncHandler = remember(contextMatrixClient) {
-            contextMatrixClient?.let { client ->
+            contextMatrixClient?.let<MatrixClient, MatrixRtcSyncEventHandler?> { client ->
                 runCatching { client.di.get<MatrixRtcSyncEventHandler>() }.getOrNull()
                     ?: runCatching {
                         val accountStore = client.di.get<AccountStore>()
@@ -138,7 +145,7 @@ class CallRoomHeader : RoomHeaderView {
             rtcSyncHandler?.startInCoroutineScope(this)
         }
         val incomingState = resolvedRoomId
-            ?.let { rtcWatcher.roomState(it).collectAsState().value }
+            ?.let<RoomId, MatrixRtcRoomState> { rtcWatcher.roomState(it).collectAsState().value }
         val incomingCallId = incomingState?.session?.callId
 
         val startCall: (CallMode) -> Unit = { mode ->

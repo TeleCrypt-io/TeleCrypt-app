@@ -5,6 +5,14 @@ import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcSlotEvent
 import de.connect2x.tammy.trixnityProposal.callRtc.MATRIX_RTC_DEFAULT_SLOT_ID
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.clientserverapi.client.SyncApiClient
+import de.connect2x.trixnity.core.EventHandler
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.UserId
+import de.connect2x.trixnity.core.model.events.ClientEvent
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.subscribeEachEventAsFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
@@ -13,15 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import net.folivo.trixnity.client.store.AccountStore
-import net.folivo.trixnity.clientserverapi.client.SyncApiClient
-import net.folivo.trixnity.core.EventHandler
-import net.folivo.trixnity.core.model.RoomId
-import net.folivo.trixnity.core.model.UserId
-import net.folivo.trixnity.core.model.events.ClientEvent
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.core.subscribeEachEventAsFlow
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.Volatile
+import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.runCatching
 
 class MatrixRtcSyncEventHandler(

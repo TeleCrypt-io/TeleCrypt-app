@@ -1,6 +1,10 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
 import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.store.Account
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.core.model.UserId
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,9 +12,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.client.store.AccountStore
-import net.folivo.trixnity.core.model.UserId
 
 class MatrixRtcAutoStart(
     private val matrixClients: MatrixClients,
@@ -62,12 +63,12 @@ class MatrixRtcAutoStart(
         val account = accountStore.getAccount() ?: return
         val userId = account.userId
         val userApi = client.api.user
-        var newFilterId = account.filterId
-        var newBackgroundFilterId = account.backgroundFilterId
+        var newFilterId = account.filter?.syncFilterId
+        var newBackgroundFilterId = account.filter?.syncOnceFilterId
         var changed = false
 
-        if (account.filterId != null) {
-            val current = runCatching { userApi.getFilter(userId, account.filterId!!) }.getOrNull()?.getOrNull()
+        if (account.filter != null) {
+            val current = runCatching { userApi.getFilter(userId, account.filter!!.syncFilterId) }.getOrNull()?.getOrNull()
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
                 if (patched != current) {
@@ -81,8 +82,8 @@ class MatrixRtcAutoStart(
             }
         }
 
-        if (account.backgroundFilterId != null) {
-            val current = runCatching { userApi.getFilter(userId, account.backgroundFilterId!!) }.getOrNull()?.getOrNull()
+        if (account.filter != null) {
+            val current = runCatching { userApi.getFilter(userId, account.filter!!.syncOnceFilterId) }.getOrNull()?.getOrNull()
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
                 if (patched != current) {
@@ -99,8 +100,10 @@ class MatrixRtcAutoStart(
         if (!changed) return
         accountStore.updateAccount { current ->
             current!!.copy(
-                filterId = newFilterId,
-                backgroundFilterId = newBackgroundFilterId,
+                filter = current.filter?.copy(
+                    syncFilterId = newFilterId!!,
+                    syncOnceFilterId = newBackgroundFilterId!!
+                )
             )
         }
         runCatching {
