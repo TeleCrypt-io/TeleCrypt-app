@@ -140,6 +140,7 @@ class CallRoomHeader : RoomHeaderView {
         val incomingState = resolvedRoomId
             ?.let { rtcWatcher.roomState(it).collectAsState().value }
         val incomingCallId = incomingState?.session?.callId
+        val hasActiveSession = incomingState?.session != null
 
         val startCall: (CallMode) -> Unit = { mode ->
             scope.launch {
@@ -149,28 +150,39 @@ class CallRoomHeader : RoomHeaderView {
                     snackbarHostState.showSnackbar("Call unavailable. Open the room and try again.")
                     return@launch
                 }
-                val startResult = callCoordinator.startCall(
-                    matrixClient = matrixClient,
-                    roomId = resolvedRoomId,
-                    roomName = roomName,
-                    isDirect = isDirectChat,
-                    mode = mode,
-                )
+                val startResult = if (hasActiveSession) {
+                    callCoordinator.joinCall(
+                        matrixClient = matrixClient,
+                        roomId = resolvedRoomId,
+                        roomName = roomName,
+                        mode = mode,
+                    )
+                } else {
+                    callCoordinator.startCall(
+                        matrixClient = matrixClient,
+                        roomId = resolvedRoomId,
+                        roomName = roomName,
+                        isDirect = isDirectChat,
+                        mode = mode,
+                    )
+                }
                 if (!startResult.ok) {
                     snackbarHostState.showSnackbar(
                         startResult.userMessage ?: "Call unavailable. Try again."
                     )
                     return@launch
                 }
-                val deepLink = startResult.deepLink
-                    ?: return@launch
-                sendCallLinkMessage(
-                    matrixClient,
-                    resolvedRoomId,
-                    roomName,
-                    deepLink,
-                    mode,
-                )
+                if (!hasActiveSession) {
+                    val deepLink = startResult.deepLink
+                        ?: return@launch
+                    sendCallLinkMessage(
+                        matrixClient,
+                        resolvedRoomId,
+                        roomName,
+                        deepLink,
+                        mode,
+                    )
+                }
             }
         }
         Box {
@@ -314,7 +326,7 @@ class CallRoomHeader : RoomHeaderView {
             if (showCallDialog) {
                 AlertDialog(
                     onDismissRequest = { showCallDialog = false },
-                    title = { Text("Start call") },
+                    title = { Text(if (hasActiveSession) "Join call" else "Start call") },
                     text = { Text("Choose call type") },
                     confirmButton = {
                         Row(
