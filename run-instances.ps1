@@ -1,6 +1,7 @@
 # Runs two TeleCrypt instances with separate data roots and captures logs.
 # Usage:
-#   pwsh -NoProfile -ExecutionPolicy Bypass -File .\run-instances.ps1
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\run-instances.ps1
+#   pwsh       -NoProfile -ExecutionPolicy Bypass -File .\run-instances.ps1
 #
 # It writes logs to:
 #   .\logs\instance-1.log
@@ -9,7 +10,42 @@
 
 $ErrorActionPreference = "Stop"
 
-$root = Get-Location
+function Resolve-PowerShellExe {
+    $pwsh = Get-Command "pwsh" -ErrorAction SilentlyContinue
+    if ($pwsh) { return $pwsh.Source }
+
+    $powershell = Get-Command "powershell" -ErrorAction SilentlyContinue
+    if ($powershell) { return $powershell.Source }
+
+    throw "Neither 'pwsh' nor 'powershell' was found in PATH."
+}
+
+$psExe = Resolve-PowerShellExe
+
+function Start-TeleCryptInstance(
+    [Parameter(Mandatory = $true)][string]$RootPath,
+    [Parameter(Mandatory = $true)][string]$Stdout,
+    [Parameter(Mandatory = $true)][string]$Stderr
+) {
+    $commandTemplate = @'
+$ErrorActionPreference = "Stop"
+$env:TRIXNITY_MESSENGER_ROOT_PATH = "{0}"
+$env:TRIXNITY_MESSENGER_MULTI_INSTANCE = "1"
+& .\\gradlew.bat run --no-daemon --console=plain
+'@
+    $command = [string]::Format($commandTemplate, $RootPath)
+
+     return Start-Process -FilePath $psExe -ArgumentList @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        $command
+    ) -PassThru -NoNewWindow -WorkingDirectory $root `
+        -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+}
+
+    $root = (Get-Location).Path
 $logDir = Join-Path $root "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
@@ -20,18 +56,12 @@ $log2Err = Join-Path $logDir "instance-2.err.log"
 Remove-Item -Force $log1Out, $log1Err, $log2Out, $log2Err -ErrorAction SilentlyContinue
 
 Write-Host "Starting instance 1 (app-data) ..."
-$env:TRIXNITY_MESSENGER_ROOT_PATH = "app-data"
-$env:TRIXNITY_MESSENGER_MULTI_INSTANCE = "1"
-$p1 = Start-Process -FilePath "pwsh" -ArgumentList "-NoProfile", "-Command", "./run.ps1" -PassThru -NoNewWindow `
-    -RedirectStandardOutput $log1Out -RedirectStandardError $log1Err
+$p1 = Start-TeleCryptInstance -RootPath "app-data" -Stdout $log1Out -Stderr $log1Err
 
 Start-Sleep -Seconds 2
 
 Write-Host "Starting instance 2 (app-data-2) ..."
-$env:TRIXNITY_MESSENGER_ROOT_PATH = "app-data-2"
-$env:TRIXNITY_MESSENGER_MULTI_INSTANCE = "1"
-$p2 = Start-Process -FilePath "pwsh" -ArgumentList "-NoProfile", "-Command", "./run.ps1" -PassThru -NoNewWindow `
-    -RedirectStandardOutput $log2Out -RedirectStandardError $log2Err
+$p2 = Start-TeleCryptInstance -RootPath "app-data-2" -Stdout $log2Out -Stderr $log2Err
 
 Write-Host "Instances started. Waiting for startup logs..."
 Start-Sleep -Seconds 12

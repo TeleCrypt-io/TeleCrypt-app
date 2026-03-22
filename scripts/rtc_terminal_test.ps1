@@ -2,6 +2,9 @@
 # Sends m.rtc.slot + m.rtc.member from caller and confirms callee sees them via /sync.
 #
 # Usage:
+#   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\rtc_terminal_test.ps1 `
+#     -RoomId "!ROOM:server" -CallerRoot "app-data" -CalleeRoot "app-data-2"
+#
 #   pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\rtc_terminal_test.ps1 `
 #     -RoomId "!ROOM:server" -CallerRoot "app-data" -CalleeRoot "app-data-2"
 #
@@ -27,7 +30,7 @@ function Get-AccountDbCandidates([string]$root) {
         | Where-Object { $_.Directory.Name -eq "database" } `
         | Sort-Object LastWriteTime -Descending
     if (-not $dbs) {
-        throw "Account DB not found under $root"
+        throw "Account DB not found under $root. Start TeleCrypt with this root and log in at least once, then re-run the script."
     }
     return $dbs
 }

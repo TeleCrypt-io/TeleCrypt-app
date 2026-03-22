@@ -9,7 +9,7 @@
 ## Quick Start (Desktop)
 From repo root:
 ```
-./run.ps1
+./gradlew run
 ```
 This builds and runs the desktop app for your current OS.
 
