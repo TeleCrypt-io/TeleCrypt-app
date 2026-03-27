@@ -57,16 +57,9 @@ private fun openCallWindow(url: String, session: ElementCallSession?) {
 
 private fun tryOpenEmbeddedWindow(url: String, session: ElementCallSession): Boolean {
     return runCatching {
-        val os = System.getProperty("os.name").lowercase()
-        if (os.contains("nix") || os.contains("nux")) {
-            ProcessBuilder(
-                "chromium",
-                "--app=${url}",
-                "--new-window",
-                "--disable-extensions"
-            ).start()
-            return true
-        }
+        // Use WebviewKo on all desktop OS (including Linux) so Matrix session injection runs.
+        // The previous Linux-only "chromium --app" path opened Element Call without localStorage
+        // auth and broke group calls for anyone relying on joinByUrlWithSession.
 
         val initScript = buildElementCallSessionInitScript(session)
         thread(start = true, isDaemon = false, name = "ElementCallWebview") {

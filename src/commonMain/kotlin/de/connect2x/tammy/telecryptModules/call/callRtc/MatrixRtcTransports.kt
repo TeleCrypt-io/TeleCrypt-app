@@ -36,9 +36,15 @@ private suspend fun fetchRtcTransports(
 ): List<MatrixRtcTransport> {
     val url = buildUrl(baseUrl, path)
     val body = runCatching { client.get(url).bodyAsText() }.getOrNull() ?: return emptyList()
+    return parseRtcTransportsResponse(body, json)
+}
+
+internal fun parseRtcTransportsResponse(body: String, json: Json): List<MatrixRtcTransport> {
     val root = runCatching { json.parseToJsonElement(body) }.getOrNull() as? JsonObject
         ?: return emptyList()
-    val transports = root["transports"] as? JsonArray ?: return emptyList()
+    val transports = (root["transports"] as? JsonArray)
+        ?: (root["rtc_transports"] as? JsonArray)
+        ?: return emptyList()
     return transports.mapNotNull { parseTransport(it) }
 }
 

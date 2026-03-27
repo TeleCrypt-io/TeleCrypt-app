@@ -82,7 +82,10 @@ class CallCoordinatorImpl(
         val intent = if (isDirect) "start_call_dm" else "start_call"
         val sendNotificationType = if (isDirect) "ring" else "notification"
         val waitForCallPickup = isDirect
-        
+        // Group rooms: after session injection, auto-join the call UI (lobby join) so
+        // multi-participant audio/video works without an extra tap. DMs keep manual join for ring UX.
+        val autoJoinAfterSession = !isDirect
+
         val callUrl = buildElementCallUrl(
             roomId.full,
             roomName,
@@ -93,7 +96,7 @@ class CallCoordinatorImpl(
             waitForCallPickup = waitForCallPickup,
             homeserver = homeserverUrl,
             callMode = mode.name.lowercase(),
-            autoJoin = false, // Changed to false for stability
+            autoJoin = autoJoinAfterSession,
             disableVideo = (mode == CallMode.AUDIO),
         )
         println("[Call] Launching Element Call: $callUrl")

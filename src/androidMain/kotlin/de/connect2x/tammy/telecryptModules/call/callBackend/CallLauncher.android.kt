@@ -2,11 +2,17 @@ package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.View
+import android.view.WindowManager
+import android.webkit.CookieManager
 import android.webkit.PermissionRequest
+import android.webkit.WebSettings
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 
@@ -25,7 +31,20 @@ class ElementCallActivity : AppCompatActivity() {
         try {
             webView = WebView(this)
             setContentView(webView)
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             configureWebView(sessionScript)
+            onBackPressedDispatcher.addCallback(
+                this,
+                object : OnBackPressedCallback(true) {
+                    override fun handleOnBackPressed() {
+                        if (webView.canGoBack()) {
+                            webView.goBack()
+                        } else {
+                            finish()
+                        }
+                    }
+                },
+            )
             webView.loadUrl(url)
         } catch (_: Throwable) {
             openInCustomTabs(url)
@@ -34,11 +53,26 @@ class ElementCallActivity : AppCompatActivity() {
     }
 
     private fun configureWebView(sessionScript: String?) {
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                setAcceptThirdPartyCookies(webView, true)
+            }
+        }
+
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             mediaPlaybackRequiresUserGesture = false
             databaseEnabled = true
+            @Suppress("DEPRECATION")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            }
+            useWideViewPort = true
+            loadWithOverviewMode = true
         }
 
         webView.webChromeClient = object : WebChromeClient() {
