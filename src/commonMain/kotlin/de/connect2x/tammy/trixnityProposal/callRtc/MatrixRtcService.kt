@@ -59,6 +59,11 @@ class MatrixRtcService(
             holder.activeCallId = null
             holder.sessionStartedAtMs = 0L
             holder.participants.clear()
+            // Clear lastSeenCallId when slot closes — this allows the NEXT call
+            // in this room to be detected as incoming. Without this, the same callId
+            // would be permanently blocked by lastSeenCallId from a previous call.
+            callStateStore.clearLastSeenCallId(slot.roomId)
+            println("[Call][DIAG] Slot closed, cleared lastSeenCallId for room=${slot.roomId.full}")
             refresh(slot.roomId)
             return
         }

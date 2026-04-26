@@ -110,6 +110,7 @@ data class MatrixRtcRoomState(
 interface MatrixRtcCallStateStore {
     fun getLastSeenCallId(roomId: RoomId): String?
     fun setLastSeenCallId(roomId: RoomId, callId: String)
+    fun clearLastSeenCallId(roomId: RoomId)
 }
 
 /**
@@ -123,5 +124,9 @@ class InMemoryMatrixRtcCallStateStore : MatrixRtcCallStateStore {
     override fun setLastSeenCallId(roomId: RoomId, callId: String) {
         if (callId.isBlank()) return
         lastSeen[roomId] = callId
+    }
+
+    override fun clearLastSeenCallId(roomId: RoomId) {
+        lastSeen.remove(roomId)
     }
 }

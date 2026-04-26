@@ -374,15 +374,77 @@ private fun injectSessionViaCdp(
             }
             try {
                 // ── Comprehensive fetch interception ──
-                // Element Call v0.19.1 in standalone mode ignores URL hash parameters
-                // (skipLobby, perParticipantE2EE, intent are all parsed as undefined).
-                // We intercept config.json to inject these settings directly into the
-                // config object that Element Call reads at startup.
+                // Element Call v0.19.1 in standalone mode:
+                // 1. Ignores URL hash parameters (skipLobby, perParticipantE2EE, intent)
+                // 2. Tries to register a new user via POST /register before using localStorage
+                // 3. Fetches config.json, .well-known, rtc/transports
                 //
-                // Also intercept .well-known and rtc/transports for LiveKit discovery.
+                // We intercept ALL of these to make EC work with our injected session.
+                var __tcSession = JSON.parse('$escapedJson');
                 var __origFetch = window.fetch;
                 window.fetch = function(input, init) {
                     var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+                    var method = (init && init.method) ? init.method.toUpperCase() : 'GET';
+
+                    // ── Auth interception: /register ──
+                    // Element Call standalone mode tries POST /register to create a new user.
+                    // We intercept this and return a fake successful response with our session
+                    // credentials, making EC think registration succeeded with our user.
+                    if (url.indexOf('/_matrix/client/') !== -1 && url.indexOf('/register') !== -1) {
+                        console.log('[TeleCrypt] Intercepted /register request: ' + method + ' ' + url);
+                        // For the initial register call (to get flows), return UIAA flows
+                        // For the actual register call, return our session credentials
+                        if (method === 'POST') {
+                            var body = null;
+                            try { body = init && init.body ? JSON.parse(init.body) : null; } catch(e) {}
+                            // If this is a guest registration or has no auth, return our credentials
+                            var registerResponse = {
+                                user_id: __tcSession.user_id,
+                                device_id: __tcSession.device_id,
+                                access_token: __tcSession.access_token,
+                                home_server: __tcSession.user_id.split(':')[1]
+                            };
+                            console.log('[TeleCrypt] Returning fake register response for user: ' + __tcSession.user_id);
+                            return Promise.resolve(new Response(JSON.stringify(registerResponse), {
+                                status: 200,
+                                statusText: 'OK',
+                                headers: {'Content-Type': 'application/json'}
+                            }));
+                        }
+                    }
+
+                    // ── Auth interception: /login ──
+                    // If EC falls back to login flow, intercept it too
+                    if (url.indexOf('/_matrix/client/') !== -1 && url.indexOf('/login') !== -1 && url.indexOf('/login/') === -1) {
+                        if (method === 'POST') {
+                            console.log('[TeleCrypt] Intercepted /login request: ' + url);
+                            var loginResponse = {
+                                user_id: __tcSession.user_id,
+                                device_id: __tcSession.device_id,
+                                access_token: __tcSession.access_token,
+                                home_server: __tcSession.user_id.split(':')[1]
+                            };
+                            return Promise.resolve(new Response(JSON.stringify(loginResponse), {
+                                status: 200,
+                                statusText: 'OK',
+                                headers: {'Content-Type': 'application/json'}
+                            }));
+                        }
+                        if (method === 'GET') {
+                            console.log('[TeleCrypt] Intercepted GET /login (flows): ' + url);
+                            var flowsResponse = {
+                                flows: [
+                                    { type: 'm.login.password' },
+                                    { type: 'm.login.token' }
+                                ]
+                            };
+                            return Promise.resolve(new Response(JSON.stringify(flowsResponse), {
+                                status: 200,
+                                statusText: 'OK',
+                                headers: {'Content-Type': 'application/json'}
+                            }));
+                        }
+                    }
 
                     // 1. Intercept config.json to force E2EE off and skipLobby on
                     if (url.indexOf('config.json') !== -1) {
@@ -418,7 +480,7 @@ private fun injectSessionViaCdp(
 
                     return __origFetch.apply(this, arguments);
                 };
-                console.log('[TeleCrypt] Fetch interception installed (config.json + .well-known + rtc/transports)');
+                console.log('[TeleCrypt] Fetch interception installed (register + login + config.json + .well-known + rtc/transports)');
             } catch(e) {
                 console.error('[TeleCrypt] Failed to install fetch interception:', e);
             }

@@ -181,7 +181,23 @@ class MatrixRtcSyncEventHandler(
         val sender = event.sender ?: return
         val userId = stateKey.takeIf { it.isNotBlank() } ?: sender.full
 
-        val memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
+        // DIAGNOSTIC: Log raw JSON to understand the structure
+        println("[Call][DIAG] MSC3401 state raw keys=${raw.keys} stateKey=$stateKey sender=${sender.full}")
+        println("[Call][DIAG] MSC3401 state raw JSON (first 500): ${raw.toString().take(500)}")
+
+        // MSC3401 events may have memberships at top level or nested in "content"
+        var memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
+        if (memberships == null) {
+            // Try nested content — some serialization paths wrap the content
+            val content = raw["content"] as? JsonObject
+            if (content != null) {
+                memberships = content["memberships"] as? kotlinx.serialization.json.JsonArray
+                if (memberships != null) {
+                    println("[Call][DIAG] MSC3401: Found memberships inside nested 'content' object")
+                }
+            }
+        }
+
         if (memberships == null || memberships.isEmpty()) {
             // Empty memberships = user left the call. Send disconnect for this user.
             println("[Call] MSC3401 member state: empty memberships room=${roomId.full} user=$userId — treating as disconnect")
@@ -296,7 +312,22 @@ class MatrixRtcSyncEventHandler(
         val sender = event.sender ?: return
         val userId = sender.full
 
-        val memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
+        // DIAGNOSTIC: Log raw JSON to understand the structure
+        println("[Call][DIAG] MSC3401 message raw keys=${raw.keys} sender=${sender.full}")
+        println("[Call][DIAG] MSC3401 message raw JSON (first 500): ${raw.toString().take(500)}")
+
+        // MSC3401 events may have memberships at top level or nested in "content"
+        var memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
+        if (memberships == null) {
+            val content = raw["content"] as? JsonObject
+            if (content != null) {
+                memberships = content["memberships"] as? kotlinx.serialization.json.JsonArray
+                if (memberships != null) {
+                    println("[Call][DIAG] MSC3401 msg: Found memberships inside nested 'content' object")
+                }
+            }
+        }
+
         if (memberships == null || memberships.isEmpty()) {
             println("[Call] MSC3401 member message: empty memberships room=${roomId.full} user=$userId — treating as disconnect")
             val disconnectKey = "msc3401_${userId}"
