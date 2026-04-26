@@ -328,45 +328,36 @@ private fun injectSessionViaCdp(
         .replace("'", "\\'")
 
     // Build the fetch interception part (only if we have well-known with rtc_foci)
+    // Build the .well-known and rtc/transports interception blocks.
+    // These are embedded INSIDE the main fetch wrapper in the injection script,
+    // so they must only contain if-blocks that return early, not their own fetch wrapper.
     val fetchInterceptBlock = if (wellKnownJson != null) {
-        // Escape the well-known JSON for embedding in a JS string literal (single-quoted)
         val escapedWellKnown = wellKnownJson
             .replace("\\", "\\\\")
             .replace("'", "\\'")
             .replace("\n", "")
             .replace("\r", "")
 
-        // Extract the homeserver domain from session.homeserver for URL matching
-        val homeserverDomain = runCatching { URI(session.homeserver).host }.getOrNull() ?: ""
-
         """
-            // Intercept fetch to provide correct .well-known with rtc_foci
-            var __origFetch = window.fetch;
-            window.fetch = function(input, init) {
-                var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
-                // Intercept .well-known/matrix/client requests to the homeserver domain
-                if (url.indexOf('.well-known/matrix/client') !== -1) {
-                    console.log('[TeleCrypt] Intercepted .well-known request: ' + url);
-                    var wellKnownBody = '$escapedWellKnown';
-                    return Promise.resolve(new Response(wellKnownBody, {
-                        status: 200,
-                        statusText: 'OK',
-                        headers: {'Content-Type': 'application/json'}
-                    }));
-                }
-                // Intercept RTC transports endpoint (returns 404 on server)
-                if (url.indexOf('/_matrix/client/') !== -1 && url.indexOf('/rtc/transports') !== -1) {
-                    console.log('[TeleCrypt] Intercepted rtc/transports request: ' + url);
-                    // Return empty transports — Element Call will fall back to .well-known
-                    return Promise.resolve(new Response('{"transports":[]}', {
-                        status: 200,
-                        statusText: 'OK',
-                        headers: {'Content-Type': 'application/json'}
-                    }));
-                }
-                return __origFetch.apply(this, arguments);
-            };
-            console.log('[TeleCrypt] Fetch interception installed for .well-known and rtc/transports');
+                    // 2. Intercept .well-known/matrix/client to provide rtc_foci for LiveKit
+                    if (url.indexOf('.well-known/matrix/client') !== -1) {
+                        console.log('[TeleCrypt] Intercepted .well-known request: ' + url);
+                        var wellKnownBody = '$escapedWellKnown';
+                        return Promise.resolve(new Response(wellKnownBody, {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: {'Content-Type': 'application/json'}
+                        }));
+                    }
+                    // 3. Intercept RTC transports endpoint (returns 404 on server)
+                    if (url.indexOf('/_matrix/client/') !== -1 && url.indexOf('/rtc/transports') !== -1) {
+                        console.log('[TeleCrypt] Intercepted rtc/transports request: ' + url);
+                        return Promise.resolve(new Response('{"transports":[]}', {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: {'Content-Type': 'application/json'}
+                        }));
+                    }
         """.trimIndent()
     } else {
         "// No .well-known interception (rtc_foci not resolved)"
@@ -377,41 +368,74 @@ private fun injectSessionViaCdp(
             try {
                 localStorage.setItem('matrix-auth-store', '$escapedJson');
                 console.log('[TeleCrypt] Session injected into localStorage via pre-load script');
+                console.log('[TeleCrypt] Session JSON: ' + localStorage.getItem('matrix-auth-store'));
             } catch(e) {
                 console.error('[TeleCrypt] Failed to inject session:', e);
             }
             try {
-                // Disable per-participant E2EE. In standalone mode, Element Call creates
-                // its own Olm account in IndexedDB with a different curve25519 key than
-                // TeleCrypt Desktop. Remote clients encrypt E2EE keys for TeleCrypt's key
-                // (from /keys/query), not for Element Call's browser key, causing MissingKey
-                // errors and no video. Disabling E2EE avoids this key mismatch entirely.
+                // ── Comprehensive fetch interception ──
+                // Element Call v0.19.1 in standalone mode ignores URL hash parameters
+                // (skipLobby, perParticipantE2EE, intent are all parsed as undefined).
+                // We intercept config.json to inject these settings directly into the
+                // config object that Element Call reads at startup.
                 //
-                // We use multiple approaches to ensure E2EE is disabled:
-                // 1. Override the global config object that Element Call reads
-                // 2. Monkey-patch the URL hash to include perParticipantE2EE=false
-                // 3. Set a flag that the E2EE setup code checks
-                
-                // Approach: Ensure the URL hash contains perParticipantE2EE=false
-                // Element Call reads this from the URL hash fragment parameters
-                var __origPushState = history.pushState;
-                var __origReplaceState = history.replaceState;
-                function ensureE2EEDisabled() {
-                    if (window.location.hash && window.location.hash.indexOf('perParticipantE2EE') === -1) {
-                        var sep = window.location.hash.indexOf('?') !== -1 ? '&' : '?';
-                        window.location.hash = window.location.hash + sep + 'perParticipantE2EE=false';
+                // Also intercept .well-known and rtc/transports for LiveKit discovery.
+                var __origFetch = window.fetch;
+                window.fetch = function(input, init) {
+                    var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+
+                    // 1. Intercept config.json to force E2EE off and skipLobby on
+                    if (url.indexOf('config.json') !== -1) {
+                        console.log('[TeleCrypt] Intercepted config.json request: ' + url);
+                        return __origFetch.apply(this, arguments).then(function(response) {
+                            return response.text().then(function(text) {
+                                try {
+                                    var config = JSON.parse(text);
+                                    // Disable per-participant E2EE — Element Call creates its own
+                                    // Olm account with different keys than TeleCrypt Desktop
+                                    config.perParticipantE2EE = false;
+                                    // Force skip lobby for seamless call experience
+                                    config.skipLobby = true;
+                                    console.log('[TeleCrypt] Patched config.json: perParticipantE2EE=false, skipLobby=true');
+                                    return new Response(JSON.stringify(config), {
+                                        status: 200,
+                                        statusText: 'OK',
+                                        headers: {'Content-Type': 'application/json'}
+                                    });
+                                } catch(e) {
+                                    console.error('[TeleCrypt] Failed to patch config.json:', e);
+                                    return new Response(text, {
+                                        status: 200,
+                                        statusText: 'OK',
+                                        headers: {'Content-Type': 'application/json'}
+                                    });
+                                }
+                            });
+                        });
                     }
-                }
-                // Also intercept any config loading to disable E2EE
-                Object.defineProperty(window, '__telecrypt_e2ee_disabled', { value: true, writable: false });
-                console.log('[TeleCrypt] E2EE disabled flag set');
-            } catch(e) {
-                console.error('[TeleCrypt] Failed to disable E2EE:', e);
-            }
-            try {
-                $fetchInterceptBlock
+
+                    $fetchInterceptBlock
+
+                    return __origFetch.apply(this, arguments);
+                };
+                console.log('[TeleCrypt] Fetch interception installed (config.json + .well-known + rtc/transports)');
             } catch(e) {
                 console.error('[TeleCrypt] Failed to install fetch interception:', e);
+            }
+            try {
+                // ── E2EE disable via multiple approaches ──
+                // Approach 1: Global flag checked by our patched config
+                Object.defineProperty(window, '__telecrypt_e2ee_disabled', { value: true, writable: false });
+                // Approach 2: Override URLSearchParams to always return 'false' for perParticipantE2EE
+                var __origGet = URLSearchParams.prototype.get;
+                URLSearchParams.prototype.get = function(name) {
+                    if (name === 'perParticipantE2EE') return 'false';
+                    if (name === 'skipLobby') return 'true';
+                    return __origGet.call(this, name);
+                };
+                console.log('[TeleCrypt] URLSearchParams patched for E2EE=false, skipLobby=true');
+            } catch(e) {
+                console.error('[TeleCrypt] Failed to patch URLSearchParams:', e);
             }
         })();
     """.trimIndent()
@@ -886,13 +910,21 @@ private class CdpConnection private constructor(
 
 /**
  * Builds the JSON string for localStorage["matrix-auth-store"].
+ *
+ * Element Call v0.19.1 reads this object to authenticate. The key fields are:
+ * - user_id, device_id, access_token — standard Matrix credentials
+ * - passwordlessUser — must be false so Element Call doesn't treat this as a guest
+ * - homeserver — the homeserver base URL. Without this, Element Call cannot determine
+ *   which server to connect to and falls back to the registration flow (POST /register),
+ *   which fails with 403 and causes "UNKNOWN ERROR" on the remote side.
  */
 private fun buildSessionJson(session: ElementCallSession): String {
     val userId = escapeJsonString(session.userId)
     val deviceId = escapeJsonString(session.deviceId)
     val accessToken = escapeJsonString(session.accessToken)
+    val homeserver = escapeJsonString(session.homeserver)
     val passwordlessUser = session.passwordlessUser
-    return """{"user_id":"$userId","device_id":"$deviceId","access_token":"$accessToken","passwordlessUser":$passwordlessUser}"""
+    return """{"user_id":"$userId","device_id":"$deviceId","access_token":"$accessToken","homeserver":"$homeserver","passwordlessUser":$passwordlessUser}"""
 }
 
 private fun escapeJsonString(value: String): String {

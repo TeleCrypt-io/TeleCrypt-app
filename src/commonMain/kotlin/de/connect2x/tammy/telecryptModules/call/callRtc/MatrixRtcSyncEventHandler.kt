@@ -22,6 +22,7 @@ import net.folivo.trixnity.core.model.events.ClientEvent
 import net.folivo.trixnity.core.model.events.UnknownEventContent
 import net.folivo.trixnity.core.subscribeEachEventAsFlow
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.runCatching
 
 class MatrixRtcSyncEventHandler(
@@ -32,6 +33,7 @@ class MatrixRtcSyncEventHandler(
 ) : EventHandler {
     private val started = AtomicBoolean(false)
     private val loggedFirstEvent = AtomicBoolean(false)
+    private val eventCount = AtomicLong(0)
     @Volatile
     private var localUserId: UserId? = null
     @Volatile
@@ -46,6 +48,9 @@ class MatrixRtcSyncEventHandler(
             accountStore.getAccountAsFlow().collectLatest { account ->
                 localUserId = account?.userId
                 localDeviceId = account?.deviceId
+                if (account != null) {
+                    println("[Call][DIAG] Local identity: userId=${account.userId.full} deviceId=${account.deviceId}")
+                }
             }
         }
         syncApi.subscribeEachEventAsFlow()
@@ -60,10 +65,21 @@ class MatrixRtcSyncEventHandler(
                 val unknown = event.content as? UnknownEventContent
                 if (unknown != null) {
                     val t = unknown.eventType
-                    // Log RTC-related types always; log others only occasionally to avoid spam
-                    if (t.contains("rtc") || t.contains("call") || t.contains("msc4143") || t.contains("msc4354")) {
-                        println("[Call][DIAG] Sync event type=$t class=${event::class.simpleName}")
+                    // Log RTC-related types always; also log call/member types from MSC3401
+                    if (t.contains("rtc") || t.contains("call") || t.contains("msc4143") || t.contains("msc3401") || t.contains("member")) {
+                        val roomId = when (event) {
+                            is ClientEvent.RoomEvent.StateEvent<*> -> event.roomId?.full
+                            is ClientEvent.RoomEvent.MessageEvent<*> -> event.roomId?.full
+                            is ClientEvent.EphemeralEvent<*> -> event.roomId?.full
+                            else -> null
+                        }
+                        println("[Call][DIAG] Sync event type=$t class=${event::class.simpleName} room=$roomId")
                     }
+                }
+                // Also log non-UnknownEventContent events that might be call-related
+                // (some events may be deserialized into known types)
+                if (unknown == null && eventCount.incrementAndGet() % 500 == 0L) {
+                    println("[Call][DIAG] Processed ${eventCount.get()} sync events total (latest class=${event::class.simpleName})")
                 }
                 handleEvent(event)
             }
@@ -248,7 +264,16 @@ class MatrixRtcSyncEventHandler(
     private fun handleMemberMessageEvent(event: ClientEvent.RoomEvent.MessageEvent<*>, raw: JsonObject) {
         val roomId = event.roomId ?: return
         val sender = event.sender ?: return
-        println("[Call] RTC member message room=${roomId.full} sender=${sender.full}")
+        val eventType = (event.content as? UnknownEventContent)?.eventType ?: ""
+        println("[Call] RTC member message room=${roomId.full} sender=${sender.full} type=$eventType")
+
+        // MSC3401 call.member events can arrive as timeline MessageEvents too.
+        // They use the "memberships" array format instead of the m.rtc.member format.
+        if (eventType == MatrixRtcEventTypes.MSC3401_CALL_MEMBER || eventType == MatrixRtcEventTypes.CALL_MEMBER) {
+            handleMsc3401MemberMessageEvent(event, raw)
+            return
+        }
+
         applyMemberRaw(
             roomId = roomId,
             senderUserId = sender.full,
@@ -257,6 +282,77 @@ class MatrixRtcSyncEventHandler(
             originTimestampMs = event.originTimestamp,
             unsignedAgeMs = event.unsigned?.age,
         )
+    }
+
+    /**
+     * Handles MSC3401 call.member events arriving as timeline MessageEvents.
+     * Same parsing logic as handleMsc3401MemberStateEvent but adapted for MessageEvent.
+     */
+    private fun handleMsc3401MemberMessageEvent(
+        event: ClientEvent.RoomEvent.MessageEvent<*>,
+        raw: JsonObject,
+    ) {
+        val roomId = event.roomId ?: return
+        val sender = event.sender ?: return
+        val userId = sender.full
+
+        val memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
+        if (memberships == null || memberships.isEmpty()) {
+            println("[Call] MSC3401 member message: empty memberships room=${roomId.full} user=$userId — treating as disconnect")
+            val disconnectKey = "msc3401_${userId}"
+            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
+                callId = "",
+                stickyKey = disconnectKey,
+                userId = net.folivo.trixnity.core.model.UserId(userId),
+                deviceId = null,
+                expiresAtMs = 0L,
+                connected = false,
+                isLocal = userId == localUserId?.full,
+            )
+            rtcService.applyMemberEvent(memberEvent)
+            return
+        }
+
+        println("[Call] MSC3401 member message: room=${roomId.full} user=$userId memberships=${memberships.size}")
+
+        for (entry in memberships) {
+            val obj = entry as? JsonObject ?: continue
+            val deviceId = obj.string("device_id") ?: continue
+            val callId = obj.string("call_id") ?: ""
+            val membershipId = obj.string("membershipID") ?: obj.string("membership_id") ?: ""
+            val expiresMs = obj.long("expires") ?: obj.long("expires_ts") ?: 0L
+            val fociActive = obj["foci_active"] as? kotlinx.serialization.json.JsonArray
+            val hasTransport = fociActive != null && fociActive.isNotEmpty()
+            val stickyKey = "msc3401_${userId}_${deviceId}"
+            val isLocal = userId == localUserId?.full && deviceId == localDeviceId
+            val now = nowMs()
+            val originTs = event.originTimestamp
+            val expiresAtMs = if (expiresMs > 0L) {
+                (originTs ?: now) + expiresMs
+            } else {
+                0L
+            }
+
+            println(
+                "[Call] MSC3401 membership (msg): user=$userId device=$deviceId callId=$callId " +
+                    "hasTransport=$hasTransport expires=$expiresMs isLocal=$isLocal"
+            )
+
+            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+                roomId = roomId,
+                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
+                callId = callId.ifBlank { membershipId.ifBlank { "msc3401_$deviceId" } },
+                stickyKey = stickyKey,
+                userId = net.folivo.trixnity.core.model.UserId(userId),
+                deviceId = deviceId,
+                expiresAtMs = expiresAtMs,
+                connected = hasTransport,
+                isLocal = isLocal,
+            )
+            rtcService.applyMemberEvent(memberEvent)
+        }
     }
 
     private fun handleMemberAccountDataEvent(
