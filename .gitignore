@@ -42,3 +42,4 @@ TEAM_INBOX.md
 logs/
 .tmp/
 .tmp-element-call/
+hs_err_pid*.log
