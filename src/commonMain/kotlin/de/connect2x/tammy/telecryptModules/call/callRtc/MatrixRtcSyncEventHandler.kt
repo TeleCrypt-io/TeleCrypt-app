@@ -294,10 +294,12 @@ class MatrixRtcSyncEventHandler(
             0L
         }
 
-        // For the new per-device format, call_id is often empty string "".
-        // We use membershipID or generate a synthetic callId to ensure participants
-        // can be matched to a call session.
-        val effectiveCallId = callId.ifBlank { membershipId.ifBlank { "msc3401_$deviceId" } }
+        // For the new per-device format (MSC4143), call_id is always empty string "".
+        // The membershipID is a participant identifier, NOT a call ID.
+        // We use a wildcard marker "*" that the participant filter recognizes as
+        // "matches any active call in the room". This ensures participants from
+        // per-device state events are included regardless of the slot's callId.
+        val effectiveCallId = if (callId.isNotBlank()) callId else "*"
 
         println(
             "[Call] MSC3401 membership: user=$userId device=$deviceId callId='$callId' " +

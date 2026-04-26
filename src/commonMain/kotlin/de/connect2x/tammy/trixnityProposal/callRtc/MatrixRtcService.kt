@@ -132,15 +132,13 @@ class MatrixRtcService(
         val iterator = holder.participants.iterator()
         while (iterator.hasNext()) {
             val participant = iterator.next().value
-            // For the new per-device MSC3401 format, call_id is empty and we generate
-            // synthetic callIds like "msc3401_deviceId". These won't match the slot's
-            // activeCallId. We keep participants if:
-            // 1. Their callId matches the active callId exactly, OR
-            // 2. Their callId starts with "msc3401_" (synthetic from per-device format), OR
-            // 3. The active callId starts with "msc3401_" (slot was auto-opened from member event)
+            // CallId matching for MSC4143 per-device format:
+            // - Participant callId "*" = wildcard, matches any active call
+            // - Participant callId == activeCallId = exact match
+            // - activeCallId == "*" = slot was auto-opened from wildcard member event
             val callIdMatches = participant.callId == activeCallId ||
-                participant.callId.startsWith("msc3401_") ||
-                (activeCallId?.startsWith("msc3401_") == true)
+                participant.callId == "*" ||
+                activeCallId == "*"
             val keepForActiveSession = holder.slotOpen &&
                 !activeCallId.isNullOrBlank() &&
                 participant.slotId == activeSlotId &&
@@ -156,11 +154,10 @@ class MatrixRtcService(
             emptyList()
         } else {
             holder.participants.values.filter { participant ->
-                // Same lenient callId matching as in purge:
-                // MSC3401 per-device format uses synthetic callIds like "msc3401_deviceId"
+                // Same wildcard matching as in purge
                 val callIdMatches = participant.callId == callId ||
-                    participant.callId.startsWith("msc3401_") ||
-                    callId.startsWith("msc3401_")
+                    participant.callId == "*" ||
+                    callId == "*"
                 participant.slotId == holder.slotId &&
                     callIdMatches &&
                     !participant.isExpired(nowMs)
