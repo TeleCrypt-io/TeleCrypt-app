@@ -177,90 +177,183 @@ class MatrixRtcSyncEventHandler(
         raw: JsonObject,
     ) {
         val roomId = event.roomId ?: return
-        val stateKey = event.stateKey // user ID
+        val stateKey = event.stateKey // e.g. "_@user:server_deviceId_m.call" or user ID
         val sender = event.sender ?: return
-        val userId = stateKey.takeIf { it.isNotBlank() } ?: sender.full
 
         // DIAGNOSTIC: Log raw JSON to understand the structure
         println("[Call][DIAG] MSC3401 state raw keys=${raw.keys} stateKey=$stateKey sender=${sender.full}")
         println("[Call][DIAG] MSC3401 state raw JSON (first 500): ${raw.toString().take(500)}")
 
-        // MSC3401 events may have memberships at top level or nested in "content"
-        var memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
-        if (memberships == null) {
-            // Try nested content — some serialization paths wrap the content
-            val content = raw["content"] as? JsonObject
-            if (content != null) {
-                memberships = content["memberships"] as? kotlinx.serialization.json.JsonArray
-                if (memberships != null) {
-                    println("[Call][DIAG] MSC3401: Found memberships inside nested 'content' object")
-                }
-            }
-        }
+        // Determine the effective content — some serialization paths wrap in "content"
+        val effectiveContent = (raw["content"] as? JsonObject) ?: raw
 
-        if (memberships == null || memberships.isEmpty()) {
-            // Empty memberships = user left the call. Send disconnect for this user.
-            println("[Call] MSC3401 member state: empty memberships room=${roomId.full} user=$userId — treating as disconnect")
-            val disconnectKey = "msc3401_${userId}"
-            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+        // ── NEW per-device format (MSC4143 / modern ElementX) ──
+        // Each device has its own state event with state key like "_@user:server_deviceId_m.call"
+        // The content IS the membership itself: {application, call_id, device_id, foci_preferred, ...}
+        // There is NO "memberships" array wrapper.
+        val application = effectiveContent.string("application")
+        val deviceIdDirect = effectiveContent.string("device_id")
+
+        if (application != null && deviceIdDirect != null) {
+            // This is the new per-device format — parse directly
+            parseSingleMembershipFromContent(
+                content = effectiveContent,
                 roomId = roomId,
-                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
-                callId = "",
-                stickyKey = disconnectKey,
-                userId = net.folivo.trixnity.core.model.UserId(userId),
-                deviceId = null,
-                expiresAtMs = 0L,
-                connected = false,
-                isLocal = userId == localUserId?.full,
+                stateKey = stateKey,
+                sender = sender,
+                originTimestamp = event.originTimestamp,
             )
-            rtcService.applyMemberEvent(memberEvent)
             return
         }
 
-        println("[Call] MSC3401 member state: room=${roomId.full} user=$userId memberships=${memberships.size}")
-
-        for (entry in memberships) {
-            val obj = entry as? JsonObject ?: continue
-            val deviceId = obj.string("device_id") ?: continue
-            val callId = obj.string("call_id") ?: ""
-            val membershipId = obj.string("membershipID") ?: obj.string("membership_id") ?: ""
-            val scope = obj.string("scope") ?: "m.room"
-            val expiresMs = obj.long("expires") ?: obj.long("expires_ts") ?: 0L
-
-            // Check if this membership has active foci (transport info)
-            val fociActive = obj["foci_active"] as? kotlinx.serialization.json.JsonArray
-            val hasTransport = fociActive != null && fociActive.isNotEmpty()
-
-            val stickyKey = "msc3401_${userId}_${deviceId}"
-            val isLocal = userId == localUserId?.full && deviceId == localDeviceId
-
-            // Compute expiration time
-            val now = nowMs()
-            val originTs = event.originTimestamp
-            val expiresAtMs = if (expiresMs > 0L) {
-                (originTs ?: now) + expiresMs
-            } else {
-                0L
-            }
-
-            println(
-                "[Call] MSC3401 membership: user=$userId device=$deviceId callId=$callId " +
-                    "scope=$scope hasTransport=$hasTransport expires=$expiresMs isLocal=$isLocal"
-            )
-
-            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
-                roomId = roomId,
-                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
-                callId = callId.ifBlank { membershipId.ifBlank { "msc3401_$deviceId" } },
-                stickyKey = stickyKey,
-                userId = net.folivo.trixnity.core.model.UserId(userId),
-                deviceId = deviceId,
-                expiresAtMs = expiresAtMs,
-                connected = hasTransport,
-                isLocal = isLocal,
-            )
-            rtcService.applyMemberEvent(memberEvent)
+        // ── OLD format with "memberships" array ──
+        var memberships = effectiveContent["memberships"] as? kotlinx.serialization.json.JsonArray
+        if (memberships == null) {
+            memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
         }
+
+        if (memberships != null && memberships.isNotEmpty()) {
+            val userId = stateKey.takeIf { it.isNotBlank() } ?: sender.full
+            println("[Call] MSC3401 member state (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
+            for (entry in memberships) {
+                val obj = entry as? JsonObject ?: continue
+                parseSingleMembershipFromContent(
+                    content = obj,
+                    roomId = roomId,
+                    stateKey = stateKey,
+                    sender = sender,
+                    originTimestamp = event.originTimestamp,
+                )
+            }
+            return
+        }
+
+        // Empty content = user left the call. Send disconnect.
+        val userId = extractUserIdFromStateKey(stateKey) ?: sender.full
+        val deviceIdFromKey = extractDeviceIdFromStateKey(stateKey)
+        println("[Call] MSC3401 member state: empty content room=${roomId.full} user=$userId device=$deviceIdFromKey — treating as disconnect")
+        val disconnectKey = if (deviceIdFromKey != null) "msc3401_${userId}_${deviceIdFromKey}" else "msc3401_${userId}"
+        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+            roomId = roomId,
+            slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
+            callId = "",
+            stickyKey = disconnectKey,
+            userId = net.folivo.trixnity.core.model.UserId(userId),
+            deviceId = deviceIdFromKey,
+            expiresAtMs = 0L,
+            connected = false,
+            isLocal = userId == localUserId?.full,
+        )
+        rtcService.applyMemberEvent(memberEvent)
+    }
+
+    /**
+     * Parse a single membership from content JSON (works for both new per-device format
+     * and individual entries in old "memberships" array).
+     *
+     * New format example:
+     * ```json
+     * {"application":"m.call","call_id":"","scope":"m.room","device_id":"fuUcOArGkK",
+     *  "membershipID":"@user:server:deviceId","expires":14400000,
+     *  "focus_active":{"type":"livekit",...},"foci_preferred":[...]}
+     * ```
+     */
+    private fun parseSingleMembershipFromContent(
+        content: JsonObject,
+        roomId: net.folivo.trixnity.core.model.RoomId,
+        stateKey: String,
+        sender: net.folivo.trixnity.core.model.UserId,
+        originTimestamp: Long?,
+    ) {
+        val deviceId = content.string("device_id")
+        if (deviceId == null) {
+            println("[Call] MSC3401: skipping membership without device_id in room=${roomId.full}")
+            return
+        }
+
+        val userId = extractUserIdFromStateKey(stateKey) ?: sender.full
+        val callId = content.string("call_id") ?: ""
+        val membershipId = content.string("membershipID") ?: content.string("membership_id") ?: ""
+        val scope = content.string("scope") ?: "m.room"
+        val expiresMs = content.long("expires") ?: content.long("expires_ts") ?: 0L
+
+        // Check for active focus — new format uses "focus_active" (object), old uses "foci_active" (array)
+        val focusActive = content["focus_active"] as? JsonObject
+        val fociPreferred = content["foci_preferred"] as? kotlinx.serialization.json.JsonArray
+        val fociActive = content["foci_active"] as? kotlinx.serialization.json.JsonArray
+        // Connected if has any focus info (active focus object OR preferred foci array OR old foci_active array)
+        val hasTransport = focusActive != null || (fociPreferred != null && fociPreferred.isNotEmpty()) || (fociActive != null && fociActive.isNotEmpty())
+
+        val stickyKey = "msc3401_${userId}_${deviceId}"
+        val isLocal = userId == localUserId?.full && deviceId == localDeviceId
+
+        val now = nowMs()
+        val expiresAtMs = if (expiresMs > 0L) {
+            (originTimestamp ?: now) + expiresMs
+        } else {
+            0L
+        }
+
+        // For the new per-device format, call_id is often empty string "".
+        // We use membershipID or generate a synthetic callId to ensure participants
+        // can be matched to a call session.
+        val effectiveCallId = callId.ifBlank { membershipId.ifBlank { "msc3401_$deviceId" } }
+
+        println(
+            "[Call] MSC3401 membership: user=$userId device=$deviceId callId='$callId' " +
+                "effectiveCallId='$effectiveCallId' scope=$scope hasTransport=$hasTransport " +
+                "expires=$expiresMs isLocal=$isLocal focusActive=${focusActive != null} " +
+                "fociPreferred=${fociPreferred?.size ?: 0}"
+        )
+
+        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+            roomId = roomId,
+            slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
+            callId = effectiveCallId,
+            stickyKey = stickyKey,
+            userId = net.folivo.trixnity.core.model.UserId(userId),
+            deviceId = deviceId,
+            expiresAtMs = expiresAtMs,
+            connected = hasTransport,
+            isLocal = isLocal,
+        )
+        rtcService.applyMemberEvent(memberEvent)
+    }
+
+    /**
+     * Extract user ID from per-device state key format: "_@user:server_deviceId_m.call"
+     * Returns null if the state key doesn't match this format.
+     */
+    private fun extractUserIdFromStateKey(stateKey: String): String? {
+        // Format: _@user:server_deviceId_m.call
+        if (!stateKey.startsWith("_@")) return null
+        // Find the second underscore after the user ID (which contains ':')
+        val afterPrefix = stateKey.substring(1) // "@user:server_deviceId_m.call"
+        val colonIdx = afterPrefix.indexOf(':')
+        if (colonIdx < 0) return null
+        // Find the underscore after server name
+        val afterColon = afterPrefix.substring(colonIdx + 1) // "server_deviceId_m.call"
+        val underscoreIdx = afterColon.indexOf('_')
+        if (underscoreIdx < 0) return null
+        return afterPrefix.substring(0, colonIdx + 1 + underscoreIdx) // "@user:server"
+    }
+
+    /**
+     * Extract device ID from per-device state key format: "_@user:server_deviceId_m.call"
+     * Returns null if the state key doesn't match this format.
+     */
+    private fun extractDeviceIdFromStateKey(stateKey: String): String? {
+        // Format: _@user:server_deviceId_m.call
+        if (!stateKey.startsWith("_@")) return null
+        val afterPrefix = stateKey.substring(1) // "@user:server_deviceId_m.call"
+        val colonIdx = afterPrefix.indexOf(':')
+        if (colonIdx < 0) return null
+        val afterColon = afterPrefix.substring(colonIdx + 1) // "server_deviceId_m.call"
+        val firstUnderscore = afterColon.indexOf('_')
+        if (firstUnderscore < 0) return null
+        val remainder = afterColon.substring(firstUnderscore + 1) // "deviceId_m.call"
+        val lastUnderscore = remainder.lastIndexOf('_')
+        return if (lastUnderscore > 0) remainder.substring(0, lastUnderscore) else remainder
     }
 
     private fun handleMemberEvent(event: ClientEvent.EphemeralEvent<*>, raw: JsonObject) {
@@ -316,74 +409,59 @@ class MatrixRtcSyncEventHandler(
         println("[Call][DIAG] MSC3401 message raw keys=${raw.keys} sender=${sender.full}")
         println("[Call][DIAG] MSC3401 message raw JSON (first 500): ${raw.toString().take(500)}")
 
-        // MSC3401 events may have memberships at top level or nested in "content"
-        var memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
-        if (memberships == null) {
-            val content = raw["content"] as? JsonObject
-            if (content != null) {
-                memberships = content["memberships"] as? kotlinx.serialization.json.JsonArray
-                if (memberships != null) {
-                    println("[Call][DIAG] MSC3401 msg: Found memberships inside nested 'content' object")
-                }
-            }
-        }
+        val effectiveContent = (raw["content"] as? JsonObject) ?: raw
 
-        if (memberships == null || memberships.isEmpty()) {
-            println("[Call] MSC3401 member message: empty memberships room=${roomId.full} user=$userId — treating as disconnect")
-            val disconnectKey = "msc3401_${userId}"
-            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+        // ── NEW per-device format ──
+        val application = effectiveContent.string("application")
+        val deviceIdDirect = effectiveContent.string("device_id")
+        if (application != null && deviceIdDirect != null) {
+            // Use sender as stateKey for message events (no stateKey available)
+            parseSingleMembershipFromContent(
+                content = effectiveContent,
                 roomId = roomId,
-                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
-                callId = "",
-                stickyKey = disconnectKey,
-                userId = net.folivo.trixnity.core.model.UserId(userId),
-                deviceId = null,
-                expiresAtMs = 0L,
-                connected = false,
-                isLocal = userId == localUserId?.full,
+                stateKey = sender.full,
+                sender = sender,
+                originTimestamp = event.originTimestamp,
             )
-            rtcService.applyMemberEvent(memberEvent)
             return
         }
 
-        println("[Call] MSC3401 member message: room=${roomId.full} user=$userId memberships=${memberships.size}")
-
-        for (entry in memberships) {
-            val obj = entry as? JsonObject ?: continue
-            val deviceId = obj.string("device_id") ?: continue
-            val callId = obj.string("call_id") ?: ""
-            val membershipId = obj.string("membershipID") ?: obj.string("membership_id") ?: ""
-            val expiresMs = obj.long("expires") ?: obj.long("expires_ts") ?: 0L
-            val fociActive = obj["foci_active"] as? kotlinx.serialization.json.JsonArray
-            val hasTransport = fociActive != null && fociActive.isNotEmpty()
-            val stickyKey = "msc3401_${userId}_${deviceId}"
-            val isLocal = userId == localUserId?.full && deviceId == localDeviceId
-            val now = nowMs()
-            val originTs = event.originTimestamp
-            val expiresAtMs = if (expiresMs > 0L) {
-                (originTs ?: now) + expiresMs
-            } else {
-                0L
-            }
-
-            println(
-                "[Call] MSC3401 membership (msg): user=$userId device=$deviceId callId=$callId " +
-                    "hasTransport=$hasTransport expires=$expiresMs isLocal=$isLocal"
-            )
-
-            val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
-                roomId = roomId,
-                slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
-                callId = callId.ifBlank { membershipId.ifBlank { "msc3401_$deviceId" } },
-                stickyKey = stickyKey,
-                userId = net.folivo.trixnity.core.model.UserId(userId),
-                deviceId = deviceId,
-                expiresAtMs = expiresAtMs,
-                connected = hasTransport,
-                isLocal = isLocal,
-            )
-            rtcService.applyMemberEvent(memberEvent)
+        // ── OLD format with "memberships" array ──
+        var memberships = effectiveContent["memberships"] as? kotlinx.serialization.json.JsonArray
+        if (memberships == null) {
+            memberships = raw["memberships"] as? kotlinx.serialization.json.JsonArray
         }
+
+        if (memberships != null && memberships.isNotEmpty()) {
+            println("[Call] MSC3401 member message (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
+            for (entry in memberships) {
+                val obj = entry as? JsonObject ?: continue
+                parseSingleMembershipFromContent(
+                    content = obj,
+                    roomId = roomId,
+                    stateKey = sender.full,
+                    sender = sender,
+                    originTimestamp = event.originTimestamp,
+                )
+            }
+            return
+        }
+
+        // Empty content = disconnect
+        println("[Call] MSC3401 member message: empty content room=${roomId.full} user=$userId — treating as disconnect")
+        val disconnectKey = "msc3401_${userId}"
+        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+            roomId = roomId,
+            slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
+            callId = "",
+            stickyKey = disconnectKey,
+            userId = net.folivo.trixnity.core.model.UserId(userId),
+            deviceId = null,
+            expiresAtMs = 0L,
+            connected = false,
+            isLocal = userId == localUserId?.full,
+        )
+        rtcService.applyMemberEvent(memberEvent)
     }
 
     private fun handleMemberAccountDataEvent(

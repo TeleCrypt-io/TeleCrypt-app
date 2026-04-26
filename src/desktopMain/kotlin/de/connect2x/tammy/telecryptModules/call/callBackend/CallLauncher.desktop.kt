@@ -383,8 +383,24 @@ private fun injectSessionViaCdp(
                 var __tcSession = JSON.parse('$escapedJson');
                 var __origFetch = window.fetch;
                 window.fetch = function(input, init) {
-                    var url = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
-                    var method = (init && init.method) ? init.method.toUpperCase() : 'GET';
+                    // Robust URL extraction: handle string, Request object, URL object
+                    var url = '';
+                    if (typeof input === 'string') {
+                        url = input;
+                    } else if (input instanceof Request) {
+                        url = input.url;
+                    } else if (input && input.url) {
+                        url = input.url;
+                    } else if (input && typeof input.toString === 'function') {
+                        url = input.toString();
+                    }
+                    // Robust method extraction: check init first, then Request object
+                    var method = 'GET';
+                    if (init && init.method) {
+                        method = init.method.toUpperCase();
+                    } else if (input instanceof Request && input.method) {
+                        method = input.method.toUpperCase();
+                    }
 
                     // ── Auth interception: /register ──
                     // Element Call standalone mode tries POST /register to create a new user.

@@ -132,10 +132,19 @@ class MatrixRtcService(
         val iterator = holder.participants.iterator()
         while (iterator.hasNext()) {
             val participant = iterator.next().value
+            // For the new per-device MSC3401 format, call_id is empty and we generate
+            // synthetic callIds like "msc3401_deviceId". These won't match the slot's
+            // activeCallId. We keep participants if:
+            // 1. Their callId matches the active callId exactly, OR
+            // 2. Their callId starts with "msc3401_" (synthetic from per-device format), OR
+            // 3. The active callId starts with "msc3401_" (slot was auto-opened from member event)
+            val callIdMatches = participant.callId == activeCallId ||
+                participant.callId.startsWith("msc3401_") ||
+                (activeCallId?.startsWith("msc3401_") == true)
             val keepForActiveSession = holder.slotOpen &&
                 !activeCallId.isNullOrBlank() &&
                 participant.slotId == activeSlotId &&
-                participant.callId == activeCallId
+                callIdMatches
             val remove = !keepForActiveSession || participant.isExpired(nowMs)
             if (remove) iterator.remove()
         }
@@ -147,8 +156,13 @@ class MatrixRtcService(
             emptyList()
         } else {
             holder.participants.values.filter { participant ->
+                // Same lenient callId matching as in purge:
+                // MSC3401 per-device format uses synthetic callIds like "msc3401_deviceId"
+                val callIdMatches = participant.callId == callId ||
+                    participant.callId.startsWith("msc3401_") ||
+                    callId.startsWith("msc3401_")
                 participant.slotId == holder.slotId &&
-                    participant.callId == callId &&
+                    callIdMatches &&
                     !participant.isExpired(nowMs)
             }
         }
