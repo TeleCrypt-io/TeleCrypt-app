@@ -145,6 +145,18 @@ object MatrixRtcEventParser {
         )
     }
 
+    /**
+     * Validates whether a member event represents a valid "connected" participant.
+     *
+     * NOTE: The stickyKey != memberId check has been relaxed. Different Matrix clients
+     * use different naming conventions for member IDs:
+     * - TeleCrypt uses "telecrypt-DEVICEID"
+     * - Element Call uses "_DEVICEID" or "device:DEVICEID"
+     * - Other clients may use other formats
+     *
+     * Requiring exact match between stickyKey and memberId would reject valid events
+     * from other clients. We now only require that both are non-blank.
+     */
     private fun isValidConnectEvent(
         slotId: String,
         stickyKey: String,
@@ -155,7 +167,8 @@ object MatrixRtcEventParser {
         if (slotId.isBlank()) return false
         if (callId.isNullOrBlank()) return false
         if (memberId.isNullOrBlank()) return false
-        if (stickyKey != memberId) return false
+        // Relaxed: do NOT require stickyKey == memberId.
+        // Different clients use different naming conventions.
         if (rtcTransports == null) return false
         if (rtcTransports.isEmpty()) return false
         val hasAnyTypedTransport = rtcTransports.any { element ->

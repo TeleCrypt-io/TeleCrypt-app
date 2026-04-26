@@ -66,27 +66,45 @@ class MatrixRtcAutoStart(
         var newBackgroundFilterId = account.backgroundFilterId
         var changed = false
 
+        // DIAGNOSTIC: Log filter IDs to detect if filter patching is ever attempted
+        println("[Call][DIAG] ensureRtcFilters user=$userKey filterId=${account.filterId} backgroundFilterId=${account.backgroundFilterId}")
+
         if (account.filterId != null) {
             val current = runCatching { userApi.getFilter(userId, account.filterId!!) }.getOrNull()?.getOrNull()
+            println("[Call][DIAG] Current sync filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
-                if (patched != current) {
+                val filterChanged = patched != current
+                println("[Call][DIAG] Filter patch needed=$filterChanged for user=$userKey")
+                if (filterChanged) {
                     val created = runCatching { userApi.setFilter(userId, patched) }.getOrNull()?.getOrNull()
+                    println("[Call][DIAG] New filter upload result=$created for user=$userKey")
                     if (!created.isNullOrBlank()) {
                         newFilterId = created
                         changed = true
                         println("[Call] Updated sync filter for user=$userKey id=$created")
                     }
                 }
+            } else {
+                println("[Call][DIAG] Could not fetch current filter for user=$userKey filterId=${account.filterId}")
             }
+        } else {
+            // No filterId set yet — the server uses no filter, so all events (including RTC)
+            // pass through. When trixnity-messenger eventually creates a filter,
+            // MatrixRtcSyncFilterConfigurer ensures RTC types are included.
+            println("[Call][DIAG] No filterId set for user=$userKey — no filter to patch (all events pass through)")
         }
 
         if (account.backgroundFilterId != null) {
             val current = runCatching { userApi.getFilter(userId, account.backgroundFilterId!!) }.getOrNull()?.getOrNull()
+            println("[Call][DIAG] Current background filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
-                if (patched != current) {
+                val bgFilterChanged = patched != current
+                println("[Call][DIAG] Background filter patch needed=$bgFilterChanged for user=$userKey")
+                if (bgFilterChanged) {
                     val created = runCatching { userApi.setFilter(userId, patched) }.getOrNull()?.getOrNull()
+                    println("[Call][DIAG] New background filter upload result=$created for user=$userKey")
                     if (!created.isNullOrBlank()) {
                         newBackgroundFilterId = created
                         changed = true
@@ -96,7 +114,10 @@ class MatrixRtcAutoStart(
             }
         }
 
-        if (!changed) return
+        if (!changed) {
+            println("[Call][DIAG] No filter changes applied for user=$userKey")
+            return
+        }
         accountStore.updateAccount { current ->
             current!!.copy(
                 filterId = newFilterId,

@@ -49,12 +49,20 @@ class IncomingCallManager(
         scope.launch {
             watcher.allRoomStates.collect { state ->
                 val callId = state.session?.callId
+                // DIAGNOSTIC: Log every state update that has a session or incoming flag
+                if (state.incoming || state.slotOpen || callId != null) {
+                    println(
+                        "[Call][DIAG] IncomingCallManager state room=${state.roomId.full} " +
+                            "incoming=${state.incoming} slotOpen=${state.slotOpen} callId=$callId " +
+                            "localJoined=${state.localJoined} currentIncoming=${_incomingCall.value?.callId}"
+                    )
+                }
                 if (state.incoming && callId != null) {
                     if (state.localJoined) {
                         if (_incomingCall.value?.callId == callId) {
                             _incomingCall.value = null
                         }
-                        return@collect 
+                        return@collect
                     }
                     processIncomingState(state)
                 } else if (_incomingCall.value?.roomId == state.roomId) {
@@ -71,26 +79,39 @@ class IncomingCallManager(
         if (_incomingCall.value?.callId == callId) return
         if (_incomingCall.value != null) return
 
-        val client = activeClientsMap.values.firstOrNull { c ->
-            c.room.getById(state.roomId).firstOrNull() != null
-        } ?: return
+        println("[Call][DIAG] processIncomingState room=${state.roomId.full} callId=$callId activeClients=${activeClientsMap.size}")
+
+        // Try to find a client that has this room in its local store.
+        // If no client has the room cached yet (e.g. initial sync not complete),
+        // fall back to any available client — the room will become accessible
+        // once sync finishes, and we must not silently drop the incoming call.
+        var client = activeClientsMap.values.firstOrNull { c ->
+            runCatching { c.room.getById(state.roomId).firstOrNull() }.getOrNull() != null
+        }
+        if (client == null) {
+            println("[Call][DIAG] processIncomingState: no client has room=${state.roomId.full} cached — using fallback client")
+            client = activeClientsMap.values.firstOrNull()
+        }
+        if (client == null) {
+            println("[Call][DIAG] processIncomingState: no active clients at all — incoming call DROPPED")
+            return
+        }
 
         // Use the simplified name resolution for stability
         val memberState = state.participants.firstOrNull { !it.isLocal }
         val callerName = memberState?.userId?.full ?: "Unknown User"
-        
+
         var isDirect = false
         var roomName = state.roomId.full
-        
+
         try {
             val room = client.room.getById(state.roomId).firstOrNull()
             if (room != null) {
-                // We use basic properties that don't depend on complex Flow behaviors in this context
                 roomName = state.roomId.full
-                isDirect = false 
+                isDirect = false
             }
-        } catch (e: Exception) {
-            // Safe fallback
+        } catch (_: Exception) {
+            // Safe fallback — use roomId as name
         }
 
         registerIncoming(
@@ -99,7 +120,7 @@ class IncomingCallManager(
             callerName = callerName,
             roomName = roomName,
             matrixClient = client,
-            isDirect = isDirect
+            isDirect = isDirect,
         )
     }
 

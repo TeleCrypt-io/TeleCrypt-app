@@ -56,6 +56,15 @@ class MatrixRtcSyncEventHandler(
                     val type = (event.content as? UnknownEventContent)?.eventType
                     println("[Call] First sync event class=$eventClass content=$contentClass type=$type")
                 }
+                // DIAGNOSTIC: Log ALL UnknownEventContent events to see what types arrive
+                val unknown = event.content as? UnknownEventContent
+                if (unknown != null) {
+                    val t = unknown.eventType
+                    // Log RTC-related types always; log others only occasionally to avoid spam
+                    if (t.contains("rtc") || t.contains("call") || t.contains("msc4143") || t.contains("msc4354")) {
+                        println("[Call][DIAG] Sync event type=$t class=${event::class.simpleName}")
+                    }
+                }
                 handleEvent(event)
             }
             .launchIn(scope)

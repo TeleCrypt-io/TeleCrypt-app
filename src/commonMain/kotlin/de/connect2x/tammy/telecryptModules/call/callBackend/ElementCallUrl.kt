@@ -2,32 +2,49 @@ package de.connect2x.tammy.telecryptModules.call.callBackend
 
 private const val ELEMENT_CALL_BASE_URL = "https://call.element.io/room/#/"
 
+/**
+ * Builds the Element Call URL with all necessary query parameters.
+ *
+ * Key parameters for proper call flow:
+ * - skipLobby=true: bypasses the Element Call lobby screen for seamless UX
+ * - hideHeader=true: hides the Element Call header bar for cleaner embedded experience
+ * - confineToRoom=true: prevents navigation away from the call room
+ * - appPrompt=false: prevents "open in app" prompt
+ * - homeserver: MUST be set so Element Call knows which Matrix server to connect to
+ *
+ * NOTE: Session credentials (userId, deviceId, accessToken) are NOT passed in the URL.
+ * Element Call reads credentials exclusively from localStorage["matrix-auth-store"].
+ * On Android, the WebView injects JS to set this key before the page loads.
+ * On Desktop, WebviewKo's init() script does the same.
+ * The [session] parameter is only used here to resolve the homeserver URL.
+ */
 internal fun buildElementCallUrl(
     roomId: String,
     roomName: String,
     displayName: String,
     intent: String = "start_call",
     sendNotificationType: String? = "ring",
-    skipLobby: Boolean? = null,
+    skipLobby: Boolean? = true,
     waitForCallPickup: Boolean? = null,
     homeserver: String? = null,
     hideScreensharing: Boolean? = true,
+    hideHeader: Boolean? = true,
     autoLeave: Boolean? = null,
-    callMode: String? = null,
-    autoJoin: Boolean? = false,
     disableAudio: Boolean? = null,
     disableVideo: Boolean? = null,
+    session: ElementCallSession? = null,
 ): String {
     val alias = roomName.trim().ifEmpty { "call" }
     val encodedAlias = encodeComponent(alias)
     val encodedRoomId = encodeComponent(roomId)
     val encodedDisplayName = encodeComponent(displayName)
     val encodedIntent = encodeComponent(intent)
- 
+
     val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
     val viaServersParam = buildViaServersParam(roomId)
     val resolvedHomeserver = homeserver
         ?.takeIf { it.isNotBlank() }
+        ?: session?.homeserver?.takeIf { it.isNotBlank() }
         ?: deriveHomeserverFromRoomId(roomId)
     val homeserverParam = resolvedHomeserver?.let { "homeserver=${encodeComponent(it)}&" } ?: ""
     val notificationParam = sendNotificationType?.let { "sendNotificationType=${encodeComponent(it)}&" } ?: ""
@@ -36,18 +53,19 @@ internal fun buildElementCallUrl(
         "waitForCallPickup=${encodeComponent(it.toString())}&"
     } ?: ""
     val hideScreenshareParam = hideScreensharing?.let { "hideScreensharing=${encodeComponent(it.toString())}&" } ?: ""
+    val hideHeaderParam = hideHeader?.let { "hideHeader=${encodeComponent(it.toString())}&" } ?: ""
     val autoLeaveParam = autoLeave?.let { "autoLeave=${encodeComponent(it.toString())}&" } ?: ""
-    val callModeParam = callMode?.takeIf { it.isNotBlank() }?.let {
-        "telecryptCallMode=${encodeComponent(it)}&"
-    } ?: ""
-    val autoJoinParam = autoJoin?.let { "telecryptAutoJoin=${encodeComponent(it.toString())}&" } ?: ""
-    
+
     val disableAudioParam = disableAudio?.let { "disableAudio=${it}&" } ?: ""
     val disableVideoParam = disableVideo?.let { "disableVideo=${it}&" } ?: ""
 
+    // NOTE: Session credentials are NOT passed in the URL — Element Call ignores them.
+    // Authentication is handled via localStorage["matrix-auth-store"] injection
+    // (WebView JS injection on Android, WebviewKo init script on Desktop).
+
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
         "${roomIdParam}${viaServersParam}${homeserverParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
-        "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${autoLeaveParam}${callModeParam}${autoJoinParam}" +
+        "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${hideHeaderParam}${autoLeaveParam}" +
         "${disableAudioParam}${disableVideoParam}intent=$encodedIntent"
 }
 

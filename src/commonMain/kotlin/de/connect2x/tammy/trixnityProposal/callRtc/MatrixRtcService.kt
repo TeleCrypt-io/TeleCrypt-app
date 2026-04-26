@@ -52,6 +52,8 @@ class MatrixRtcService(
     fun applySlotEvent(slot: MatrixRtcSlotEvent) {
         val holder = holderFor(slot.roomId)
         holder.slotId = slot.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
+        // DIAGNOSTIC: Log every slot event to trace incoming call detection
+        println("[Call][DIAG] applySlotEvent room=${slot.roomId.full} open=${slot.open} callId=${slot.callId} slotId=${slot.slotId}")
         if (!slot.open || slot.callId.isNullOrBlank()) {
             holder.slotOpen = false
             holder.activeCallId = null
@@ -148,6 +150,14 @@ class MatrixRtcService(
         val rtcActive = holder.slotOpen && participants.isNotEmpty()
         val lastSeenCallId = callStateStore.getLastSeenCallId(holder.roomId)
         val incoming = holder.slotOpen && !localJoined && !callId.isNullOrBlank() && callId != lastSeenCallId
+        // DIAGNOSTIC: Log incoming flag computation whenever slotOpen is true
+        if (holder.slotOpen) {
+            println(
+                "[Call][DIAG] buildState room=${holder.roomId.full} slotOpen=${holder.slotOpen} " +
+                    "callId=$callId localJoined=$localJoined lastSeenCallId=$lastSeenCallId " +
+                    "incoming=$incoming participants=${participants.size}"
+            )
+        }
         val phase = when {
             incoming -> MatrixRtcCallPhase.INCOMING
             rtcActive -> MatrixRtcCallPhase.IN_CALL
