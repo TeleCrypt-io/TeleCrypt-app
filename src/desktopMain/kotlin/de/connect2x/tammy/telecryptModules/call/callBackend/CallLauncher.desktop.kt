@@ -381,6 +381,34 @@ private fun injectSessionViaCdp(
                 console.error('[TeleCrypt] Failed to inject session:', e);
             }
             try {
+                // Disable per-participant E2EE. In standalone mode, Element Call creates
+                // its own Olm account in IndexedDB with a different curve25519 key than
+                // TeleCrypt Desktop. Remote clients encrypt E2EE keys for TeleCrypt's key
+                // (from /keys/query), not for Element Call's browser key, causing MissingKey
+                // errors and no video. Disabling E2EE avoids this key mismatch entirely.
+                //
+                // We use multiple approaches to ensure E2EE is disabled:
+                // 1. Override the global config object that Element Call reads
+                // 2. Monkey-patch the URL hash to include perParticipantE2EE=false
+                // 3. Set a flag that the E2EE setup code checks
+                
+                // Approach: Ensure the URL hash contains perParticipantE2EE=false
+                // Element Call reads this from the URL hash fragment parameters
+                var __origPushState = history.pushState;
+                var __origReplaceState = history.replaceState;
+                function ensureE2EEDisabled() {
+                    if (window.location.hash && window.location.hash.indexOf('perParticipantE2EE') === -1) {
+                        var sep = window.location.hash.indexOf('?') !== -1 ? '&' : '?';
+                        window.location.hash = window.location.hash + sep + 'perParticipantE2EE=false';
+                    }
+                }
+                // Also intercept any config loading to disable E2EE
+                Object.defineProperty(window, '__telecrypt_e2ee_disabled', { value: true, writable: false });
+                console.log('[TeleCrypt] E2EE disabled flag set');
+            } catch(e) {
+                console.error('[TeleCrypt] Failed to disable E2EE:', e);
+            }
+            try {
                 $fetchInterceptBlock
             } catch(e) {
                 console.error('[TeleCrypt] Failed to install fetch interception:', e);

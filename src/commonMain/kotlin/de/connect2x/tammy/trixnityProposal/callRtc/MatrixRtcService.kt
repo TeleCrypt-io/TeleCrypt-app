@@ -90,6 +90,25 @@ class MatrixRtcService(
             expiresAtMs = member.expiresAtMs,
             isLocal = member.isLocal,
         )
+
+        // Auto-open slot when we see a remote member event with a valid callId
+        // but no slot is currently open. This handles the case where the remote
+        // client (e.g., ElementX) starts a call using only m.rtc.member state events
+        // without publishing a separate m.rtc.slot event. Without this, the
+        // incoming call detection would never trigger because slotOpen stays false.
+        if (!holder.slotOpen && member.callId.isNotBlank() && !member.isLocal) {
+            println(
+                "[Call][DIAG] Auto-opening slot from member event: room=${member.roomId.full} " +
+                    "callId=${member.callId} user=${member.userId.full} device=${member.deviceId}"
+            )
+            holder.slotOpen = true
+            holder.activeCallId = member.callId
+            holder.slotId = member.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
+            if (holder.sessionStartedAtMs == 0L) {
+                holder.sessionStartedAtMs = nowMs()
+            }
+        }
+
         refresh(member.roomId)
     }
 

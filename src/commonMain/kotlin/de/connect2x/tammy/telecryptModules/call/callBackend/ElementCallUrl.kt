@@ -32,6 +32,7 @@ internal fun buildElementCallUrl(
     autoLeave: Boolean? = null,
     disableAudio: Boolean? = null,
     disableVideo: Boolean? = null,
+    perParticipantE2EE: Boolean? = false,
     session: ElementCallSession? = null,
 ): String {
     val alias = roomName.trim().ifEmpty { "call" }
@@ -59,6 +60,13 @@ internal fun buildElementCallUrl(
     val disableAudioParam = disableAudio?.let { "disableAudio=${it}&" } ?: ""
     val disableVideoParam = disableVideo?.let { "disableVideo=${it}&" } ?: ""
 
+    // Disable per-participant E2EE by default. In standalone mode (non-widget),
+    // Element Call creates its own Olm account in IndexedDB with a different
+    // curve25519 key than TeleCrypt Desktop. Remote clients (e.g., ElementX)
+    // encrypt E2EE keys for TeleCrypt's key (from /keys/query), not for
+    // Element Call's browser key, causing MissingKey errors and no video.
+    val e2eeParam = perParticipantE2EE?.let { "perParticipantE2EE=${it}&" } ?: ""
+
     // NOTE: Session credentials are NOT passed in the URL — Element Call ignores them.
     // Authentication is handled via localStorage["matrix-auth-store"] injection
     // (WebView JS injection on Android, WebviewKo init script on Desktop).
@@ -66,7 +74,7 @@ internal fun buildElementCallUrl(
     return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
         "${roomIdParam}${viaServersParam}${homeserverParam}displayName=$encodedDisplayName&confineToRoom=true&appPrompt=false&" +
         "${notificationParam}${skipLobbyParam}${waitForPickupParam}${hideScreenshareParam}${hideHeaderParam}${autoLeaveParam}" +
-        "${disableAudioParam}${disableVideoParam}intent=$encodedIntent"
+        "${disableAudioParam}${disableVideoParam}${e2eeParam}intent=$encodedIntent"
 }
 
 private fun isMatrixRoomId(roomId: String): Boolean {

@@ -63,6 +63,8 @@ private fun buildRtcMappings(): EventContentSerializerMappings =
         val memberTypes = listOf(
             MatrixRtcEventTypes.MEMBER,
             MatrixRtcEventTypes.UNSTABLE_MEMBER,
+            MatrixRtcEventTypes.MSC3401_CALL_MEMBER,
+            MatrixRtcEventTypes.CALL_MEMBER,
         )
         for (type in memberTypes) {
             stateOf<UnknownEventContent>(type, UnknownEventContentSerializer(type))
