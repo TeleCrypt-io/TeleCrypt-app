@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TeleCrypt Call</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #111;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #status {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      color: #888;
+      font-size: 11px;
+      z-index: 10;
+      background: rgba(0,0,0,0.5);
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    #ec {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #111;
+      display: block;
+      /* Разрешаем камеру/микрофон; allow-same-origin нужен EC, чтобы не падать на crypto API. */
+    }
+  </style>
+</head>
+<body>
+  <div id="status">connecting widget bridge…</div>
+  <iframe
+      id="ec"
+      allow="camera; microphone; autoplay; clipboard-write; display-capture; fullscreen"
+      sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+  ></iframe>
+  <script>
+  (function () {
+    const statusEl = document.getElementById('status');
+    const iframe   = document.getElementById('ec');
+
+    // Эти значения подставляются Kotlin'ом перед отдачей файла (см. WidgetBridgeServer).
+    const ELEMENT_CALL_URL = "__ELEMENT_CALL_URL__";
+    const WIDGET_ID        = "__WIDGET_ID__";
+    const BRIDGE_WS_URL    = "__BRIDGE_WS_URL__";
+
+    function setStatus(text, color) {
+      statusEl.textContent = text;
+      statusEl.style.color = color || '#888';
+      // через 4 с скрываем статус, чтобы не загромождал UI
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+    }
+
+    let ws = null;
+    let wsReady = false;
+    const queue = [];
+
+    function connectBridge() {
+      try {
+        ws = new WebSocket(BRIDGE_WS_URL);
+      } catch (e) {
+        setStatus('bridge connect error: ' + e.message, '#f55');
+        return;
+      }
+      ws.onopen = () => {
+        wsReady = true;
+        setStatus('bridge connected', '#5f5');
+        while (queue.length) {
+          ws.send(queue.shift());
+        }
+      };
+      ws.onclose = () => {
+        wsReady = false;
+        setStatus('bridge disconnected, reconnecting…', '#f80');
+        setTimeout(connectBridge, 1000);
+      };
+      ws.onerror = (e) => {
+        setStatus('bridge ws error', '#f55');
+      };
+      ws.onmessage = (ev) => {
+        // Сообщение от Kotlin → пробрасываем в iframe.
+        try {
+          const obj = JSON.parse(ev.data);
+          // EC ожидает MessageEvent c source==parent, поэтому postMessage из window работает.
+          iframe.contentWindow.postMessage(obj, '*');
+        } catch (e) {
+          console.error('[widget-host] bad message from bridge', e, ev.data);
+        }
+      };
+    }
+
+    function sendToBridge(obj) {
+      const text = JSON.stringify(obj);
+      if (wsReady) ws.send(text);
+      else queue.push(text);
+    }
+
+    // Сообщения от iframe (EC) → Kotlin
+    window.addEventListener('message', (ev) => {
+      if (!ev.data || typeof ev.data !== 'object') return;
+      // Принимаем только сообщения, у которых есть widget-api маркеры.
+      if (ev.data.api !== 'fromWidget' && ev.data.api !== 'toWidget') return;
+      // Только из нашего iframe.
+      if (ev.source !== iframe.contentWindow) return;
+      sendToBridge(ev.data);
+    });
+
+    iframe.addEventListener('load', () => {
+      console.log('[widget-host] EC iframe loaded');
+    });
+
+    connectBridge();
+    iframe.src = ELEMENT_CALL_URL;
+  })();
+  </script>
+</body>
+</html>

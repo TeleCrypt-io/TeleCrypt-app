@@ -4,8 +4,10 @@ import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.buildTelecryptCallDeepLink
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
+import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallWidgetUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.WidgetBridgeManager
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -31,14 +33,19 @@ import kotlin.random.Random
 class CallCoordinatorImpl(
     private val callLauncher: CallLauncher,
     private val watcher: MatrixRtcWatcher,
+    private val widgetBridgeManager: WidgetBridgeManager,
 ) : CallCoordinator {
     /**
      * Tracks active call sessions per room. Only stores slot-level info now —
      * member refresh has been removed (Element Call handles its own membership).
+     *
+     * [bridgeSession] is non-null when the desktop widget bridge is active for this
+     * room — it must be closed when the call ends to release the WS server / port.
      */
     private data class ActiveCallSession(
         val callId: String,
         val slotId: String,
+        val bridgeSession: WidgetBridgeManager.BridgeSession? = null,
     )
 
     private val activeCalls = mutableMapOf<RoomId, ActiveCallSession>()
@@ -62,7 +69,6 @@ class CallCoordinatorImpl(
         // Publish slot event to signal "a call is active in this room".
         // We do NOT publish member events — Element Call handles that.
         publishSlot(matrixClient, roomId, slotId, callId)
-        activeCalls[roomId] = ActiveCallSession(callId = callId, slotId = slotId)
 
         watcher.ackIncoming(roomId, callId)
         val displayName = resolveDisplayName(matrixClient, session.displayName)
@@ -85,7 +91,7 @@ class CallCoordinatorImpl(
         val sendNotificationType = if (isDirect) "ring" else "notification"
         val waitForCallPickup = isDirect
 
-        val callUrl = buildElementCallUrl(
+        val standaloneUrl = buildElementCallUrl(
             roomId.full,
             roomName,
             displayName,
@@ -98,12 +104,31 @@ class CallCoordinatorImpl(
             disableVideo = (mode == CallMode.AUDIO),
             session = session,
         )
-        println("[Call] Launching Element Call: $callUrl")
+
+        val bridgeSession = startWidgetBridge(
+            matrixClient = matrixClient,
+            roomId = roomId,
+            roomName = roomName,
+            displayName = displayName,
+            session = session,
+            homeserverUrl = homeserverUrl,
+            intent = intent,
+            mode = mode,
+        )
+        val urlToOpen = bridgeSession?.hostUrl ?: standaloneUrl
+
+        activeCalls[roomId] = ActiveCallSession(
+            callId = callId,
+            slotId = slotId,
+            bridgeSession = bridgeSession,
+        )
+
+        println("[Call] Launching Element Call (widget=${bridgeSession != null}): $urlToOpen")
         println(
             "[Call] Session user=${session.userId} device=${session.deviceId} " +
                 "hs=${session.homeserver}"
         )
-        callLauncher.joinByUrlWithSession(callUrl, session)
+        callLauncher.joinByUrlWithSession(urlToOpen, session)
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
     }
@@ -130,8 +155,6 @@ class CallCoordinatorImpl(
         stopActiveSession(matrixClient, roomId, endForAll = false)
 
         // No member publishing — Element Call handles its own membership.
-        activeCalls[roomId] = ActiveCallSession(callId = callId, slotId = slotId)
-
         watcher.ackIncoming(roomId, callId)
         val displayName = resolveDisplayName(matrixClient, session.displayName)
         // Use server name for homeserver param (same logic as startCall)
@@ -144,7 +167,7 @@ class CallCoordinatorImpl(
             }.ifBlank { null }
         }
 
-        val callUrl = buildElementCallUrl(
+        val standaloneUrl = buildElementCallUrl(
             roomId.full,
             roomName,
             displayName,
@@ -157,8 +180,27 @@ class CallCoordinatorImpl(
             disableVideo = (mode == CallMode.AUDIO),
             session = session,
         )
-        println("[Call] Joining Element Call: $callUrl")
-        callLauncher.joinByUrlWithSession(callUrl, session)
+
+        val bridgeSession = startWidgetBridge(
+            matrixClient = matrixClient,
+            roomId = roomId,
+            roomName = roomName,
+            displayName = displayName,
+            session = session,
+            homeserverUrl = homeserverUrl,
+            intent = "join_existing",
+            mode = mode,
+        )
+        val urlToOpen = bridgeSession?.hostUrl ?: standaloneUrl
+
+        activeCalls[roomId] = ActiveCallSession(
+            callId = callId,
+            slotId = slotId,
+            bridgeSession = bridgeSession,
+        )
+
+        println("[Call] Joining Element Call (widget=${bridgeSession != null}): $urlToOpen")
+        callLauncher.joinByUrlWithSession(urlToOpen, session)
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
     }
@@ -181,6 +223,9 @@ class CallCoordinatorImpl(
         endForAll: Boolean,
     ): Boolean {
         val session = activeCalls.remove(roomId) ?: return false
+        // Tear down widget bridge (closes WS server, releases port).
+        runCatching { session.bridgeSession?.close() }
+            .onFailure { println("[Call] bridgeSession.close() failed: ${it.message}") }
         // No member disconnect event needed — Element Call sends its own disconnect
         // when the browser tab/window closes.
         if (endForAll) {
@@ -188,6 +233,64 @@ class CallCoordinatorImpl(
             publishSlot(matrixClient, roomId, session.slotId, null)
         }
         return true
+    }
+
+    /**
+     * Поднимает widget‑bridge (если платформа поддерживает) и возвращает [BridgeSession].
+     * На non‑desktop платформах (NoopWidgetBridgeManager) вернёт `null`, и caller
+     * откатится на обычный standalone‑URL — это фоллбек, чтобы не сломать существующее
+     * поведение android/web.
+     */
+    private suspend fun startWidgetBridge(
+        matrixClient: MatrixClient,
+        roomId: RoomId,
+        roomName: String,
+        displayName: String,
+        session: de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallSession,
+        homeserverUrl: String?,
+        intent: String,
+        mode: CallMode,
+    ): WidgetBridgeManager.BridgeSession? {
+        val baseUrl = homeserverUrl?.trimEnd('/') ?: session.homeserver.ifBlank {
+            resolveHomeserverUrl(matrixClient)
+        }.trimEnd('/')
+        if (baseUrl.isBlank()) {
+            println("[Call] startWidgetBridge: blank baseUrl, skipping widget mode")
+            return null
+        }
+        val plainUserId = session.userId
+        val plainDeviceId = session.deviceId
+        if (plainUserId.isBlank() || plainDeviceId.isBlank()) {
+            println("[Call] startWidgetBridge: blank userId/deviceId, skipping widget mode")
+            return null
+        }
+        return runCatching {
+            widgetBridgeManager.start(
+                matrixClient = matrixClient,
+                roomId = roomId,
+                userId = plainUserId,
+                deviceId = plainDeviceId,
+                baseUrl = baseUrl,
+            ) { parentUrl, widgetId ->
+                buildElementCallWidgetUrl(
+                    widgetId = widgetId,
+                    parentUrl = parentUrl,
+                    userId = plainUserId,
+                    deviceId = plainDeviceId,
+                    baseUrl = baseUrl,
+                    roomId = roomId.full,
+                    roomName = roomName,
+                    displayName = displayName,
+                    skipLobby = true,
+                    hideHeader = true,
+                    disableAudio = false,
+                    disableVideo = (mode == CallMode.AUDIO),
+                    intent = intent,
+                )
+            }
+        }.onFailure {
+            println("[Call] widgetBridgeManager.start() failed: ${it.message}")
+        }.getOrNull()
     }
 
     private suspend fun publishSlot(

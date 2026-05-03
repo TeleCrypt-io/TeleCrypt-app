@@ -77,6 +77,83 @@ internal fun buildElementCallUrl(
         "${disableAudioParam}${disableVideoParam}${e2eeParam}intent=$encodedIntent"
 }
 
+/**
+ * Строит URL для Element Call в widget‑режиме (MSC2774 / matrix-widget-api).
+ *
+ * Этот URL должен открываться внутри `<iframe>` host‑страницы (widget-host.html),
+ * которую отдаёт локальный [WidgetBridgeServer]. EC обнаруживает widget‑параметры
+ * (`widgetId`, `parentUrl`, `userId`, `deviceId`) и переходит в режим, в котором
+ * НЕ создаёт собственный Olm‑аккаунт, а маршрутизирует все Matrix‑запросы
+ * (включая `m.call.encryption_keys` to‑device events) через `postMessage` API
+ * родительского окна. Это устраняет split‑brain и заставляет E2EE работать.
+ *
+ * Параметры:
+ * - widgetId — должен совпадать с тем, что widget‑host передаёт в `capabilities` handshake.
+ * - parentUrl — origin родительского окна (наш host). EC шлёт сюда `postMessage`.
+ * - userId / deviceId — credentials, которые EC использует для своих запросов
+ *   (но он НЕ хранит их в localStorage в widget‑режиме).
+ * - baseUrl — homeserver URL.
+ * - lang — UI‑язык (по умолчанию `en-US`).
+ * - skipLobby / hideHeader / disableAudio / disableVideo — те же что и в standalone URL.
+ *
+ * NB: EC v0.19.x в widget‑режиме игнорирует `perParticipantE2EE` query param —
+ * он всегда включает E2EE и берёт ключи через widget API (это и есть наш fix).
+ */
+internal fun buildElementCallWidgetUrl(
+    widgetId: String,
+    parentUrl: String,
+    userId: String,
+    deviceId: String,
+    baseUrl: String,
+    roomId: String,
+    roomName: String,
+    displayName: String,
+    skipLobby: Boolean = true,
+    hideHeader: Boolean = true,
+    disableAudio: Boolean = false,
+    disableVideo: Boolean = false,
+    intent: String = "join_existing",
+    lang: String = "en-US",
+): String {
+    val alias = roomName.trim().ifEmpty { "call" }
+    val encodedAlias = encodeComponent(alias)
+    val encodedRoomId = encodeComponent(roomId)
+    val encodedDisplayName = encodeComponent(displayName)
+    val encodedIntent = encodeComponent(intent)
+    val encodedWidgetId = encodeComponent(widgetId)
+    val encodedParentUrl = encodeComponent(parentUrl)
+    val encodedUserId = encodeComponent(userId)
+    val encodedDeviceId = encodeComponent(deviceId)
+    val encodedBaseUrl = encodeComponent(baseUrl)
+    val encodedLang = encodeComponent(lang)
+
+    val roomIdParam = if (isMatrixRoomId(roomId)) "roomId=$encodedRoomId&" else ""
+    val viaServersParam = buildViaServersParam(roomId)
+
+    // Widget‑specific parameters expected by EC's MatrixRTCSession bootstrap:
+    val widgetParams =
+        "widgetId=$encodedWidgetId&" +
+        "parentUrl=$encodedParentUrl&" +
+        "clientId=io.element.call&" +
+        "userId=$encodedUserId&" +
+        "deviceId=$encodedDeviceId&" +
+        "baseUrl=$encodedBaseUrl&" +
+        "lang=$encodedLang&"
+
+    return "$ELEMENT_CALL_BASE_URL$encodedAlias?" +
+        widgetParams +
+        roomIdParam +
+        viaServersParam +
+        "displayName=$encodedDisplayName&" +
+        "confineToRoom=true&appPrompt=false&" +
+        "skipLobby=$skipLobby&" +
+        "hideHeader=$hideHeader&" +
+        "hideScreensharing=true&" +
+        "disableAudio=$disableAudio&" +
+        "disableVideo=$disableVideo&" +
+        "intent=$encodedIntent"
+}
+
 private fun isMatrixRoomId(roomId: String): Boolean {
     return roomId.startsWith("!") && roomId.contains(":")
 }
