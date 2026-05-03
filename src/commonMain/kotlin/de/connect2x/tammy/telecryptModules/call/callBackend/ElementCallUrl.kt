@@ -32,7 +32,7 @@ internal fun buildElementCallUrl(
     autoLeave: Boolean? = null,
     disableAudio: Boolean? = null,
     disableVideo: Boolean? = null,
-    perParticipantE2EE: Boolean? = false,
+    perParticipantE2EE: Boolean? = true,
     session: ElementCallSession? = null,
 ): String {
     val alias = roomName.trim().ifEmpty { "call" }
@@ -60,11 +60,11 @@ internal fun buildElementCallUrl(
     val disableAudioParam = disableAudio?.let { "disableAudio=${it}&" } ?: ""
     val disableVideoParam = disableVideo?.let { "disableVideo=${it}&" } ?: ""
 
-    // Disable per-participant E2EE by default. In standalone mode (non-widget),
-    // Element Call creates its own Olm account in IndexedDB with a different
-    // curve25519 key than TeleCrypt Desktop. Remote clients (e.g., ElementX)
-    // encrypt E2EE keys for TeleCrypt's key (from /keys/query), not for
-    // Element Call's browser key, causing MissingKey errors and no video.
+    // Per-participant E2EE is ENABLED by default. In widget mode (the proper
+    // architecture, see docs/CALLS_E2EE_PLAN.md), Element Call routes all Olm
+    // crypto through the host (TeleCrypt) via Widget API, so SFrame keys are
+    // distributed using the same vodozemac account that TeleCrypt uses — no
+    // split-brain, no MissingKey, video works in both directions.
     val e2eeParam = perParticipantE2EE?.let { "perParticipantE2EE=${it}&" } ?: ""
 
     // NOTE: Session credentials are NOT passed in the URL — Element Call ignores them.

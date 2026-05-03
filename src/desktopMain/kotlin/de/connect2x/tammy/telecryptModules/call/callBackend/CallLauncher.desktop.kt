@@ -462,124 +462,24 @@ private fun injectSessionViaCdp(
                         }
                     }
 
-                    // 1. Intercept config.json to force E2EE off and skipLobby on
-                    if (url.indexOf('config.json') !== -1) {
-                        console.log('[TeleCrypt] Intercepted config.json request: ' + url);
-                        return __origFetch.apply(this, arguments).then(function(response) {
-                            return response.text().then(function(text) {
-                                try {
-                                    var config = JSON.parse(text);
-                                    // Disable per-participant E2EE — Element Call creates its own
-                                    // Olm account with different keys than TeleCrypt Desktop
-                                    config.perParticipantE2EE = false;
-                                    // Force skip lobby for seamless call experience
-                                    config.skipLobby = true;
-                                    console.log('[TeleCrypt] Patched config.json: perParticipantE2EE=false, skipLobby=true');
-                                    return new Response(JSON.stringify(config), {
-                                        status: 200,
-                                        statusText: 'OK',
-                                        headers: {'Content-Type': 'application/json'}
-                                    });
-                                } catch(e) {
-                                    console.error('[TeleCrypt] Failed to patch config.json:', e);
-                                    return new Response(text, {
-                                        status: 200,
-                                        statusText: 'OK',
-                                        headers: {'Content-Type': 'application/json'}
-                                    });
-                                }
-                            });
-                        });
-                    }
+                    // NOTE: config.json patching, URLSearchParams override, and
+                    // RTCRtpScriptTransform stubbing have been REMOVED. These were
+                    // attempts to disable per-participant E2EE in Element Call
+                    // standalone mode. They did not work (see docs/CALLS_E2EE_PLAN.md):
+                    //   • config.json is loaded via <link rel=preload>, not fetch();
+                    //   • URLSearchParams override doesn't reach EC's URL parsing;
+                    //   • SFrame encryption runs in a Web Worker created from a
+                    //     blob: URL, so main-thread RTCRtp* stubs don't propagate.
+                    // The proper fix is widget mode (Matrix Widget API) where EC
+                    // delegates Olm/E2EE crypto to the host (TeleCrypt) — see plan.
 
                     $fetchInterceptBlock
 
                     return __origFetch.apply(this, arguments);
                 };
-                console.log('[TeleCrypt] Fetch interception installed (register + login + config.json + .well-known + rtc/transports)');
+                console.log('[TeleCrypt] Fetch interception installed (register + login + .well-known + rtc/transports)');
             } catch(e) {
                 console.error('[TeleCrypt] Failed to install fetch interception:', e);
-            }
-            try {
-                // ── E2EE disable via multiple approaches ──
-                // Approach 1: Global flag checked by our patched config
-                Object.defineProperty(window, '__telecrypt_e2ee_disabled', { value: true, writable: false });
-                // Approach 2: Override URLSearchParams to always return 'false' for perParticipantE2EE
-                var __origGet = URLSearchParams.prototype.get;
-                URLSearchParams.prototype.get = function(name) {
-                    if (name === 'perParticipantE2EE') return 'false';
-                    if (name === 'skipLobby') return 'true';
-                    return __origGet.call(this, name);
-                };
-                console.log('[TeleCrypt] URLSearchParams patched for E2EE=false, skipLobby=true');
-            } catch(e) {
-                console.error('[TeleCrypt] Failed to patch URLSearchParams:', e);
-            }
-            try {
-                // ── Approach 3: Disable WebRTC media encryption transforms ──
-                // Even with perParticipantE2EE=false, Element Call still wires up
-                // SFrame encryption via Insertable Streams / RTCRtpScriptTransform.
-                // The encryption logic runs in a Web Worker that doesn't inherit
-                // our main-thread fetch/config patches, so config.json patching
-                // alone is insufficient. Instead we neutralise the WebRTC APIs
-                // that EC uses to plug encryption into the media pipeline:
-                //   1. RTCRtpScriptTransform constructor → no-op (EC creates it
-                //      but the transform never attaches because we drop the worker
-                //      reference on the sender/receiver setter).
-                //   2. RTCRtpSender.transform / RTCRtpReceiver.transform setters
-                //      → silently swallow assignments (EC thinks transform is set,
-                //      but actual media pipeline is untouched).
-                //   3. RTCRtpSender.prototype.createEncodedStreams (legacy
-                //      Insertable Streams) → returns pass-through streams.
-                // Result: media frames travel through SFU as plaintext H.264/Opus
-                // in BOTH directions, EC sees no decryption errors because there
-                // is nothing to decrypt, and remote video/audio renders normally.
-                if (typeof RTCRtpScriptTransform !== 'undefined') {
-                    var __OrigRTCRtpScriptTransform = RTCRtpScriptTransform;
-                    window.RTCRtpScriptTransform = function() {
-                        console.log('[TeleCrypt] Stubbed RTCRtpScriptTransform constructor (no-op)');
-                        // Return a dummy object — EC just stores it, never inspects it.
-                        return Object.create(__OrigRTCRtpScriptTransform.prototype || {});
-                    };
-                    window.RTCRtpScriptTransform.prototype = __OrigRTCRtpScriptTransform.prototype;
-                    console.log('[TeleCrypt] RTCRtpScriptTransform stubbed');
-                }
-
-                function __tcStubTransform(proto, label) {
-                    if (!proto) return;
-                    try {
-                        var desc = Object.getOwnPropertyDescriptor(proto, 'transform');
-                        Object.defineProperty(proto, 'transform', {
-                            configurable: true,
-                            enumerable: true,
-                            get: function() { return null; },
-                            set: function(v) {
-                                console.log('[TeleCrypt] Suppressed ' + label + '.transform assignment');
-                            }
-                        });
-                    } catch(e) {
-                        console.error('[TeleCrypt] Failed to stub ' + label + '.transform:', e);
-                    }
-                }
-                if (typeof RTCRtpSender !== 'undefined') __tcStubTransform(RTCRtpSender.prototype, 'RTCRtpSender');
-                if (typeof RTCRtpReceiver !== 'undefined') __tcStubTransform(RTCRtpReceiver.prototype, 'RTCRtpReceiver');
-
-                // Legacy Insertable Streams (older Chrome). Returns pass-through
-                // streams so EC's worker pipeline reads & writes unchanged frames.
-                function __tcStubCreateEncodedStreams(proto, label) {
-                    if (!proto || typeof proto.createEncodedStreams !== 'function') return;
-                    proto.createEncodedStreams = function() {
-                        console.log('[TeleCrypt] Stubbed ' + label + '.createEncodedStreams (identity)');
-                        var ts = new TransformStream();
-                        return { readable: ts.readable, writable: ts.writable };
-                    };
-                }
-                if (typeof RTCRtpSender !== 'undefined') __tcStubCreateEncodedStreams(RTCRtpSender.prototype, 'RTCRtpSender');
-                if (typeof RTCRtpReceiver !== 'undefined') __tcStubCreateEncodedStreams(RTCRtpReceiver.prototype, 'RTCRtpReceiver');
-
-                console.log('[TeleCrypt] WebRTC media-encryption transforms neutralised — media will travel as plaintext');
-            } catch(e) {
-                console.error('[TeleCrypt] Failed to neutralise WebRTC transforms:', e);
             }
         })();
     """.trimIndent()
