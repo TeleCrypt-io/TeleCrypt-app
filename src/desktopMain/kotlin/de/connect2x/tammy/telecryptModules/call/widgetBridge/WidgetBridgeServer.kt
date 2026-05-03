@@ -8,13 +8,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 /**
@@ -163,18 +163,24 @@ class WidgetBridgeServer(
         }
 
         try {
-            // ВАЖНО: HttpServer уже мог что-то отправить в OutputStream — нужно
-            // обойти его. Поэтому пишем в сырой Socket напрямую.
+            // ВАЖНО: пишем 101 напрямую в сырой сокет, минуя HttpServer.
+            // HttpServer не должен писать свой ответ — для этого мы НЕ вызываем
+            // ex.sendResponseHeaders() и блокируем поток до закрытия сессии.
             val rawOut = socket.getOutputStream()
             rawOut.write(response.toByteArray(StandardCharsets.US_ASCII))
             rawOut.flush()
 
             val handler = handlerFactory()
-            val newSession = WidgetSession(socket, handler, scope)
+            val latch = CountDownLatch(1)
+            val newSession = WidgetSession(socket, handler, scope, latch)
             session = newSession
             onConnected(newSession)
             newSession.startReadLoop()
             println("[WidgetBridge] WS connected widgetId=${handler.widgetId}")
+
+            // Блокируем поток HttpServer-handler'а до закрытия WS-сессии.
+            // Это критично: если вернуться раньше — HttpServer закроет сокет.
+            latch.await()
         } catch (t: Throwable) {
             println("[WidgetBridge] WS upgrade failed: ${t.message}")
             runCatching { socket.close() }
@@ -217,6 +223,7 @@ class WidgetBridgeServer(
         private val socket: Socket,
         val handler: WidgetApiHandler,
         private val parentScope: CoroutineScope,
+        private val closeLatch: CountDownLatch? = null,
     ) {
         private val out: OutputStream = socket.getOutputStream()
         private val input = socket.getInputStream()
@@ -323,6 +330,7 @@ class WidgetBridgeServer(
             runCatching { readJob?.cancel() }
             runCatching { socket.close() }
             if (session === this) session = null
+            closeLatch?.countDown()
         }
     }
 
