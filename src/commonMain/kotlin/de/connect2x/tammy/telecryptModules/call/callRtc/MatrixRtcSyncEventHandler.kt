@@ -9,10 +9,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.BridgeForwardingRegistry
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import net.folivo.trixnity.client.store.AccountStore
 import net.folivo.trixnity.clientserverapi.client.SyncApiClient
 import net.folivo.trixnity.core.EventHandler
@@ -29,6 +31,7 @@ class MatrixRtcSyncEventHandler(
     private val syncApi: SyncApiClient,
     private val rtcService: MatrixRtcService,
     private val accountStore: AccountStore,
+    private val bridgeRegistry: BridgeForwardingRegistry? = null,
     private val nowMs: () -> Long = ::currentTimeMillis,
 ) : EventHandler {
     private val started = AtomicBoolean(false)
@@ -82,8 +85,62 @@ class MatrixRtcSyncEventHandler(
                     println("[Call][DIAG] Processed ${eventCount.get()} sync events total (latest class=${event::class.simpleName})")
                 }
                 handleEvent(event)
+                forwardToBridgeIfNeeded(event)
             }
             .launchIn(scope)
+    }
+
+    /**
+     * Пересылает релевантные sync‑события в активный widget‑bridge для EC iframe.
+     *
+     * Forwards:
+     *   - state events `org.matrix.msc3401.call.member` / `m.call.member` — в мост этой комнаты;
+     *   - to-device events `m.call.encryption_keys` — во ВСЕ мосты пользователя
+     *     (to-device не привязан к комнате).
+     */
+    private fun forwardToBridgeIfNeeded(event: ClientEvent<*>) {
+        val registry = bridgeRegistry ?: return
+        val unknown = event.content as? UnknownEventContent ?: return
+        val eventType = unknown.eventType
+        when (event) {
+            is ClientEvent.RoomEvent.StateEvent<*> -> {
+                if (eventType != MatrixRtcEventTypes.MSC3401_CALL_MEMBER &&
+                    eventType != MatrixRtcEventTypes.CALL_MEMBER
+                ) return
+                val roomId = event.roomId ?: return
+                val localUser = localUserId ?: return
+                val session = registry.forRoom(localUser, roomId) ?: return
+                val envelope = buildJsonObject {
+                    put("type", JsonPrimitive(eventType))
+                    put("state_key", JsonPrimitive(event.stateKey))
+                    put("sender", JsonPrimitive(event.sender.full))
+                    put("event_id", JsonPrimitive(event.id.full))
+                    put("room_id", JsonPrimitive(roomId.full))
+                    put("origin_server_ts", JsonPrimitive(event.originTimestamp))
+                    put("content", unknown.raw)
+                }
+                println("[Call] Forward state event type=$eventType room=${roomId.full} stateKey=${event.stateKey} -> bridge")
+                runCatching { session.forwardSyncEvent(envelope) }
+                    .onFailure { println("[Call] forwardSyncEvent failed: ${it.message}") }
+            }
+            is ClientEvent.ToDeviceEvent<*> -> {
+                if (eventType != "m.call.encryption_keys") return
+                val localUser = localUserId ?: return
+                val sessions = registry.sessionsForUser(localUser)
+                if (sessions.isEmpty()) return
+                val envelope = buildJsonObject {
+                    put("type", JsonPrimitive(eventType))
+                    put("sender", JsonPrimitive(event.sender.full))
+                    put("content", unknown.raw)
+                }
+                println("[Call] Forward to-device type=$eventType sender=${event.sender.full} -> ${sessions.size} bridge(s)")
+                sessions.forEach { session ->
+                    runCatching { session.forwardToDeviceEvent(envelope) }
+                        .onFailure { println("[Call] forwardToDeviceEvent failed: ${it.message}") }
+                }
+            }
+            else -> Unit
+        }
     }
 
     private fun handleEvent(event: ClientEvent<*>) {

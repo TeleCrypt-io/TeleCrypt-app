@@ -67,36 +67,82 @@
     let wsReady = false;
     const queue = [];
 
+    // Логи host‑страницы прокидываем в Kotlin через специальный конверт __hostLog,
+    // чтобы видеть их в /tmp/telecrypt-A.log и понимать, что происходит в браузере.
+    function hostLog(level, parts) {
+      const msg = parts.map(function (p) {
+        if (typeof p === 'string') return p;
+        try { return JSON.stringify(p); } catch (_) { return String(p); }
+      }).join(' ');
+      try { (console[level] || console.log).call(console, '[widget-host]', msg); } catch (_) {}
+      const env = {
+        __hostLog: true,
+        level: level,
+        widgetId: WIDGET_ID,
+        time: Date.now(),
+        msg: msg,
+      };
+      try {
+        const text = JSON.stringify(env);
+        if (wsReady) ws.send(text); else queue.push(text);
+      } catch (_) {}
+    }
+    const log = {
+      info:  function () { hostLog('log',   Array.prototype.slice.call(arguments)); },
+      warn:  function () { hostLog('warn',  Array.prototype.slice.call(arguments)); },
+      error: function () { hostLog('error', Array.prototype.slice.call(arguments)); },
+    };
+
+    function previewMsg(obj) {
+      try {
+        const action = obj && obj.action;
+        const api    = obj && obj.api;
+        const reqId  = obj && obj.requestId;
+        const data   = obj && obj.data;
+        const dKeys  = data && typeof data === 'object' ? Object.keys(data) : null;
+        const isResp = obj && Object.prototype.hasOwnProperty.call(obj, 'response');
+        let dataInfo = '';
+        if (dKeys) dataInfo = ' dataKeys=[' + dKeys.join(',') + ']';
+        return 'api=' + api + ' action=' + action + ' requestId=' + reqId
+             + (isResp ? ' (response)' : '')
+             + dataInfo;
+      } catch (e) { return '<preview-err: ' + e + '>'; }
+    }
+
     function connectBridge() {
       try {
         ws = new WebSocket(BRIDGE_WS_URL);
       } catch (e) {
         setStatus('bridge connect error: ' + e.message, '#f55');
+        log.error('WS ctor threw:', e.message);
         return;
       }
       ws.onopen = () => {
         wsReady = true;
         setStatus('bridge connected', '#5f5');
+        log.info('WS open; ELEMENT_CALL_URL=' + ELEMENT_CALL_URL + ' widgetId=' + WIDGET_ID);
         while (queue.length) {
           ws.send(queue.shift());
         }
       };
-      ws.onclose = () => {
+      ws.onclose = (ev) => {
         wsReady = false;
         setStatus('bridge disconnected, reconnecting…', '#f80');
+        log.warn('WS closed code=' + ev.code + ' reason=' + (ev.reason || '') + ' wasClean=' + ev.wasClean);
         setTimeout(connectBridge, 1000);
       };
       ws.onerror = (e) => {
         setStatus('bridge ws error', '#f55');
+        log.error('WS error event');
       };
       ws.onmessage = (ev) => {
         // Сообщение от Kotlin → пробрасываем в iframe.
         try {
           const obj = JSON.parse(ev.data);
-          // EC ожидает MessageEvent c source==parent, поэтому postMessage из window работает.
+          log.info('toIframe', previewMsg(obj));
           iframe.contentWindow.postMessage(obj, '*');
         } catch (e) {
-          console.error('[widget-host] bad message from bridge', e, ev.data);
+          log.error('bad message from bridge:', e.message, ev.data);
         }
       };
     }
@@ -111,18 +157,52 @@
     window.addEventListener('message', (ev) => {
       if (!ev.data || typeof ev.data !== 'object') return;
       // Принимаем только сообщения, у которых есть widget-api маркеры.
-      if (ev.data.api !== 'fromWidget' && ev.data.api !== 'toWidget') return;
+      if (ev.data.api !== 'fromWidget' && ev.data.api !== 'toWidget') {
+        // Логируем «чужие» сообщения только если они от нашего iframe — поможет отлаживать.
+        if (ev.source === iframe.contentWindow) {
+          log.info('iframe non-widget msg:', previewMsg(ev.data));
+        }
+        return;
+      }
       // Только из нашего iframe.
       if (ev.source !== iframe.contentWindow) return;
+      log.info('fromIframe', previewMsg(ev.data));
       sendToBridge(ev.data);
     });
 
     iframe.addEventListener('load', () => {
-      console.log('[widget-host] EC iframe loaded');
+      log.info('EC iframe load event; current src=' + iframe.src);
+      // Попробуем прочитать location/title — в большинстве случаев упадёт из-за CORS, что само по себе ОК.
+      try {
+        const w = iframe.contentWindow;
+        log.info('iframe.contentWindow accessible? ' + (w ? 'yes' : 'no'));
+      } catch (e) {
+        log.info('iframe contentWindow access error: ' + e.message);
+      }
+    });
+
+    // EC иногда сообщает о фатале хеш‑навигацией; мы можем заметить хотя бы факт смены URL,
+    // если она наблюдаема со стороны host‑окна (обычно — нет, но попробуем).
+    setInterval(function () {
+      try {
+        const cur = iframe.contentWindow && iframe.contentWindow.location && iframe.contentWindow.location.href;
+        if (cur && cur !== iframe.__lastObservedUrl) {
+          iframe.__lastObservedUrl = cur;
+          log.info('iframe url changed -> ' + cur);
+        }
+      } catch (_) { /* ожидаемо: cross-origin */ }
+    }, 1500);
+
+    window.addEventListener('error', function (e) {
+      log.error('host window error: ' + (e.message || '?') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      log.error('host unhandledrejection: ' + (e.reason && e.reason.message || e.reason || '?'));
     });
 
     connectBridge();
     iframe.src = ELEMENT_CALL_URL;
+    log.info('iframe.src set to ' + ELEMENT_CALL_URL);
   })();
   </script>
 </body>

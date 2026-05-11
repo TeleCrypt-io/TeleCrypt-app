@@ -26,6 +26,16 @@ interface CallLauncher {
     }
 
     /**
+     * Open a widget‑bridge host page in a browser. The page is served by
+     * an embedded HTTP server (WidgetBridgeServer) and embeds Element Call
+     * in an `<iframe>`. EC inside the iframe gets Matrix credentials over
+     * `postMessage` from the host, so no localStorage/CDP injection is needed.
+     */
+    fun joinByWidgetUrl(hostUrl: String) {
+        joinByUrl(hostUrl)
+    }
+
+    /**
      * Check if Element Call is available for the given room
      * @param roomId The Matrix room ID to check
      * @return true if Element Call can be launched for this room

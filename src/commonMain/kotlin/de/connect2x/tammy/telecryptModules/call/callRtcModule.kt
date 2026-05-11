@@ -10,16 +10,18 @@ import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcherImpl
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncFilterConfigurer
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.BridgeForwardingRegistry
 import de.connect2x.tammy.telecryptModules.call.widgetBridge.WidgetBridgeManager
 import de.connect2x.trixnity.messenger.ConfigureMatrixClientConfiguration
 import org.koin.dsl.module
 
 fun callRtcModule() = module {
-    single<CallCoordinator> { CallCoordinatorImpl(get(), get(), get()) }
+    single { BridgeForwardingRegistry() }
+    single<CallCoordinator> { CallCoordinatorImpl(get(), get(), get(), get()) }
     single<MatrixRtcCallStateStore> { InMemoryMatrixRtcCallStateStore() }
     single { MatrixRtcService(get()) }
     single<MatrixRtcWatcher> { MatrixRtcWatcherImpl(get()) }
-    single(createdAtStart = true) { MatrixRtcAutoStart(get(), get()) }
+    single(createdAtStart = true) { MatrixRtcAutoStart(get(), get(), get()) }
     single(createdAtStart = true) { IncomingCallManager(get(), get()) }
     single<ConfigureMatrixClientConfiguration> { MatrixRtcSyncFilterConfigurer() }
 }

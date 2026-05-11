@@ -1214,6 +1214,49 @@ class ElementCallLauncherImpl : CallLauncher {
         openCallWindow(url, session)
     }
 
+    /**
+     * Widget‑mode: open the host URL directly in a Chromium‑based browser via
+     * `--app=<hostUrl>` without any CDP injection. EC inside the iframe gets
+     * Matrix credentials over postMessage from the host page, so we don't need
+     * to touch localStorage or intercept fetch.
+     */
+    override fun joinByWidgetUrl(hostUrl: String) {
+        println("[Call] Widget mode: opening host page directly: $hostUrl")
+        val os = System.getProperty("os.name").lowercase()
+        val browser = when {
+            os.contains("mac") -> findMacChrome()
+            os.contains("nix") || os.contains("nux") -> findLinuxChromium()
+            os.contains("win") -> findWindowsAppBrowser()
+            else -> null
+        }
+        if (browser == null) {
+            println("[Call] Widget mode: no Chromium‑based browser found, falling back to system browser")
+            openUrlInBrowser(hostUrl)
+            return
+        }
+        try {
+            val rootPath = System.getenv("TRIXNITY_MESSENGER_ROOT_PATH") ?: "./app-data"
+            val browserDataPath = File(rootPath, "browser-data-widget").absolutePath
+            // Avoid stale singleton from previous run
+            killExistingBrowserDataProcess(browserDataPath)
+            removeBrowserLockFiles(browserDataPath)
+            val cmd = mutableListOf(
+                browser,
+                "--app=$hostUrl",
+                "--new-window",
+                "--user-data-dir=$browserDataPath",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--autoplay-policy=no-user-gesture-required",
+            )
+            ProcessBuilder(cmd).start()
+            println("[Call] Widget mode: launched ${browser.substringAfterLast('/')} with --app=$hostUrl")
+        } catch (e: Exception) {
+            println("[Call] Widget mode: failed to launch browser, falling back: ${e.message}")
+            openUrlInBrowser(hostUrl)
+        }
+    }
+
     override fun isCallAvailable(roomId: String): Boolean {
         return true
     }

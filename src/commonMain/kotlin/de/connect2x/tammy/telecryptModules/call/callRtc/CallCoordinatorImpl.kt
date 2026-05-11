@@ -7,6 +7,7 @@ import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallWidgetUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.BridgeForwardingRegistry
 import de.connect2x.tammy.telecryptModules.call.widgetBridge.WidgetBridgeManager
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -34,6 +35,7 @@ class CallCoordinatorImpl(
     private val callLauncher: CallLauncher,
     private val watcher: MatrixRtcWatcher,
     private val widgetBridgeManager: WidgetBridgeManager,
+    private val bridgeRegistry: BridgeForwardingRegistry,
 ) : CallCoordinator {
     /**
      * Tracks active call sessions per room. Only stores slot-level info now —
@@ -122,13 +124,20 @@ class CallCoordinatorImpl(
             slotId = slotId,
             bridgeSession = bridgeSession,
         )
+        if (bridgeSession != null) {
+            bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
+        }
 
         println("[Call] Launching Element Call (widget=${bridgeSession != null}): $urlToOpen")
         println(
             "[Call] Session user=${session.userId} device=${session.deviceId} " +
                 "hs=${session.homeserver}"
         )
-        callLauncher.joinByUrlWithSession(urlToOpen, session)
+        if (bridgeSession != null) {
+            callLauncher.joinByWidgetUrl(urlToOpen)
+        } else {
+            callLauncher.joinByUrlWithSession(urlToOpen, session)
+        }
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
     }
@@ -198,9 +207,16 @@ class CallCoordinatorImpl(
             slotId = slotId,
             bridgeSession = bridgeSession,
         )
+        if (bridgeSession != null) {
+            bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
+        }
 
         println("[Call] Joining Element Call (widget=${bridgeSession != null}): $urlToOpen")
-        callLauncher.joinByUrlWithSession(urlToOpen, session)
+        if (bridgeSession != null) {
+            callLauncher.joinByWidgetUrl(urlToOpen)
+        } else {
+            callLauncher.joinByUrlWithSession(urlToOpen, session)
+        }
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
     }
@@ -223,6 +239,10 @@ class CallCoordinatorImpl(
         endForAll: Boolean,
     ): Boolean {
         val session = activeCalls.remove(roomId) ?: return false
+        // Unregister from forwarding registry BEFORE closing the bridge.
+        if (session.bridgeSession != null) {
+            bridgeRegistry.unregister(matrixClient.userId, roomId)
+        }
         // Tear down widget bridge (closes WS server, releases port).
         runCatching { session.bridgeSession?.close() }
             .onFailure { println("[Call] bridgeSession.close() failed: ${it.message}") }

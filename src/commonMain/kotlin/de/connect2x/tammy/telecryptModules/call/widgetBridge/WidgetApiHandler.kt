@@ -15,84 +15,86 @@ import kotlinx.serialization.json.put
 
 /**
  * Минимальная реализация серверной (host) стороны Matrix Widget API
- * (https://github.com/matrix-org/matrix-widget-api).
+ * (https://github.com/matrix-org/matrix-widget-api), MSC2762/MSC2774/MSC2876/MSC3819.
  *
- * Полностью платформо-независима: единственное, что от неё зависит, — это
- * [matrixSendToDevice] / [matrixSendStateEvent] callback'и (которые на десктопе
- * вызывают `MatrixClient.api.user.sendToDevice` / `room.sendStateEvent`).
+ * Поддерживаемые actions (fromWidget):
+ *   - `supported_api_versions`
+ *   - `content_loaded`
+ *   - `capabilities` (ответ на host‑инициированный запрос)
+ *   - `send_event` (state event → matrixSendStateEvent)
+ *   - `send_to_device` / `org.matrix.msc3819.send_to_device` → matrixSendToDevice
+ *   - `org.matrix.msc2876.read_events` → matrixReadStateEvents
+ *   - `org.matrix.msc3869.read_relations` (no-op)
+ *   - `watch_turn_servers` / `unwatch_turn_servers` (no-op)
+ *   - `subscribe_to_room` / `unsubscribe_from_room` (no-op)
  *
- * Внешний код:
- *   1. Создаёт [WidgetApiHandler], передавая widgetId и идентификаторы пользователя/комнаты.
- *   2. Получает текстовые JSON-сообщения от iframe (`postMessage` → WebSocket → сюда),
- *      вызывает [handleMessage]. Возвращает список JSON-строк, которые нужно отправить
- *      обратно во iframe (как ответы и/или host-инициированные запросы).
- *   3. При появлении новых событий из Matrix (sync) вызывает
- *      [forwardSyncEvent] / [forwardToDeviceEvent], получая JSON-строки для отправки.
- *
- * Поддерживаемые actions (из спецификации widget-api + MSC):
- *   - `supported_api_versions`         (toWidget)
- *   - `capabilities`                   (toWidget)
- *   - `notify_capabilities`            (toWidget)
- *   - `content_loaded`                 (fromWidget)
- *   - `send_event`                     (fromWidget) → matrixSendStateEvent
- *   - `send_to_device`                 (fromWidget) → matrixSendToDevice
- *   - `org.matrix.msc2876.read_events` (fromWidget) — пока no-op (возвращает {events: []})
- *   - `org.matrix.msc3869.read_relations` (fromWidget) — пока no-op
- *   - `org.matrix.msc3819.send_to_device` (alias) → matrixSendToDevice
- *   - `update_turn_servers`            (toWidget) — high-level helper
+ * Host‑инициированные сообщения (toWidget):
+ *   - `capabilities` (просим перечислить нужные)
+ *   - `send_event` — sync state event
+ *   - `send_to_device` — to-device event
  */
 class WidgetApiHandler(
     val widgetId: String,
     private val userId: String,
     private val deviceId: String,
     private val roomId: String,
-    /**
-     * Колбэк отправки to-device события через Matrix.
-     * `eventType` = напр. `m.call.encryption_keys`.
-     * `messages` = карта вида `{ "@user:hs": { "DEVICEID": <content JsonObject> } }` —
-     * формат, который EC присылает в widget-api.
-     * Возвращает true при успехе.
-     */
+    /** to-device через Matrix. Возвращает true при успехе. */
     private val matrixSendToDevice: suspend (eventType: String, messages: JsonObject) -> Boolean,
-    /**
-     * Колбэк отправки state event через Matrix.
-     * Возвращает eventId или null.
-     */
+    /** state event через Matrix. Возвращает eventId или null. */
     private val matrixSendStateEvent: suspend (eventType: String, stateKey: String, content: JsonObject) -> String?,
-) {
     /**
-     * Approved capabilities — заполняются после первого `capabilities` запроса.
-     * Element Call всегда запрашивает фиксированный набор; мы просто подтверждаем все.
+     * Чтение state events комнаты:
+     *   - `eventType` — фильтр типа (например, `org.matrix.msc3401.call.member`).
+     *   - `stateKey` — если задан, ограничить одним state_key; иначе — все ключи.
+     *   - `limit` — мягкий лимит на число событий.
+     *
+     * Должен вернуть массив сырых JSON‑событий с заполненными полями
+     * (`type`, `state_key`, `sender`, `content`, `event_id`, `room_id`,
+     * `origin_server_ts`).
      */
+    private val matrixReadStateEvents: suspend (eventType: String, stateKey: String?, limit: Int) -> List<JsonObject>,
+) {
     private val approvedCapabilities = mutableListOf<String>()
 
-    /**
-     * Наш счётчик requestId для host-инициированных сообщений (toWidget).
-     */
     private var hostRequestSeq: Long = 0L
-
     private fun nextHostRequestId(): String = "host-${hostRequestSeq++}"
 
-    /**
-     * Обрабатывает одно входящее сообщение от iframe.
-     *
-     * @return список строк JSON, которые нужно переслать iframe.
-     *         Обычно это один ответ; для `capabilities` handshake — два сообщения
-     *         (ответ на supported_api_versions и host-инициированный capabilities request).
-     */
     suspend fun handleMessage(rawJson: String): List<String> {
         val msg = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(rawJson).jsonObject }
-            .getOrElse { return emptyList() }
+            .getOrElse {
+                println("[WidgetApi] failed to parse incoming JSON (${rawJson.length} bytes): ${it.message}")
+                return emptyList()
+            }
 
-        val api = msg["api"]?.jsonPrimitive?.contentOrNull() ?: return emptyList()
-        val action = msg["action"]?.jsonPrimitive?.contentOrNull() ?: return emptyList()
-        val requestId = msg["requestId"]?.jsonPrimitive?.contentOrNull() ?: return emptyList()
+        // Специальный конверт от widget-host.html для проброса логов браузерной страницы
+        // в Kotlin-логи. Не относится к Widget API, но крайне полезно для отладки.
+        // Поле __hostLog сериализуется JS как boolean true → kotlinx-serialization
+        // парсит его как JsonPrimitive с content="true" и isString=false.
+        if (msg["__hostLog"] != null) {
+            val level = msg["level"]?.jsonPrimitive?.contentOrNull() ?: "log"
+            val text = msg["msg"]?.jsonPrimitive?.contentOrNull() ?: ""
+            println("[WidgetHost/$level] $text")
+            return emptyList()
+        }
+
+        val api = msg["api"]?.jsonPrimitive?.contentOrNull()
+        val action = msg["action"]?.jsonPrimitive?.contentOrNull()
+        val requestId = msg["requestId"]?.jsonPrimitive?.contentOrNull()
+        if (api == null || action == null || requestId == null) {
+            println("[WidgetApi] dropping malformed message: api=$api action=$action requestId=$requestId raw=${rawJson.take(300)}")
+            return emptyList()
+        }
         val data = msg["data"] as? JsonObject ?: JsonObject(emptyMap())
 
         if (api != "fromWidget") {
-            // Игнорируем эхо/левые сообщения.
+            // toWidget echo / replies — пока не используем.
+            println("[WidgetApi] ignoring api=$api action=$action requestId=$requestId")
             return emptyList()
         }
+
+        println(
+            "[WidgetApi] <- action=$action requestId=$requestId dataKeys=${data.keys} dataPreview=${data.toString().take(400)}"
+        )
 
         return when (action) {
             "supported_api_versions" -> listOf(
@@ -106,17 +108,15 @@ class WidgetApiHandler(
             )
 
             "content_loaded" -> {
-                // Подтверждаем загрузку и инициируем handshake capabilities.
                 val ack = buildResponse(msg, buildJsonObject { /* empty */ })
                 val capRequest = buildHostRequest(
                     action = "capabilities",
-                    data = buildJsonObject { /* пустой data — widget сам перечислит свои capabilities */ },
+                    data = buildJsonObject { /* widget сам перечислит */ },
                 )
                 listOf(ack, capRequest)
             }
 
             "capabilities" -> {
-                // Element Call перечисляет нужные capabilities; одобряем все.
                 val requested = (data["capabilities"] as? JsonArray)?.mapNotNull {
                     it.jsonPrimitive.contentOrNull()
                 } ?: emptyList()
@@ -137,7 +137,6 @@ class WidgetApiHandler(
                 val stateKey = data["state_key"]?.jsonPrimitive?.contentOrNull()
                 val content = (data["content"] as? JsonObject) ?: JsonObject(emptyMap())
                 if (stateKey == null) {
-                    // Room (timeline) event — не нужен в EC widget-режиме.
                     listOf(errorResponse(msg, "room timeline events not supported"))
                 } else {
                     val eventId = runCatching {
@@ -166,9 +165,30 @@ class WidgetApiHandler(
             }
 
             "org.matrix.msc2876.read_events" -> {
-                // EC просит прочитать историю state events; на старте этого достаточно — пустой ответ.
+                val type = data["type"]?.jsonPrimitive?.contentOrNull().orEmpty()
+                // Per MSC2876: state_key may be:
+                //   - absent / true (boolean) → match ANY state key
+                //   - false → match only state_key = "" (empty string)
+                //   - "specific_key" (string) → match exact value
+                val stateKeyRaw = data["state_key"]
+                val stateKey: String? = when {
+                    stateKeyRaw == null -> null
+                    stateKeyRaw is JsonPrimitive && stateKeyRaw.isString -> stateKeyRaw.content
+                    stateKeyRaw is JsonPrimitive && stateKeyRaw.content == "true" -> null
+                    stateKeyRaw is JsonPrimitive && stateKeyRaw.content == "false" -> ""
+                    else -> null
+                }
+                val limit = data["limit"]?.jsonPrimitive?.contentOrNull()?.toIntOrNull() ?: 50
+                val events = runCatching { matrixReadStateEvents(type, stateKey, limit) }
+                    .getOrElse {
+                        println("[WidgetApi] read_events failed: ${it.message}")
+                        emptyList()
+                    }
+                println(
+                    "[WidgetApi] read_events type=$type stateKey=$stateKey (raw=$stateKeyRaw) limit=$limit -> ${events.size} events"
+                )
                 listOf(buildResponse(msg, buildJsonObject {
-                    put("events", JsonArray(emptyList()))
+                    put("events", buildJsonArray { events.forEach { add(it) } })
                 }))
             }
 
@@ -194,35 +214,39 @@ class WidgetApiHandler(
     }
 
     /**
-     * Формирует toWidget-сообщение, которое нужно отправить во iframe,
-     * когда из sync пришло state event для нашей комнаты.
+     * Sync state event → toWidget `send_event`.
+     * `rawEvent` должен уже содержать поля Matrix‑события (type, state_key, content, и т. д.).
      */
     fun forwardSyncEvent(rawEvent: JsonObject): String {
-        return buildHostRequest(
-            action = "send_event",
-            data = rawEvent,
-        )
+        return buildHostRequest(action = "send_event", data = rawEvent)
     }
 
     /**
-     * Формирует toWidget-сообщение для to-device события (m.call.encryption_keys и др.).
+     * To-device event → toWidget `send_to_device`.
+     * `rawEvent` должен содержать `type`, `sender`, `content`, опционально `encrypted`.
      */
     fun forwardToDeviceEvent(rawEvent: JsonObject): String {
-        return buildHostRequest(
-            action = "send_to_device",
-            data = rawEvent,
-        )
+        return buildHostRequest(action = "send_to_device", data = rawEvent)
     }
 
     private fun buildResponse(original: JsonObject, responseData: JsonObject): String {
+        val action = original["action"]?.jsonPrimitive?.contentOrNull()
+        val reqId = original["requestId"]?.jsonPrimitive?.contentOrNull()
         val responseObj = buildJsonObject {
             original.forEach { (k, v) -> put(k, v) }
             put("response", responseData)
         }
-        return responseObj.toString()
+        val rendered = responseObj.toString()
+        println(
+            "[WidgetApi] -> response action=$action requestId=$reqId responseKeys=${responseData.keys} preview=${responseData.toString().take(300)}"
+        )
+        return rendered
     }
 
     private fun errorResponse(original: JsonObject, message: String): String {
+        val action = original["action"]?.jsonPrimitive?.contentOrNull()
+        val reqId = original["requestId"]?.jsonPrimitive?.contentOrNull()
+        println("[WidgetApi] -> ERROR response action=$action requestId=$reqId message='$message'")
         val responseObj = buildJsonObject {
             original.forEach { (k, v) -> put(k, v) }
             put("response", buildJsonObject {
@@ -235,10 +259,12 @@ class WidgetApiHandler(
     }
 
     private fun buildHostRequest(action: String, data: JsonObject): String {
+        val reqId = nextHostRequestId()
+        println("[WidgetApi] => host request action=$action requestId=$reqId dataKeys=${data.keys}")
         return buildJsonObject {
             put("api", JsonPrimitive("toWidget"))
             put("widgetId", JsonPrimitive(widgetId))
-            put("requestId", JsonPrimitive(nextHostRequestId()))
+            put("requestId", JsonPrimitive(reqId))
             put("action", JsonPrimitive(action))
             put("data", data)
         }.toString()

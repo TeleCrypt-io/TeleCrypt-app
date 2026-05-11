@@ -1,5 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.serialization.json.JsonObject
 import net.folivo.trixnity.client.MatrixClient
 import net.folivo.trixnity.core.model.RoomId
 
@@ -40,6 +41,20 @@ interface WidgetBridgeManager {
 
     interface BridgeSession {
         val hostUrl: String
+
+        /**
+         * Перебрасывает sync state event (`m.call.member`, MSC3401 и т. п.) в EC iframe.
+         * `rawEvent` — полный JSON Matrix-события (с полями `type`, `state_key`,
+         * `event_id`, `sender`, `room_id`, `origin_server_ts`, `content`, ...).
+         */
+        fun forwardSyncEvent(rawEvent: JsonObject)
+
+        /**
+         * Перебрасывает to-device event (`m.call.encryption_keys`) в EC iframe.
+         * `rawEvent` — JSON вида `{ type, sender, content }`.
+         */
+        fun forwardToDeviceEvent(rawEvent: JsonObject)
+
         fun close()
     }
 }

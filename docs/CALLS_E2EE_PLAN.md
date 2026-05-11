@@ -275,11 +275,28 @@ TRIXNITY_MESSENGER_MULTI_INSTANCE=1 \
 
 ### Этап 3. Прокачка Widget API до полной совместимости с EC (≈1–2 дня)
 
-* [ ] Реализовать все action'ы, которые EC v0.19.2 реально шлёт. Брать
+* [x] Реализовать все action'ы, которые EC v0.19.2 реально шлёт. Брать
       список из релизных тегов
       [`element-hq/element-call`](https://github.com/element-hq/element-call/blob/livekit-v0.19.2/src/widget.ts).
-* [ ] Auto‑accept capabilities (мы trusted host).
-* [ ] Запушить sync‑события в iframe (state events комнаты, to‑device).
+* [x] Auto‑accept capabilities (мы trusted host) — host‑initiated `capabilities`
+      запрос плюс ack на `fromWidget` `capabilities`.
+* [x] Реальный `send_to_device` через
+      [`UserApiClient.sendToDeviceUnsafe()`](../../trixnity/trixnity-clientserverapi/trixnity-clientserverapi-client/src/commonMain/kotlin/de/connect2x/trixnity/clientserverapi/client/UserApiClient.kt:75).
+* [x] Реальный `send_event` для state events через
+      [`RoomApiClient.sendStateEvent()`](../../trixnity/trixnity-clientserverapi/trixnity-clientserverapi-client/src/commonMain/kotlin/de/connect2x/trixnity/clientserverapi/client/RoomApiClient.kt:199).
+* [x] Реальный `org.matrix.msc2876.read_events` через
+      [`RoomApiClient.getState()`](../../trixnity/trixnity-clientserverapi/trixnity-clientserverapi-client/src/commonMain/kotlin/de/connect2x/trixnity/clientserverapi/client/RoomApiClient.kt) — фильтрация по `type`/`state_key`,
+      сборка полного envelope.
+* [x] Запушить sync‑события в iframe (state events комнаты, to‑device):
+      [`BridgeForwardingRegistry`](../src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/call/widgetBridge/BridgeForwardingRegistry.kt:1)
+      связывает `(userId, roomId)` и активный мост; в
+      [`MatrixRtcSyncEventHandler.forwardToBridgeIfNeeded()`](../src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/call/callRtc/MatrixRtcSyncEventHandler.kt:1)
+      `m.call.member`/`org.matrix.msc3401.call.member` уезжают в
+      [`BridgeSession.forwardSyncEvent()`](../src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/call/widgetBridge/WidgetBridgeManager.kt:42),
+      `m.call.encryption_keys` (to-device) — в
+      [`BridgeSession.forwardToDeviceEvent()`](../src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/call/widgetBridge/WidgetBridgeManager.kt:42).
+* [ ] Ручной прогон: EC iframe загружается без «Произошла ошибка»,
+      `[WidgetApi] read_events ... -> N events`, `[BridgeRegistry] register/unregister`.
 
 ### Этап 4. Тестирование Desktop ↔ Desktop (≈0.5 дня)
 

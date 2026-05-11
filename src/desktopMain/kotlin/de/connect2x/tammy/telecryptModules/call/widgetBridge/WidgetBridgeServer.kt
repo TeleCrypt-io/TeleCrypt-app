@@ -1,48 +1,48 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
-import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.OutputStream
-import java.net.InetSocketAddress
+import java.net.InetAddress
+import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 /**
- * Локальный HTTP+WebSocket сервер, который Chrome загружает как «host page»
- * для Element Call в widget‑режиме.
+ * Локальный HTTP+WebSocket сервер на сыром ServerSocket. Не используем
+ * com.sun.net.httpserver.HttpServer, чтобы не зависеть от рефлексии в
+ * sun.net.httpserver.* (которая ломается на JDK 17+ из-за модулей).
  *
  * URLs:
- *   GET /widget-host.html?widgetId=...&...   — отдаёт HTML с подставленными плейсхолдерами
- *   GET /widget-bus                          — апгрейд в WebSocket; шина между EC и Kotlin
- *
- * Сервер биндится на 127.0.0.1 на свободный порт (port=0).
- *
- * Жизненный цикл — на один звонок: создаётся в [CallCoordinatorImpl.startCall/joinCall],
- * закрывается при завершении звонка (или вместе с приложением).
+ *   GET /widget-host.html  — отдаёт HTML с подставленными плейсхолдерами
+ *   GET /widget-bus        — апгрейд в WebSocket
  */
 class WidgetBridgeServer(
     private val widgetId: String,
-    private val elementCallUrl: String,
-    /** Создаётся при первом подключении WS, чтобы знать roomId/userId/deviceId до открытия. */
+    @Volatile private var elementCallUrl: String,
     private val handlerFactory: () -> WidgetApiHandler,
-    /** Колбэк, чтобы наружу можно было отдать активную сессию (для forward sync events). */
     private val onConnected: (WidgetSession) -> Unit = {},
 ) : AutoCloseable {
 
-    private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
-        executor = Executors.newCachedThreadPool { r ->
-            Thread(r, "widget-bridge").apply { isDaemon = true }
-        }
+    fun setElementCallUrl(url: String) {
+        elementCallUrl = url
+    }
+
+    private val serverSocket: ServerSocket =
+        ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+
+    private val executor = Executors.newCachedThreadPool { r ->
+        Thread(r, "widget-bridge").apply { isDaemon = true }
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -50,21 +50,35 @@ class WidgetBridgeServer(
     @Volatile
     private var session: WidgetSession? = null
 
-    val port: Int get() = server.address.port
+    @Volatile
+    private var acceptThread: Thread? = null
+
+    @Volatile
+    private var running: Boolean = false
+
+    val port: Int get() = serverSocket.localPort
     val hostHtmlUrl: String get() = "http://127.0.0.1:$port/widget-host.html"
     val wsUrl: String get() = "ws://127.0.0.1:$port/widget-bus"
 
     fun start() {
-        server.createContext("/widget-host.html") { ex -> handleHostHtml(ex) }
-        server.createContext("/widget-bus")        { ex -> handleWsUpgrade(ex) }
-        server.start()
+        running = true
+        acceptThread = Thread({
+            while (running && !serverSocket.isClosed) {
+                val client = try {
+                    serverSocket.accept()
+                } catch (t: Throwable) {
+                    if (running) println("[WidgetBridge] accept error: ${t.message}")
+                    break
+                }
+                executor.execute { handleConnection(client) }
+            }
+        }, "widget-bridge-accept").apply {
+            isDaemon = true
+            start()
+        }
         println("[WidgetBridge] started on port=$port (host=$hostHtmlUrl, ws=$wsUrl)")
     }
 
-    /**
-     * Передать в widget событие, прилетевшее из Matrix sync.
-     * Безопасно вызывать до connect — просто игнорируется.
-     */
     fun forwardSyncEvent(rawEvent: kotlinx.serialization.json.JsonObject) {
         val s = session ?: return
         runCatching { s.sendText(s.handler.forwardSyncEvent(rawEvent)) }
@@ -78,36 +92,136 @@ class WidgetBridgeServer(
     }
 
     override fun close() {
+        running = false
         runCatching { session?.close() }
-        runCatching { server.stop(0) }
+        runCatching { serverSocket.close() }
+        runCatching { executor.shutdownNow() }
         scope.cancel()
         println("[WidgetBridge] stopped")
     }
 
+    // ---------------- Connection dispatch ----------------
+
+    private fun handleConnection(client: Socket) {
+        try {
+            client.tcpNoDelay = true
+            client.soTimeout = 0
+            val input = client.getInputStream()
+            val out = client.getOutputStream()
+
+            // Читаем request line + headers (только до \r\n\r\n).
+            val (requestLine, headers) = readHttpHead(input) ?: run {
+                runCatching { client.close() }
+                return
+            }
+            val parts = requestLine.split(' ')
+            if (parts.size < 2) { runCatching { client.close() }; return }
+            val method = parts[0]
+            val path = parts[1]
+
+            when {
+                method == "GET" && (path == "/widget-host.html" || path.startsWith("/widget-host.html?")) -> {
+                    handleHostHtml(out)
+                    runCatching { client.close() }
+                }
+                method == "GET" && (path == "/widget-bus" || path.startsWith("/widget-bus?")) -> {
+                    handleWsUpgrade(client, headers, out)
+                    // НЕ закрываем сокет: WidgetSession владеет им.
+                }
+                else -> {
+                    write404(out)
+                    runCatching { client.close() }
+                }
+            }
+        } catch (t: Throwable) {
+            println("[WidgetBridge] connection error: ${t.message}")
+            runCatching { client.close() }
+        }
+    }
+
+    private fun readHttpHead(input: InputStream): Pair<String, Map<String, String>>? {
+        val buf = StringBuilder()
+        var prev = -1
+        var prevPrev = -1
+        var prevPrevPrev = -1
+        while (true) {
+            val b = input.read()
+            if (b == -1) return null
+            buf.append(b.toChar())
+            if (prevPrevPrev == '\r'.code && prevPrev == '\n'.code && prev == '\r'.code && b == '\n'.code) break
+            prevPrevPrev = prevPrev
+            prevPrev = prev
+            prev = b
+            if (buf.length > 64 * 1024) return null
+        }
+        val raw = buf.toString()
+        val lines = raw.split("\r\n")
+        if (lines.isEmpty()) return null
+        val requestLine = lines[0]
+        val headers = HashMap<String, String>()
+        for (i in 1 until lines.size) {
+            val line = lines[i]
+            if (line.isBlank()) continue
+            val idx = line.indexOf(':')
+            if (idx <= 0) continue
+            val name = line.substring(0, idx).trim().lowercase()
+            val value = line.substring(idx + 1).trim()
+            headers[name] = value
+        }
+        return requestLine to headers
+    }
+
+    private fun write404(out: OutputStream) {
+        val body = "Not Found".toByteArray(StandardCharsets.UTF_8)
+        val resp = buildString {
+            append("HTTP/1.1 404 Not Found\r\n")
+            append("Content-Type: text/plain; charset=utf-8\r\n")
+            append("Content-Length: ${body.size}\r\n")
+            append("Connection: close\r\n")
+            append("\r\n")
+        }
+        out.write(resp.toByteArray(StandardCharsets.US_ASCII))
+        out.write(body)
+        out.flush()
+    }
+
     // ---------------- HTTP: widget-host.html ----------------
 
-    private fun handleHostHtml(ex: HttpExchange) {
+    private fun handleHostHtml(out: OutputStream) {
         try {
             val template = loadHostHtmlTemplate()
             val rendered = template
                 .replace("__ELEMENT_CALL_URL__", jsEscape(elementCallUrl))
-                .replace("__WIDGET_ID__",        jsEscape(widgetId))
-                .replace("__BRIDGE_WS_URL__",    jsEscape(wsUrl))
+                .replace("__WIDGET_ID__", jsEscape(widgetId))
+                .replace("__BRIDGE_WS_URL__", jsEscape(wsUrl))
             val bytes = rendered.toByteArray(StandardCharsets.UTF_8)
-            ex.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
-            ex.responseHeaders.add("Cache-Control", "no-store")
-            // Permissions-Policy, чтобы getUserMedia точно работал в iframe.
-            ex.responseHeaders.add(
-                "Permissions-Policy",
-                "camera=*, microphone=*, autoplay=*, display-capture=*, fullscreen=*"
-            )
-            ex.sendResponseHeaders(200, bytes.size.toLong())
-            ex.responseBody.use { it.write(bytes) }
+            val resp = buildString {
+                append("HTTP/1.1 200 OK\r\n")
+                append("Content-Type: text/html; charset=utf-8\r\n")
+                append("Content-Length: ${bytes.size}\r\n")
+                append("Cache-Control: no-store\r\n")
+                append("Permissions-Policy: camera=*, microphone=*, autoplay=*, display-capture=*, fullscreen=*\r\n")
+                append("Connection: close\r\n")
+                append("\r\n")
+            }
+            out.write(resp.toByteArray(StandardCharsets.US_ASCII))
+            out.write(bytes)
+            out.flush()
         } catch (t: Throwable) {
             println("[WidgetBridge] host-html error: ${t.message}")
             val msg = ("error: " + t.message).toByteArray(StandardCharsets.UTF_8)
-            ex.sendResponseHeaders(500, msg.size.toLong())
-            ex.responseBody.use { it.write(msg) }
+            val resp = buildString {
+                append("HTTP/1.1 500 Internal Server Error\r\n")
+                append("Content-Type: text/plain; charset=utf-8\r\n")
+                append("Content-Length: ${msg.size}\r\n")
+                append("Connection: close\r\n")
+                append("\r\n")
+            }
+            runCatching {
+                out.write(resp.toByteArray(StandardCharsets.US_ASCII))
+                out.write(msg)
+                out.flush()
+            }
         }
     }
 
@@ -118,41 +232,29 @@ class WidgetBridgeServer(
         return stream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
     }
 
-    // ---------------- HTTP → WebSocket upgrade ----------------
+    // ---------------- WebSocket upgrade ----------------
 
-    /**
-     * `com.sun.net.httpserver.HttpServer` не поддерживает WebSocket нативно,
-     * но даёт сырой Socket через рефлексию. Мы обходимся без рефлексии, используя
-     * уже отправленные заголовки Connection: Upgrade — а сам апгрейд делаем на
-     * отдельном TCP-сервере.
-     *
-     * Простейшее решение: отдаём 426 от HttpServer, а WebSocket поднимаем на
-     * том же порту через отдельный поток приёма? — к сожалению, порт занят
-     * HttpServer'ом. Поэтому идём другим путём: WebSocket-апгрейд делаем
-     * прямо здесь, выдёргивая транспорт через рефлексию HttpExchange.
-     *
-     * Это работает в Sun JDK / OpenJDK — поле "impl.tx" / "exchange.tx" хранит
-     * `sun.net.httpserver.ExchangeImpl` → имеет ссылку на Socket.
-     */
-    private fun handleWsUpgrade(ex: HttpExchange) {
-        val key = ex.requestHeaders.getFirst("Sec-WebSocket-Key")
-        val upgrade = ex.requestHeaders.getFirst("Upgrade")?.lowercase()
+    private fun handleWsUpgrade(socket: Socket, headers: Map<String, String>, out: OutputStream) {
+        val key = headers["sec-websocket-key"]
+        val upgrade = headers["upgrade"]?.lowercase()
         if (key.isNullOrBlank() || upgrade != "websocket") {
             val msg = "WebSocket upgrade required".toByteArray(StandardCharsets.UTF_8)
-            ex.sendResponseHeaders(400, msg.size.toLong())
-            ex.responseBody.use { it.write(msg) }
+            val resp = buildString {
+                append("HTTP/1.1 400 Bad Request\r\n")
+                append("Content-Type: text/plain; charset=utf-8\r\n")
+                append("Content-Length: ${msg.size}\r\n")
+                append("Connection: close\r\n")
+                append("\r\n")
+            }
+            runCatching {
+                out.write(resp.toByteArray(StandardCharsets.US_ASCII))
+                out.write(msg)
+                out.flush()
+                socket.close()
+            }
             return
         }
 
-        val socket = extractSocket(ex)
-        if (socket == null) {
-            val msg = "cannot extract socket".toByteArray(StandardCharsets.UTF_8)
-            ex.sendResponseHeaders(500, msg.size.toLong())
-            ex.responseBody.use { it.write(msg) }
-            return
-        }
-
-        // Готовим accept-key.
         val accept = computeAcceptKey(key)
         val response = buildString {
             append("HTTP/1.1 101 Switching Protocols\r\n")
@@ -163,48 +265,19 @@ class WidgetBridgeServer(
         }
 
         try {
-            // ВАЖНО: пишем 101 напрямую в сырой сокет, минуя HttpServer.
-            // HttpServer не должен писать свой ответ — для этого мы НЕ вызываем
-            // ex.sendResponseHeaders() и блокируем поток до закрытия сессии.
-            val rawOut = socket.getOutputStream()
-            rawOut.write(response.toByteArray(StandardCharsets.US_ASCII))
-            rawOut.flush()
+            out.write(response.toByteArray(StandardCharsets.US_ASCII))
+            out.flush()
 
             val handler = handlerFactory()
-            val latch = CountDownLatch(1)
-            val newSession = WidgetSession(socket, handler, scope, latch)
+            val newSession = WidgetSession(socket, handler, scope)
             session = newSession
             onConnected(newSession)
             newSession.startReadLoop()
             println("[WidgetBridge] WS connected widgetId=${handler.widgetId}")
-
-            // Блокируем поток HttpServer-handler'а до закрытия WS-сессии.
-            // Это критично: если вернуться раньше — HttpServer закроет сокет.
-            latch.await()
         } catch (t: Throwable) {
             println("[WidgetBridge] WS upgrade failed: ${t.message}")
             runCatching { socket.close() }
         }
-    }
-
-    /**
-     * Достаём `java.net.Socket` из HttpExchange через рефлексию (sun.net.httpserver.ExchangeImpl).
-     */
-    private fun extractSocket(ex: HttpExchange): Socket? {
-        return runCatching {
-            val implField = ex.javaClass.getDeclaredField("impl").apply { isAccessible = true }
-            val impl = implField.get(ex)
-            val connField = impl.javaClass.getDeclaredField("connection").apply { isAccessible = true }
-            val connection = connField.get(impl)
-            val socketField = connection.javaClass.superclass?.getDeclaredField("chan")
-                ?: connection.javaClass.getDeclaredField("chan")
-            socketField.isAccessible = true
-            val chan = socketField.get(connection)
-            // chan — SocketChannel, у него socket()
-            val socketMethod = chan.javaClass.getMethod("socket")
-            socketMethod.invoke(chan) as Socket
-        }.onFailure { println("[WidgetBridge] reflection-extract socket failed: $it") }
-            .getOrNull()
     }
 
     private fun computeAcceptKey(clientKey: String): String {
@@ -223,7 +296,6 @@ class WidgetBridgeServer(
         private val socket: Socket,
         val handler: WidgetApiHandler,
         private val parentScope: CoroutineScope,
-        private val closeLatch: CountDownLatch? = null,
     ) {
         private val out: OutputStream = socket.getOutputStream()
         private val input = socket.getInputStream()
@@ -232,7 +304,6 @@ class WidgetBridgeServer(
         @Synchronized
         fun sendText(text: String) {
             val payload = text.toByteArray(StandardCharsets.UTF_8)
-            // Server-to-client фреймы НЕ маскируются.
             val frame = ArrayList<Byte>(payload.size + 14)
             frame.add(0x81.toByte()) // FIN + text
             when {
@@ -259,10 +330,7 @@ class WidgetBridgeServer(
                 try {
                     while (!socket.isClosed) {
                         val frame = readFrame() ?: break
-                        if (frame.opcode == 0x8) {
-                            // close
-                            break
-                        }
+                        if (frame.opcode == 0x8) break
                         if (frame.opcode == 0x1 || frame.opcode == 0x0) {
                             val text = String(frame.payload, StandardCharsets.UTF_8)
                             val replies = runCatching { handler.handleMessage(text) }
@@ -274,7 +342,6 @@ class WidgetBridgeServer(
                                 runCatching { sendText(reply) }
                             }
                         }
-                        // ping(0x9), pong(0xA) и прочее — игнорируем
                     }
                 } catch (t: Throwable) {
                     println("[WidgetBridge] read loop ended: ${t.message}")
@@ -304,7 +371,6 @@ class WidgetBridgeServer(
             val maskKey = if (masked) {
                 val mk = ByteArray(4); if (!readFully(mk)) return null; mk
             } else null
-            // 1MB сап на фрейм
             val safeLen = minOf(len, 1024L * 1024L).toInt()
             val payload = ByteArray(safeLen)
             if (!readFully(payload)) return null
@@ -330,7 +396,6 @@ class WidgetBridgeServer(
             runCatching { readJob?.cancel() }
             runCatching { socket.close() }
             if (session === this) session = null
-            closeLatch?.countDown()
         }
     }
 
