@@ -238,22 +238,45 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         stateKey: String?,
         limit: Int,
     ): List<JsonObject> {
-        val getStateResult = runCatching { matrixClient.api.room.getState(roomId) }
-        val callEx = getStateResult.exceptionOrNull()
-        val apiResult = getStateResult.getOrNull()
-        val apiEx = apiResult?.exceptionOrNull()
-        val all = apiResult?.getOrNull()
-        if (all == null) {
-            println(
-                "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType FAILED: " +
-                    "callEx=${callEx?.message} apiEx=${apiEx?.message}"
-            )
-            return emptyList()
-        }
         val json = matrixClient.api.json
         val mappings = runCatching { matrixClient.di.get<EventContentSerializerMappings>() }
             .onFailure { println("[WidgetBridge] failed to obtain EventContentSerializerMappings: ${it.message}") }
             .getOrElse { return emptyList() }
+
+        // Fast path: when (eventType, stateKey) is specific, use the lighter
+        // GET /rooms/{roomId}/state/{type}/{stateKey} endpoint. This is much
+        // cheaper than /state for a single event and degrades better on
+        // flaky homeservers (e.g. cht.antidote.network socket timeouts).
+        if (stateKey != null) {
+            val singleResult = retryOnTransientFailure("getStateEvent($eventType,$stateKey)") {
+                matrixClient.api.room.getStateEvent(eventType, roomId, stateKey)
+            }
+            val singleEvent: Any? = singleResult?.getOrNull()
+            if (singleEvent is ClientEvent.RoomEvent.StateEvent<*>) {
+                val asJson = runCatching { stateEventToCanonicalJson(json, mappings.state, singleEvent) }
+                    .onFailure { println("[WidgetBridge] stateEventToCanonicalJson failed (fast-path): ${it.message}") }
+                    .getOrNull()
+                if (asJson != null) {
+                    println(
+                        "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType stateKey=$stateKey " +
+                            "fast-path getStateEvent ok"
+                    )
+                    return listOf(asJson)
+                }
+            }
+            // Fall through to /state below on fast-path miss.
+        }
+
+        // Full path: GET /rooms/{roomId}/state with retry on transient failures.
+        val all = retryOnTransientFailure("getState(${roomId.full})") {
+            matrixClient.api.room.getState(roomId)
+        }?.getOrNull()
+        if (all == null) {
+            println(
+                "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType FAILED after retries"
+            )
+            return emptyList()
+        }
         // Сериализуем каждое событие в JSON, собирая envelope вручную:
         // `serializersModule.serializer<StateEvent<*>>()` через рефлексию падает
         // на star projection, а encodeToString(<contextual mapping>, ev) требует
@@ -326,6 +349,57 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 }
             }
         }
+    }
+
+    /**
+     * Retry a homeserver call on transient failures (socket timeouts, connection
+     * resets). EC widget mode is very sensitive to `read_events` returning
+     * empty results — if the homeserver is flaky and we don't retry, EC gets
+     * stuck on an infinite spinner. We do up to 3 attempts with short backoff.
+     *
+     * Returns the last successful `Result<T>` (which itself may carry an API
+     * error that we treat as a real "no data" answer), or `null` if all
+     * attempts failed with a thrown exception.
+     */
+    private suspend fun <T> retryOnTransientFailure(
+        label: String,
+        block: suspend () -> Result<T>,
+    ): Result<T>? {
+        val maxAttempts = 3
+        var lastEx: Throwable? = null
+        repeat(maxAttempts) { attempt ->
+            val outcome = runCatching { block() }
+            val callEx = outcome.exceptionOrNull()
+            val apiResult = outcome.getOrNull()
+            val apiEx = apiResult?.exceptionOrNull()
+            val transient = (callEx != null && isTransient(callEx)) ||
+                (apiEx != null && isTransient(apiEx))
+            if (apiResult != null && apiResult.isSuccess) return apiResult
+            if (apiResult != null && !transient) return apiResult
+            if (callEx != null && !transient) {
+                println("[WidgetBridge] $label non-transient error on attempt ${attempt + 1}: ${callEx.message}")
+                return null
+            }
+            lastEx = callEx ?: apiEx
+            println("[WidgetBridge] $label transient failure attempt ${attempt + 1}/$maxAttempts: ${lastEx?.message}")
+            if (attempt < maxAttempts - 1) {
+                kotlinx.coroutines.delay(500L * (attempt + 1))
+            }
+        }
+        println("[WidgetBridge] $label failed after $maxAttempts attempts: ${lastEx?.message}")
+        return null
+    }
+
+    private fun isTransient(t: Throwable): Boolean {
+        val msg = (t.message ?: "").lowercase()
+        return msg.contains("timeout") ||
+            msg.contains("timed out") ||
+            msg.contains("connection reset") ||
+            msg.contains("connection refused") ||
+            msg.contains("connect reset") ||
+            msg.contains("socket") ||
+            msg.contains("eof") ||
+            t::class.simpleName?.lowercase()?.contains("timeout") == true
     }
 }
 
