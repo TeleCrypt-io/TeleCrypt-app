@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import net.folivo.trixnity.client.MatrixClient
 import net.folivo.trixnity.client.store.AccountStore
 import net.folivo.trixnity.core.model.UserId
+import net.folivo.trixnity.crypto.olm.OlmDecrypter
 
 class MatrixRtcAutoStart(
     private val matrixClients: MatrixClients,
@@ -51,8 +52,14 @@ class MatrixRtcAutoStart(
             println("[Call] Auto-start RTC handler skipped (no AccountStore)")
             return null
         }
+        val olmDecrypter = runCatching { client.di.get<OlmDecrypter>() }.getOrNull()
+        if (olmDecrypter == null) {
+            println("[Call][WARN] OlmDecrypter not available — incoming encrypted to-device events won't be forwarded to widget")
+        } else {
+            println("[Call] OlmDecrypter resolved for user=$userKey")
+        }
         ensureRtcFilters(client, userKey, accountStore)
-        return MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore, bridgeRegistry)
+        return MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore, bridgeRegistry, olmDecrypter)
     }
 
     private suspend fun ensureRtcFilters(

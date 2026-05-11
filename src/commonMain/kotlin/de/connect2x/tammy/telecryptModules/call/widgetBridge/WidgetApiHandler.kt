@@ -70,6 +70,33 @@ class WidgetApiHandler(
 
     private var delayedEventCounter: Long = 0L
 
+    /**
+     * MSC4140 delayed-event cache.
+     *
+     * Element Call uses delayed events as a "dead man's switch": it sends a
+     * disconnect/leave state event (typically empty content {}) with delay=90s,
+     * then periodically calls `update_delayed_event(action=restart)` to keep it
+     * alive while the call is active. When the user explicitly leaves, EC sends
+     * `update_delayed_event(action=send)` — meaning "fire it now". On disconnect
+     * without a clean leave (crash, network drop, app close), the heartbeat stops
+     * and the server eventually commits the event automatically.
+     *
+     * Since we don't have real server-side delayed events here, we have to
+     * emulate the bare minimum: remember what was scheduled and, on action=send,
+     * actually post it via the Matrix API. Otherwise leave-state never lands and
+     * the membership becomes a ghost.
+     *
+     * NOTE: we still cannot emulate the auto-fire-on-timeout part — if the
+     * desktop crashes we can't post anything. A future improvement is to send
+     * the leave directly on `CallCoordinator.leaveCall` / app shutdown.
+     */
+    private data class DelayedEvent(
+        val type: String,
+        val stateKey: String?,
+        val content: JsonObject,
+    )
+    private val delayedEvents = mutableMapOf<String, DelayedEvent>()
+
     suspend fun handleMessage(rawJson: String): List<String> {
         val msg = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(rawJson).jsonObject }
             .getOrElse {
@@ -158,9 +185,11 @@ class WidgetApiHandler(
                 val delay = data["delay"]?.jsonPrimitive?.contentOrNull()?.toLongOrNull()
                 if (delay != null) {
                     val fakeDelayId = "delayed-${delayedEventCounter++}-${kotlin.random.Random.nextLong()}"
+                    delayedEvents[fakeDelayId] = DelayedEvent(type, stateKey, content)
                     println(
                         "[WidgetApi] send_event MSC4140 delayed: type=$type stateKey=$stateKey " +
-                            "contentKeys=${content.keys} delay=${delay}ms — fake-ack delay_id=$fakeDelayId"
+                            "contentKeys=${content.keys} delay=${delay}ms — cached, delay_id=$fakeDelayId " +
+                            "(cache size=${delayedEvents.size})"
                     )
                     listOf(buildResponse(msg, buildJsonObject {
                         put("delay_id", JsonPrimitive(fakeDelayId))
@@ -191,8 +220,45 @@ class WidgetApiHandler(
             // Since we don't actually schedule anything, just ack everything.
             "org.matrix.msc4140.update_delayed_event", "org.matrix.msc4157.update_delayed_event", "update_delayed_event" -> {
                 val delayId = data["delay_id"]?.jsonPrimitive?.contentOrNull()
-                val action = data["action"]?.jsonPrimitive?.contentOrNull()
-                println("[WidgetApi] update_delayed_event: delay_id=$delayId action=$action — fake-ack")
+                val delayedAction = data["action"]?.jsonPrimitive?.contentOrNull()
+                val cached = delayId?.let { delayedEvents[it] }
+                when (delayedAction) {
+                    "send" -> {
+                        if (cached != null) {
+                            delayedEvents.remove(delayId)
+                            val sk = cached.stateKey
+                            val eventId = if (sk != null) {
+                                runCatching { matrixSendStateEvent(cached.type, sk, cached.content) }
+                                    .onFailure { println("[WidgetApi] delayed send_event (state) threw: ${it.message}") }
+                                    .getOrNull()
+                            } else {
+                                runCatching { matrixSendMessageEvent(cached.type, cached.content) }
+                                    .onFailure { println("[WidgetApi] delayed send_event (message) threw: ${it.message}") }
+                                    .getOrNull()
+                            }
+                            println(
+                                "[WidgetApi] update_delayed_event=send delay_id=$delayId committed " +
+                                    "type=${cached.type} stateKey=$sk contentKeys=${cached.content.keys} eventId=$eventId"
+                            )
+                        } else {
+                            println("[WidgetApi] update_delayed_event=send delay_id=$delayId — no cached payload, ack only")
+                        }
+                    }
+                    "cancel" -> {
+                        val removed = delayedEvents.remove(delayId) != null
+                        println("[WidgetApi] update_delayed_event=cancel delay_id=$delayId removed=$removed")
+                    }
+                    "restart" -> {
+                        // Heartbeat — nothing to do, we're not actually scheduling.
+                        // (Avoid spamming the log: only print when cache miss.)
+                        if (cached == null) {
+                            println("[WidgetApi] update_delayed_event=restart delay_id=$delayId — UNKNOWN delay_id (cache miss)")
+                        }
+                    }
+                    else -> {
+                        println("[WidgetApi] update_delayed_event delay_id=$delayId action=$delayedAction — unknown action, ack only")
+                    }
+                }
                 listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
             }
 
@@ -295,6 +361,40 @@ class WidgetApiHandler(
      */
     fun forwardSyncEvent(rawEvent: JsonObject): String {
         return buildHostRequest(action = "send_event", data = rawEvent)
+    }
+
+    /**
+     * Flush all cached MSC4140 delayed events by actually sending them via the
+     * Matrix API. Called when the bridge is being torn down (call leave, app
+     * close) so we don't leak ghost membership state events that EC was
+     * counting on the homeserver to auto-fire.
+     *
+     * Returns the number of events committed.
+     */
+    suspend fun flushPendingDelayedEvents(): Int {
+        if (delayedEvents.isEmpty()) return 0
+        val snapshot = delayedEvents.toMap()
+        delayedEvents.clear()
+        println("[WidgetApi] flushPendingDelayedEvents: firing ${snapshot.size} pending event(s) on teardown")
+        var committed = 0
+        snapshot.forEach { (delayId, ev) ->
+            val sk = ev.stateKey
+            val eventId = if (sk != null) {
+                runCatching { matrixSendStateEvent(ev.type, sk, ev.content) }
+                    .onFailure { println("[WidgetApi] flushPendingDelayedEvents send_state(delay_id=$delayId) failed: ${it.message}") }
+                    .getOrNull()
+            } else {
+                runCatching { matrixSendMessageEvent(ev.type, ev.content) }
+                    .onFailure { println("[WidgetApi] flushPendingDelayedEvents send_message(delay_id=$delayId) failed: ${it.message}") }
+                    .getOrNull()
+            }
+            if (eventId != null) committed++
+            println(
+                "[WidgetApi] flushPendingDelayedEvents committed delay_id=$delayId " +
+                    "type=${ev.type} stateKey=$sk contentKeys=${ev.content.keys} eventId=$eventId"
+            )
+        }
+        return committed
     }
 
     /**

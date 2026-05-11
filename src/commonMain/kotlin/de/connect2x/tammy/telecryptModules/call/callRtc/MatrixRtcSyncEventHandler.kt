@@ -23,6 +23,8 @@ import net.folivo.trixnity.core.model.UserId
 import net.folivo.trixnity.core.model.events.ClientEvent
 import net.folivo.trixnity.core.model.events.UnknownEventContent
 import net.folivo.trixnity.core.subscribeEachEventAsFlow
+import net.folivo.trixnity.crypto.olm.DecryptedOlmEventContainer
+import net.folivo.trixnity.crypto.olm.OlmDecrypter
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.runCatching
@@ -32,6 +34,7 @@ class MatrixRtcSyncEventHandler(
     private val rtcService: MatrixRtcService,
     private val accountStore: AccountStore,
     private val bridgeRegistry: BridgeForwardingRegistry? = null,
+    private val olmDecrypter: OlmDecrypter? = null,
     private val nowMs: () -> Long = ::currentTimeMillis,
 ) : EventHandler {
     private val started = AtomicBoolean(false)
@@ -56,6 +59,16 @@ class MatrixRtcSyncEventHandler(
                 }
             }
         }
+        // Subscribe to decrypted olm to-device events. trixnity does NOT surface
+        // decrypted to-device events via subscribeEachEventAsFlow — only the encrypted
+        // OlmEncryptedToDeviceEventContent envelopes go there. Decrypted ones come
+        // through OlmDecrypter.subscribe().
+        olmDecrypter?.let { decrypter ->
+            decrypter.subscribe { container ->
+                handleDecryptedOlmEvent(container)
+            }
+            println("[Call] Subscribed to OlmDecrypter for decrypted to-device events")
+        } ?: println("[Call] OlmDecrypter not provided — decrypted to-device forwarding disabled")
         syncApi.subscribeEachEventAsFlow()
             .onEach { event ->
                 if (loggedFirstEvent.compareAndSet(false, true)) {
@@ -79,6 +92,14 @@ class MatrixRtcSyncEventHandler(
                         println("[Call][DIAG] Sync event type=$t class=${event::class.simpleName} room=$roomId")
                     }
                 }
+                // DIAGNOSTIC: Log EVERY ToDeviceEvent regardless of content type,
+                // so we can confirm whether decrypted encryption_keys events reach us.
+                if (event is ClientEvent.ToDeviceEvent<*>) {
+                    val contentClass = event.content::class.simpleName
+                    val u = event.content as? UnknownEventContent
+                    val rawSnippet = u?.raw?.toString()?.take(200)
+                    println("[Call][DIAG] ToDeviceEvent sender=${event.sender.full} contentClass=$contentClass type=${u?.eventType} rawSnippet=$rawSnippet")
+                }
                 // Also log non-UnknownEventContent events that might be call-related
                 // (some events may be deserialized into known types)
                 if (unknown == null && eventCount.incrementAndGet() % 500 == 0L) {
@@ -98,6 +119,50 @@ class MatrixRtcSyncEventHandler(
      *   - to-device events `m.call.encryption_keys` — во ВСЕ мосты пользователя
      *     (to-device не привязан к комнате).
      */
+    /**
+     * Обрабатывает расшифрованное olm to-device событие, форвардит в widget
+     * только `io.element.call.encryption_keys` / `m.call.encryption_keys`.
+     *
+     * Зашифрованные envelope-ы (m.room.encrypted -> OlmEncryptedToDeviceEventContent)
+     * приходят через subscribeEachEventAsFlow, но без видимого type. Расшифрованные
+     * события не выдаются через тот же flow — их даёт ТОЛЬКО OlmDecrypter.
+     */
+    private fun handleDecryptedOlmEvent(container: DecryptedOlmEventContainer) {
+        val registry = bridgeRegistry ?: return
+        val decrypted = container.decrypted
+        val content = decrypted.content
+        // Try to get the event type & raw JSON via UnknownEventContent first
+        val unknown = content as? UnknownEventContent
+        val eventType: String = unknown?.eventType
+            ?: content::class.simpleName.orEmpty()
+        // Log everything that comes through for diagnostics
+        val rawSnippet = unknown?.raw?.toString()?.take(200)
+        val senderId = decrypted.sender.full
+        println("[Call][DIAG] DecryptedOlmEvent sender=$senderId type=$eventType contentClass=${content::class.simpleName} rawSnippet=$rawSnippet")
+        // Forward only encryption_keys
+        if (eventType != "m.call.encryption_keys" && eventType != "io.element.call.encryption_keys") return
+        val rawContent: JsonObject = unknown?.raw ?: run {
+            println("[Call] Skipping decrypted ${eventType}: content not UnknownEventContent (was ${content::class.simpleName})")
+            return
+        }
+        val localUser = localUserId ?: return
+        val sessions = registry.sessionsForUser(localUser)
+        if (sessions.isEmpty()) {
+            println("[Call] Forward decrypted to-device type=$eventType: no bridge sessions for user=${localUser.full}")
+            return
+        }
+        val envelope = buildJsonObject {
+            put("type", JsonPrimitive(eventType))
+            put("sender", JsonPrimitive(senderId))
+            put("content", rawContent)
+        }
+        println("[Call] Forward decrypted to-device type=$eventType sender=$senderId -> ${sessions.size} bridge(s)")
+        sessions.forEach { session ->
+            runCatching { session.forwardToDeviceEvent(envelope) }
+                .onFailure { println("[Call] forwardToDeviceEvent (decrypted) failed: ${it.message}") }
+        }
+    }
+
     private fun forwardToBridgeIfNeeded(event: ClientEvent<*>) {
         val registry = bridgeRegistry ?: return
         val unknown = event.content as? UnknownEventContent ?: return

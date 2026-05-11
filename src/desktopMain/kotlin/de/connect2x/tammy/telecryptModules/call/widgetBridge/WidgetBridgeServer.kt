@@ -93,6 +93,21 @@ class WidgetBridgeServer(
 
     override fun close() {
         running = false
+        // Flush any pending MSC4140 delayed events (the EC "dead man's switch"
+        // disconnect/leave state events). EC counts on the homeserver firing
+        // them automatically — we have to commit them ourselves on teardown,
+        // otherwise the user's membership state stays as a ghost forever.
+        val s = session
+        if (s != null) {
+            runCatching {
+                kotlinx.coroutines.runBlocking {
+                    val committed = s.handler.flushPendingDelayedEvents()
+                    if (committed > 0) {
+                        println("[WidgetBridge] close: flushed $committed pending delayed event(s) before teardown")
+                    }
+                }
+            }.onFailure { println("[WidgetBridge] close: flushPendingDelayedEvents failed: ${it.message}") }
+        }
         runCatching { session?.close() }
         runCatching { serverSocket.close() }
         runCatching { executor.shutdownNow() }

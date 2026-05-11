@@ -68,6 +68,12 @@ class CallCoordinatorImpl(
         val slotId = MATRIX_RTC_DEFAULT_SLOT_ID
         stopActiveSession(matrixClient, roomId, endForAll = false)
 
+        // Clear any stale ghost membership state events left over from previous
+        // sessions (crashes, killed-with-active-call, MSC4140 delayed events that
+        // never fired). Without this, Element Call sees the user already "in"
+        // the call and the room contains zombie participants forever.
+        clearOwnGhostMembership(matrixClient, roomId)
+
         // Publish slot event to signal "a call is active in this room".
         // We do NOT publish member events — Element Call handles that.
         publishSlot(matrixClient, roomId, slotId, callId)
@@ -142,6 +148,69 @@ class CallCoordinatorImpl(
         return CallStartResult(ok = true, deepLink = deepLink)
     }
 
+    /**
+     * Removes any leftover `m.rtc.member` / `org.matrix.msc3401.call.member`
+     * state events whose `sender` is the local user. These accumulate when
+     * Element Call's MSC4140 delayed "leave" tombstones don't fire (we used
+     * to fake-ack them; even with the new flush-on-teardown logic, prior
+     * crashed sessions may still have ghosts on the server).
+     *
+     * Without this, when the user joins a call EC reads the room state, sees
+     * its own user already "participating", and the room shows duplicate
+     * ghost participants. Worse, EC may refuse to publish a fresh membership.
+     */
+    private suspend fun clearOwnGhostMembership(matrixClient: MatrixClient, roomId: RoomId) {
+        val localUser = matrixClient.userId
+        val memberTypes = setOf(
+            MatrixRtcEventTypes.MEMBER,                 // m.rtc.member
+            MatrixRtcEventTypes.UNSTABLE_MEMBER,        // org.matrix.msc4143.rtc.member
+            MatrixRtcEventTypes.MSC3401_CALL_MEMBER,    // org.matrix.msc3401.call.member
+            "m.call.member",
+        )
+        val state = runCatching { matrixClient.api.room.getState(roomId).getOrThrow() }
+            .onFailure { println("[Call] clearOwnGhostMembership: getState failed: ${it.message}") }
+            .getOrNull() ?: return
+
+        var cleared = 0
+        for (evt in state) {
+            if (evt.sender != localUser) continue
+            val content = evt.content
+            // Resolve the event type string regardless of whether the content
+            // was parsed into a typed Trixnity model or is still raw Unknown.
+            val typeStr: String = if (content is UnknownEventContent) {
+                content.eventType
+            } else {
+                // Trixnity strips the wire `type` for typed contents — fall back
+                // to class-name heuristics. For MSC3401/MSC4143 we always get
+                // UnknownEventContent (no model), so this branch is rare.
+                content::class.simpleName.orEmpty()
+            }
+            if (typeStr !in memberTypes) continue
+            // Skip if already cleared (empty raw content).
+            if (content is UnknownEventContent && content.raw == JsonObject(emptyMap())) continue
+            val stateKey = evt.stateKey
+            val ok = runCatching {
+                matrixClient.api.room.sendStateEvent(
+                    roomId,
+                    UnknownEventContent(JsonObject(emptyMap()), typeStr),
+                    stateKey,
+                )
+                true
+            }.onFailure {
+                println("[Call] clearOwnGhostMembership: sendStateEvent type=$typeStr stateKey=$stateKey failed: ${it.message}")
+            }.getOrDefault(false)
+            if (ok) {
+                cleared++
+                println("[Call] clearOwnGhostMembership: cleared type=$typeStr stateKey=$stateKey")
+            }
+        }
+        if (cleared > 0) {
+            println("[Call] clearOwnGhostMembership: cleared $cleared stale ghost member state event(s) for ${localUser.full} in ${roomId.full}")
+        } else {
+            println("[Call] clearOwnGhostMembership: no stale ghosts found for ${localUser.full} in ${roomId.full}")
+        }
+    }
+
     override suspend fun joinCall(
         matrixClient: MatrixClient,
         roomId: RoomId,
@@ -162,6 +231,9 @@ class CallCoordinatorImpl(
         val callId = sessionState.callId
         val slotId = sessionState.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
         stopActiveSession(matrixClient, roomId, endForAll = false)
+
+        // Clear our own stale ghost members before EC reads room state.
+        clearOwnGhostMembership(matrixClient, roomId)
 
         // No member publishing — Element Call handles its own membership.
         watcher.ackIncoming(roomId, callId)
