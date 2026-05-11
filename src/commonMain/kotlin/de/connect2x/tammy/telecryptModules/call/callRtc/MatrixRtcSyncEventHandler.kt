@@ -102,6 +102,7 @@ class MatrixRtcSyncEventHandler(
         val registry = bridgeRegistry ?: return
         val unknown = event.content as? UnknownEventContent ?: return
         val eventType = unknown.eventType
+        
         when (event) {
             is ClientEvent.RoomEvent.StateEvent<*> -> {
                 if (eventType != MatrixRtcEventTypes.MSC3401_CALL_MEMBER &&
@@ -124,7 +125,7 @@ class MatrixRtcSyncEventHandler(
                     .onFailure { println("[Call] forwardSyncEvent failed: ${it.message}") }
             }
             is ClientEvent.ToDeviceEvent<*> -> {
-                if (eventType != "m.call.encryption_keys") return
+                if (eventType != "m.call.encryption_keys" && eventType != "io.element.call.encryption_keys") return
                 val localUser = localUserId ?: return
                 val sessions = registry.sessionsForUser(localUser)
                 if (sessions.isEmpty()) return

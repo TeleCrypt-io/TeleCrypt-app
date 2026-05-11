@@ -39,9 +39,11 @@ class WidgetApiHandler(
     private val deviceId: String,
     private val roomId: String,
     /** to-device через Matrix. Возвращает true при успехе. */
-    private val matrixSendToDevice: suspend (eventType: String, messages: JsonObject) -> Boolean,
+    private val matrixSendToDevice: suspend (eventType: String, messages: JsonObject, encrypted: Boolean) -> Boolean,
     /** state event через Matrix. Возвращает eventId или null. */
     private val matrixSendStateEvent: suspend (eventType: String, stateKey: String, content: JsonObject) -> String?,
+    /** room timeline (message) event через Matrix. Возвращает eventId или null. */
+    private val matrixSendMessageEvent: suspend (eventType: String, content: JsonObject) -> String?,
     /**
      * Чтение state events комнаты:
      *   - `eventType` — фильтр типа (например, `org.matrix.msc3401.call.member`).
@@ -53,11 +55,20 @@ class WidgetApiHandler(
      * `origin_server_ts`).
      */
     private val matrixReadStateEvents: suspend (eventType: String, stateKey: String?, limit: Int) -> List<JsonObject>,
+    /**
+     * Запрос OpenID-токена пользователя (MSC1960 / spec Matrix C-S
+     * `POST /_matrix/client/v3/user/{userId}/openid/request_token`).
+     * Возвращает мапу полей `{access_token, expires_in, matrix_server_name, token_type}`
+     * либо null при ошибке.
+     */
+    private val matrixGetOpenIdToken: suspend () -> Map<String, String>?,
 ) {
     private val approvedCapabilities = mutableListOf<String>()
 
     private var hostRequestSeq: Long = 0L
     private fun nextHostRequestId(): String = "host-${hostRequestSeq++}"
+
+    private var delayedEventCounter: Long = 0L
 
     suspend fun handleMessage(rawJson: String): List<String> {
         val msg = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(rawJson).jsonObject }
@@ -136,12 +147,34 @@ class WidgetApiHandler(
                 val type = data["type"]?.jsonPrimitive?.contentOrNull().orEmpty()
                 val stateKey = data["state_key"]?.jsonPrimitive?.contentOrNull()
                 val content = (data["content"] as? JsonObject) ?: JsonObject(emptyMap())
-                if (stateKey == null) {
-                    listOf(errorResponse(msg, "room timeline events not supported"))
+                // MSC4140: if "delay" is present, this is a scheduled (delayed) event,
+                // used by Element Call as a "dead man's switch" tombstone (typically
+                // content={} sent with delay=90000ms — server holds it and only
+                // commits if the widget stops refreshing it).
+                // We cannot fulfill MSC4140 server-side scheduling from the bridge,
+                // so we MUST NOT post the event immediately (that would instantly
+                // overwrite the just-sent join state with an empty disconnect).
+                // Instead we silently fake-ack and let EC keep heartbeating.
+                val delay = data["delay"]?.jsonPrimitive?.contentOrNull()?.toLongOrNull()
+                if (delay != null) {
+                    val fakeDelayId = "delayed-${delayedEventCounter++}-${kotlin.random.Random.nextLong()}"
+                    println(
+                        "[WidgetApi] send_event MSC4140 delayed: type=$type stateKey=$stateKey " +
+                            "contentKeys=${content.keys} delay=${delay}ms — fake-ack delay_id=$fakeDelayId"
+                    )
+                    listOf(buildResponse(msg, buildJsonObject {
+                        put("delay_id", JsonPrimitive(fakeDelayId))
+                    }))
                 } else {
-                    val eventId = runCatching {
-                        matrixSendStateEvent(type, stateKey, content)
-                    }.getOrNull()
+                    val eventId = if (stateKey == null) {
+                        runCatching { matrixSendMessageEvent(type, content) }
+                            .onFailure { println("[WidgetApi] send_event (message) threw: ${it.message}") }
+                            .getOrNull()
+                    } else {
+                        runCatching { matrixSendStateEvent(type, stateKey, content) }
+                            .onFailure { println("[WidgetApi] send_event (state) threw: ${it.message}") }
+                            .getOrNull()
+                    }
                     if (eventId != null) {
                         listOf(buildResponse(msg, buildJsonObject {
                             put("room_id", JsonPrimitive(roomId))
@@ -153,10 +186,22 @@ class WidgetApiHandler(
                 }
             }
 
+            // MSC4140 / MSC4157 delayed event control: EC periodically calls this to keep
+            // its disconnect-tombstone alive (action="restart"/"cancel"/"send").
+            // Since we don't actually schedule anything, just ack everything.
+            "org.matrix.msc4140.update_delayed_event", "org.matrix.msc4157.update_delayed_event", "update_delayed_event" -> {
+                val delayId = data["delay_id"]?.jsonPrimitive?.contentOrNull()
+                val action = data["action"]?.jsonPrimitive?.contentOrNull()
+                println("[WidgetApi] update_delayed_event: delay_id=$delayId action=$action — fake-ack")
+                listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
+            }
+
             "send_to_device", "org.matrix.msc3819.send_to_device" -> {
                 val type = data["type"]?.jsonPrimitive?.contentOrNull().orEmpty()
                 val messages = (data["messages"] as? JsonObject) ?: JsonObject(emptyMap())
-                val ok = runCatching { matrixSendToDevice(type, messages) }.getOrDefault(false)
+                val encryptedNode = data["encrypted"]?.jsonPrimitive
+                val encrypted = encryptedNode != null && (encryptedNode.content == "true" || encryptedNode.contentOrNull() == "true")
+                val ok = runCatching { matrixSendToDevice(type, messages, encrypted) }.getOrDefault(false)
                 if (ok) {
                     listOf(buildResponse(msg, buildJsonObject { /* empty */ }))
                 } else {
@@ -204,6 +249,37 @@ class WidgetApiHandler(
 
             "subscribe_to_room", "unsubscribe_from_room" -> {
                 listOf(buildResponse(msg, buildJsonObject { /* empty */ }))
+            }
+
+            "get_openid" -> {
+                // MSC1960. Пытаемся синхронно вернуть state=allowed с реальным токеном;
+                // если запрос упал — возвращаем state=blocked, чтобы EC явно показал ошибку, а не висел.
+                val token = runCatching { matrixGetOpenIdToken() }
+                    .onFailure { println("[WidgetApi] get_openid: token fetch threw: ${it.message}") }
+                    .getOrNull()
+                if (token != null) {
+                    println("[WidgetApi] get_openid: returning allowed, server=${token["matrix_server_name"]} expires_in=${token["expires_in"]}")
+                    listOf(buildResponse(msg, buildJsonObject {
+                        put("state", JsonPrimitive("allowed"))
+                        put("access_token", JsonPrimitive(token["access_token"] ?: ""))
+                        put("token_type", JsonPrimitive(token["token_type"] ?: "Bearer"))
+                        put("matrix_server_name", JsonPrimitive(token["matrix_server_name"] ?: ""))
+                        token["expires_in"]?.toLongOrNull()?.let {
+                            put("expires_in", JsonPrimitive(it))
+                        }
+                    }))
+                } else {
+                    println("[WidgetApi] get_openid: token fetch failed — returning blocked")
+                    listOf(buildResponse(msg, buildJsonObject {
+                        put("state", JsonPrimitive("blocked"))
+                    }))
+                }
+            }
+
+            "io.element.join", "io.element.leave", "io.element.device_mute",
+            "io.element.tile_layout", "io.element.spotlight_layout",
+            "set_always_on_screen", "io.element.close" -> {
+                listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
             }
 
             else -> {
