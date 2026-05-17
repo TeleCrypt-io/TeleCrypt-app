@@ -1,5 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -9,6 +10,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.folivo.trixnity.client.MatrixClient
+import net.folivo.trixnity.client.store.RoomStateStore
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import net.folivo.trixnity.core.model.events.ClientEvent
@@ -222,14 +224,20 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
     }
 
     /**
-     * Читает state events комнаты через `GET /rooms/{roomId}/state` и фильтрует.
-     * Element Call запрашивает несколько типов: `m.room.create`, `m.room.member`,
-     * `m.room.encryption`, `org.matrix.msc3401.call.member` и др.
+     * Читает state events комнаты из **локального кэша** trixnity (RoomStateStore),
+     * без обращения к homeserver. Это устраняет зависание EC на Windows, где
+     * `GET /rooms/{roomId}/state` вызывает socket timeout (~30 с) на каждый запрос.
      *
-     * Сериализация выполняется через [MatrixClient.api.json], который имеет
-     * контекстные сериализаторы для всех известных типов trixnity (включая
-     * [UnknownEventContent] для нераспознанных), поэтому JSON получается
-     * каноничный с правильным `type`.
+     * Стратегия:
+     * 1. Для неизвестных типов (org.matrix.msc3401.call.member и др.) — читаем из
+     *    RoomStateStore через UnknownEventContent::class, фильтруем по eventType.
+     *    Это мгновенно (локальный SQLite, без сети).
+     * 2. Для известных типов с конкретным stateKey — используем быстрый HTTP
+     *    GET /state/{type}/{stateKey} (один запрос, не весь /state).
+     * 3. Fallback: GET /rooms/{roomId}/state с retry (медленно, только если кэш пуст).
+     *
+     * Element Call запрашивает: `m.room.create`, `m.room.member`,
+     * `m.room.encryption`, `org.matrix.msc3401.call.member` и др.
      */
     private suspend fun doReadStateEvents(
         matrixClient: MatrixClient,
@@ -243,10 +251,62 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             .onFailure { println("[WidgetBridge] failed to obtain EventContentSerializerMappings: ${it.message}") }
             .getOrElse { return emptyList() }
 
+        // ── PRIMARY PATH: local RoomStateStore cache (instant, no network) ────
+        // UnknownEventContent is used for all event types not registered in
+        // trixnity's serializer mappings (e.g. org.matrix.msc3401.call.member).
+        // We read all unknown state events for this room and filter by eventType.
+        val roomStateStore = runCatching { matrixClient.di.get<RoomStateStore>() }.getOrNull()
+        if (roomStateStore != null) {
+            // get(roomId, UnknownEventContent::class) returns
+            // Flow<Map<stateKey, Flow<StateBaseEvent<UnknownEventContent>?>>>
+            val allUnknown: Map<String, ClientEvent.StateBaseEvent<UnknownEventContent>?> =
+                runCatching {
+                    roomStateStore.get(roomId, UnknownEventContent::class)
+                        .first()
+                        .mapValues { (_, flow) -> flow.first() }
+                }.getOrElse { ex ->
+                    println("[WidgetBridge] doReadStateEvents cache read failed for type=$eventType: ${ex.message}")
+                    null
+                } ?: emptyMap()
+
+            // Filter by eventType (stored in UnknownEventContent.eventType)
+            val matchingUnknown = allUnknown.values
+                .filterNotNull()
+                .filter { ev ->
+                    (ev.content as? UnknownEventContent)?.eventType == eventType
+                }
+
+            if (matchingUnknown.isNotEmpty()) {
+                val candidates = if (stateKey != null) {
+                    matchingUnknown.filter { it.stateKey == stateKey }
+                } else {
+                    matchingUnknown
+                }
+                val asJson = candidates.mapNotNull { ev ->
+                    val stateEv = ev as? ClientEvent.RoomEvent.StateEvent<*> ?: return@mapNotNull null
+                    runCatching { stateEventToCanonicalJson(json, mappings.state, stateEv) }
+                        .onFailure { println("[WidgetBridge] stateEventToCanonicalJson (cache) failed for ${stateEv.stateKey}: ${it.message}") }
+                        .getOrNull()
+                }.take(limit)
+                println(
+                    "[WidgetBridge] doReadStateEvents(CACHE) room=${roomId.full} type=$eventType " +
+                        "stateKey=$stateKey cacheSize=${matchingUnknown.size} matched=${asJson.size}"
+                )
+                return asJson
+            }
+            // No unknown events of this type — may be a known/typed event type.
+            // Fall through to HTTP path for known types.
+            println(
+                "[WidgetBridge] doReadStateEvents(CACHE MISS) room=${roomId.full} type=$eventType " +
+                    "stateKey=$stateKey — no unknown events cached, trying HTTP"
+            )
+        } else {
+            println("[WidgetBridge] doReadStateEvents: RoomStateStore not available via DI, using HTTP")
+        }
+
+        // ── FALLBACK PATH: HTTP /state ─────────────────────────────────────────
         // Fast path: when (eventType, stateKey) is specific, use the lighter
-        // GET /rooms/{roomId}/state/{type}/{stateKey} endpoint. This is much
-        // cheaper than /state for a single event and degrades better on
-        // flaky homeservers (e.g. cht.antidote.network socket timeouts).
+        // GET /rooms/{roomId}/state/{type}/{stateKey} endpoint.
         if (stateKey != null) {
             val singleResult = retryOnTransientFailure("getStateEvent($eventType,$stateKey)") {
                 matrixClient.api.room.getStateEvent(eventType, roomId, stateKey)
@@ -258,13 +318,13 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                     .getOrNull()
                 if (asJson != null) {
                     println(
-                        "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType stateKey=$stateKey " +
+                        "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
                             "fast-path getStateEvent ok"
                     )
                     return listOf(asJson)
                 }
             }
-            // Fall through to /state below on fast-path miss.
+            // Fall through to full /state below on fast-path miss.
         }
 
         // Full path: GET /rooms/{roomId}/state with retry on transient failures.
@@ -273,16 +333,10 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         }?.getOrNull()
         if (all == null) {
             println(
-                "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType FAILED after retries"
+                "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType FAILED after retries"
             )
             return emptyList()
         }
-        // Сериализуем каждое событие в JSON, собирая envelope вручную:
-        // `serializersModule.serializer<StateEvent<*>>()` через рефлексию падает
-        // на star projection, а encodeToString(<contextual mapping>, ev) требует
-        // полный StateEventSerializer. Поэтому идём в обход: content
-        // сериализуем через `mappings.state` (или берём `raw` для
-        // UnknownEventContent), а envelope собираем через buildJsonObject.
         val asJson = all.mapNotNull { ev ->
             runCatching { stateEventToCanonicalJson(json, mappings.state, ev) }
                 .onFailure { println("[WidgetBridge] stateEventToCanonicalJson failed for ${ev.stateKey}: ${it.message}") }
@@ -296,7 +350,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             .take(limit)
             .toList()
         println(
-            "[WidgetBridge] doReadStateEvents room=${roomId.full} type=$eventType stateKey=$stateKey " +
+            "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
                 "totalState=${all.size} serialized=${asJson.size} matched=${filtered.size} " +
                 "typesSeen=$typesSeen"
         )
