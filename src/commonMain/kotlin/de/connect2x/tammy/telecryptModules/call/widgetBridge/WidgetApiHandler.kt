@@ -12,6 +12,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Минимальная реализация серверной (host) стороны Matrix Widget API
@@ -70,6 +72,9 @@ class WidgetApiHandler(
      */
     private val onClose: () -> Unit = {},
 ) {
+    @OptIn(ExperimentalTime::class)
+    private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
+
     private val approvedCapabilities = mutableListOf<String>()
 
     private var hostRequestSeq: Long = 0L
@@ -212,10 +217,36 @@ class WidgetApiHandler(
                             .getOrNull()
                     }
                     if (eventId != null) {
-                        listOf(buildResponse(msg, buildJsonObject {
+                        val ack = buildResponse(msg, buildJsonObject {
                             put("room_id", JsonPrimitive(roomId))
                             put("event_id", JsonPrimitive(eventId))
-                        }))
+                        })
+                        // Self-echo: also forward this state event back to the
+                        // widget as a synthetic sync event so EC sees its own
+                        // send in its membership view immediately. Trixnity's
+                        // /sync may take tens of seconds to echo it back on
+                        // mobile, during which EC's MatrixAudioRenderer /
+                        // GroupCallView treat us as "not a member" and silently
+                        // drop our local tracks — which is why the camera
+                        // preview never appeared and remote-tile mute toggles
+                        // froze on the first Android test.
+                        if (stateKey != null) {
+                            val echoEnvelope = buildJsonObject {
+                                put("type", JsonPrimitive(type))
+                                put("state_key", JsonPrimitive(stateKey))
+                                put("sender", JsonPrimitive(userId))
+                                put("event_id", JsonPrimitive(eventId))
+                                put("room_id", JsonPrimitive(roomId))
+                                put("origin_server_ts", JsonPrimitive(nowMillis()))
+                                put("content", content)
+                            }
+                            println(
+                                "[WidgetApi] send_event self-echo type=$type stateKey=$stateKey eventId=$eventId"
+                            )
+                            listOf(ack, forwardSyncEvent(echoEnvelope))
+                        } else {
+                            listOf(ack)
+                        }
                     } else {
                         listOf(errorResponse(msg, "send_event failed"))
                     }
@@ -229,6 +260,7 @@ class WidgetApiHandler(
                 val delayId = data["delay_id"]?.jsonPrimitive?.contentOrNull()
                 val delayedAction = data["action"]?.jsonPrimitive?.contentOrNull()
                 val cached = delayId?.let { delayedEvents[it] }
+                var selfEcho: JsonObject? = null
                 when (delayedAction) {
                     "send" -> {
                         if (cached != null) {
@@ -247,6 +279,21 @@ class WidgetApiHandler(
                                 "[WidgetApi] update_delayed_event=send delay_id=$delayId committed " +
                                     "type=${cached.type} stateKey=$sk contentKeys=${cached.content.keys} eventId=$eventId"
                             )
+                            // Same self-echo rationale as in send_event: echo
+                            // the just-fired disconnect tombstone back to EC
+                            // immediately so its membership view updates
+                            // without waiting for /sync.
+                            if (eventId != null && sk != null) {
+                                selfEcho = buildJsonObject {
+                                    put("type", JsonPrimitive(cached.type))
+                                    put("state_key", JsonPrimitive(sk))
+                                    put("sender", JsonPrimitive(userId))
+                                    put("event_id", JsonPrimitive(eventId))
+                                    put("room_id", JsonPrimitive(roomId))
+                                    put("origin_server_ts", JsonPrimitive(nowMillis()))
+                                    put("content", cached.content)
+                                }
+                            }
                         } else {
                             println("[WidgetApi] update_delayed_event=send delay_id=$delayId — no cached payload, ack only")
                         }
@@ -266,7 +313,8 @@ class WidgetApiHandler(
                         println("[WidgetApi] update_delayed_event delay_id=$delayId action=$delayedAction — unknown action, ack only")
                     }
                 }
-                listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
+                val ack = buildResponse(msg, buildJsonObject { /* empty ack */ })
+                if (selfEcho != null) listOf(ack, forwardSyncEvent(selfEcho)) else listOf(ack)
             }
 
             "send_to_device", "org.matrix.msc3819.send_to_device" -> {
