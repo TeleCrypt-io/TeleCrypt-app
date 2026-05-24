@@ -1,6 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import android.content.Context
+import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallActivity
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -95,6 +96,10 @@ class AndroidWidgetBridgeManager(
                 matrixSendMessageEvent = sendMessageEvent,
                 matrixReadStateEvents = readStateEvents,
                 matrixGetOpenIdToken = getOpenIdToken,
+                // When EC fires `io.element.close` (hang-up button), tear down
+                // the WebView activity so we return to the chat instead of
+                // hanging on a black screen.
+                onClose = { ElementCallActivity.closeCurrent() },
             )
         }
 

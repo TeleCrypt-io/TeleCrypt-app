@@ -34,6 +34,8 @@ class ElementCallActivity : AppCompatActivity() {
         val sessionScript = intent.getStringExtra(EXTRA_CALL_SESSION_SCRIPT)
         val widgetMode = intent.getBooleanExtra(EXTRA_WIDGET_MODE, false)
 
+        currentInstance = this
+
         pendingUrl = url
         pendingSessionScript = sessionScript
         pendingWidgetMode = widgetMode
@@ -144,6 +146,7 @@ class ElementCallActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        if (currentInstance === this) currentInstance = null
         runCatching {
             if (::webView.isInitialized) {
                 webView.loadUrl("about:blank")
@@ -165,6 +168,24 @@ class ElementCallActivity : AppCompatActivity() {
     }
 
     companion object {
+        @Volatile
+        private var currentInstance: ElementCallActivity? = null
+
+        /**
+         * Tear down the active call WebView and finish the activity.
+         * Wired from [AndroidWidgetBridgeManager] into [WidgetApiHandler]'s
+         * `onClose` callback, fired when EC sends `io.element.close` (the
+         * user pressed hang-up in the call UI).
+         *
+         * Safe to call from any thread.
+         */
+        fun closeCurrent() {
+            val instance = currentInstance ?: return
+            instance.runOnUiThread {
+                runCatching { instance.finish() }
+            }
+        }
+
         fun newIntent(
             context: Context,
             url: String,

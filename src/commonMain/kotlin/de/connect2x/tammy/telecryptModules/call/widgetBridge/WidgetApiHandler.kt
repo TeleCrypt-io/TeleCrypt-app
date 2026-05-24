@@ -62,6 +62,13 @@ class WidgetApiHandler(
      * либо null при ошибке.
      */
     private val matrixGetOpenIdToken: suspend () -> Map<String, String>?,
+    /**
+     * Вызывается, когда EC просит закрыть виджет (`io.element.close`) — обычно
+     * это нажатие "положить трубку" в UI звонка. Хост должен закрыть окно/активити.
+     * На desktop достаточно дефолтного no-op: пользователь сам закроет окно браузера
+     * (или это сделает Chromium при унлинке профиля).
+     */
+    private val onClose: () -> Unit = {},
 ) {
     private val approvedCapabilities = mutableListOf<String>()
 
@@ -342,9 +349,16 @@ class WidgetApiHandler(
                 }
             }
 
+            "io.element.close" -> {
+                println("[WidgetApi] io.element.close received — notifying host to tear down widget")
+                runCatching { onClose() }
+                    .onFailure { println("[WidgetApi] onClose callback threw: ${it.message}") }
+                listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
+            }
+
             "io.element.join", "io.element.leave", "io.element.device_mute",
             "io.element.tile_layout", "io.element.spotlight_layout",
-            "set_always_on_screen", "io.element.close" -> {
+            "set_always_on_screen" -> {
                 listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
             }
 
