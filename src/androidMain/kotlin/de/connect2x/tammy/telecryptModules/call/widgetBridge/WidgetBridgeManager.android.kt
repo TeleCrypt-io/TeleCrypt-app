@@ -128,6 +128,8 @@ class AndroidWidgetBridgeManager(
 
                 runCatching { server.forwardSyncEvent(rawEvent) }
                     .onFailure { println("[WidgetBridgeManager] forwardSyncEvent failed: ${it.message}") }
+
+                detectRemoteHangup(rawEvent, type, userId)
             }
 
             override fun forwardToDeviceEvent(rawEvent: JsonObject) {
@@ -139,6 +141,31 @@ class AndroidWidgetBridgeManager(
                 runCatching { server.close() }
             }
         }
+    }
+
+    /**
+     * EC fires `io.element.close` only when the *local* user clicks hang-up.
+     * When the remote party leaves the call (their `m.call.member` becomes
+     * empty), EC just sits there with a black screen — there's no widget-level
+     * close signal. So we detect the remote disconnect ourselves and finish
+     * the activity manually.
+     *
+     * Heuristic: an `org.matrix.msc3401.call.member` (or `m.call.member`)
+     * state event with empty content from a sender that's NOT us means
+     * "remote party left". For 1-on-1 calls (current use case) this means
+     * we're alone, so close. Multi-party calls would need a participant-
+     * counting check, but EC's UI for those is the same anyway.
+     */
+    private fun detectRemoteHangup(rawEvent: JsonObject, type: String?, localUserId: String) {
+        if (type != "org.matrix.msc3401.call.member" && type != "m.call.member") return
+        val sender = rawEvent["sender"]?.jsonPrimitive?.contentOrNull ?: return
+        if (sender == localUserId) return
+        val content = rawEvent["content"] as? JsonObject ?: return
+        if (content.isNotEmpty()) return
+        println(
+            "[WidgetBridgeManager] remote hang-up detected: sender=$sender — closing ElementCallActivity"
+        )
+        ElementCallActivity.closeCurrent()
     }
 
     private suspend fun doGetOpenIdToken(matrixClient: MatrixClient): Map<String, String>? {
