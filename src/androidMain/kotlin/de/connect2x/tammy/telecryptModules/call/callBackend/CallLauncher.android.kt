@@ -1,7 +1,9 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
@@ -10,14 +12,20 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 private const val EXTRA_CALL_URL = "EXTRA_CALL_URL"
 private const val EXTRA_CALL_SESSION_SCRIPT = "EXTRA_CALL_SESSION_SCRIPT"
 private const val EXTRA_WIDGET_MODE = "EXTRA_WIDGET_MODE"
+private const val REQUEST_AV_PERMISSIONS = 1001
 
 class ElementCallActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private var pendingUrl: String? = null
+    private var pendingSessionScript: String? = null
+    private var pendingWidgetMode: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,6 +33,46 @@ class ElementCallActivity : AppCompatActivity() {
         val url = intent.getStringExtra(EXTRA_CALL_URL) ?: return finish()
         val sessionScript = intent.getStringExtra(EXTRA_CALL_SESSION_SCRIPT)
         val widgetMode = intent.getBooleanExtra(EXTRA_WIDGET_MODE, false)
+
+        pendingUrl = url
+        pendingSessionScript = sessionScript
+        pendingWidgetMode = widgetMode
+
+        if (hasMediaPermissions()) {
+            startWebView(url, sessionScript, widgetMode)
+        } else {
+            // Android runtime perms are required before WebView's
+            // onPermissionRequest can grant getUserMedia — granting at the
+            // WebView layer alone leaves the OS-level camera/mic blocked,
+            // which silently breaks EC's local preview and mute toggles.
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO),
+                REQUEST_AV_PERMISSIONS,
+            )
+        }
+    }
+
+    private fun hasMediaPermissions(): Boolean {
+        val camera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+        val mic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+        return camera == PackageManager.PERMISSION_GRANTED && mic == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_AV_PERMISSIONS) return
+        // Even if the user denied, still load the WebView so EC can show its
+        // own permission-denied UI rather than us showing a black screen.
+        val url = pendingUrl ?: return finish()
+        startWebView(url, pendingSessionScript, pendingWidgetMode)
+    }
+
+    private fun startWebView(url: String, sessionScript: String?, widgetMode: Boolean) {
         try {
             webView = WebView(this)
             setContentView(webView)
@@ -55,10 +103,34 @@ class ElementCallActivity : AppCompatActivity() {
             setSupportMultipleWindows(false)
         }
 
-        // Grant camera / microphone / display-capture to anything the page asks for.
+        // Grant camera / microphone / display-capture to anything the page asks for,
+        // but only if the underlying Android runtime permission is actually granted —
+        // otherwise the WebView layer happily approves the request while the OS
+        // returns no devices, and EC silently shows an empty mute toggle.
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
-                request.grant(request.resources)
+                runOnUiThread {
+                    val want = request.resources.filter { resource ->
+                        when (resource) {
+                            PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
+                                ContextCompat.checkSelfPermission(
+                                    this@ElementCallActivity,
+                                    Manifest.permission.CAMERA,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
+                                ContextCompat.checkSelfPermission(
+                                    this@ElementCallActivity,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            else -> true
+                        }
+                    }.toTypedArray()
+                    if (want.isNotEmpty()) {
+                        request.grant(want)
+                    } else {
+                        request.deny()
+                    }
+                }
             }
         }
 
@@ -73,9 +145,11 @@ class ElementCallActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         runCatching {
-            webView.loadUrl("about:blank")
-            webView.stopLoading()
-            webView.destroy()
+            if (::webView.isInitialized) {
+                webView.loadUrl("about:blank")
+                webView.stopLoading()
+                webView.destroy()
+            }
         }
         super.onDestroy()
     }
