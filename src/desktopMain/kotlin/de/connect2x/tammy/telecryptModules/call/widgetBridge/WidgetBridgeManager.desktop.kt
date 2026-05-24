@@ -295,12 +295,19 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 cachedEvents.values.toList()
             }
             if (candidates.isNotEmpty()) {
-                val result = candidates.take(limit)
+                val filtered = candidates.filter { ev ->
+                    !isStaleCallMemberTombstone(eventType, ev)
+                }
+                val skipped = candidates.size - filtered.size
+                val result = filtered.take(limit)
                 println(
                     "[WidgetBridge] doReadStateEvents(CACHE) room=${roomId.full} type=$eventType " +
-                        "stateKey=$stateKey matched=${result.size}"
+                        "stateKey=$stateKey matched=${result.size}" +
+                        if (skipped > 0) " (skipped $skipped empty m.call.member tombstones)" else ""
                 )
-                return result
+                if (result.isNotEmpty()) return result
+                // All cache hits were tombstones — fall through to HTTP so EC
+                // gets a definitive empty answer instead of a stale-empty one.
             }
         }
 
@@ -321,6 +328,13 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 val asJson = runCatching { stateEventToCanonicalJson(json, mappings.state, singleEvent) }
                     .onFailure { println("[WidgetBridge] stateEventToCanonicalJson failed (fast-path): ${it.message}") }
                     .getOrNull()
+                if (asJson != null && isStaleCallMemberTombstone(eventType, asJson)) {
+                    println(
+                        "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
+                            "fast-path getStateEvent: skipping empty m.call.member tombstone -> []"
+                    )
+                    return emptyList()
+                }
                 if (asJson != null) {
                     println(
                         "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
@@ -352,6 +366,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val filtered = asJson.asSequence()
             .filter { it["type"]?.jsonPrimitive?.contentOrNull == eventType }
             .filter { stateKey == null || it["state_key"]?.jsonPrimitive?.contentOrNull == stateKey }
+            .filter { !isStaleCallMemberTombstone(eventType, it) }
             .take(limit)
             .toList()
         println(
@@ -360,6 +375,27 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 "typesSeen=$typesSeen"
         )
         return filtered
+    }
+
+    /**
+     * `m.call.member` (and the MSC3401 unstable variant) with empty content
+     * is a MSC4140 disconnect tombstone — the device used to be in the call
+     * but left. When we preload room state at bridge startup, accumulated
+     * tombstones from previous sessions end up in our cache; if we serve
+     * them via read_events, EC's MatrixRTCSession sees them as "this peer
+     * was here, now disconnected" and silently refuses to consider that
+     * peer if they later re-join in this session — because the cached
+     * tombstone is fresher than what the live sync delivers (no new state
+     * event arrives until they actually change something).
+     *
+     * The fix: skip empty tombstones when serving read_events. Live sync
+     * deliveries still go through forwardSyncEvent unchanged, so genuine
+     * mid-call disconnects still reach EC.
+     */
+    private fun isStaleCallMemberTombstone(eventType: String, ev: JsonObject): Boolean {
+        if (eventType != "org.matrix.msc3401.call.member" && eventType != "m.call.member") return false
+        val content = ev["content"] as? JsonObject ?: return false
+        return content.isEmpty()
     }
 
     /**
