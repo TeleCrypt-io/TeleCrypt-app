@@ -2,6 +2,12 @@ package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import android.content.Context
 import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -10,6 +16,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import net.folivo.trixnity.client.MatrixClient
+import net.folivo.trixnity.clientserverapi.client.SyncState
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import net.folivo.trixnity.core.model.events.ClientEvent
@@ -116,6 +123,22 @@ class AndroidWidgetBridgeManager(
         server.setElementCallUrl(widgetUrl)
         println("[WidgetBridgeManager] started: hostUrl=$parentUrl widgetUrl=$widgetUrl")
 
+        // trixnity-messenger's MainViewModel calls cancelSync() whenever MessengerActivity
+        // goes to background — which happens the moment ElementCallActivity opens on top of it.
+        // This leaves sync STOPPED for the entire call duration, so to-device events
+        // (encryption_keys) never arrive and EC cannot decrypt the remote video stream.
+        // The watchdog detects STOPPED and immediately restarts sync for the call's lifetime.
+        val syncWatchdogScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        syncWatchdogScope.launch {
+            matrixClient.api.sync.currentSyncState
+                .filter { it == SyncState.STOPPED }
+                .collect {
+                    println("[WidgetBridgeManager] sync STOPPED during active call — restarting")
+                    runCatching { matrixClient.startSync() }
+                        .onFailure { println("[WidgetBridgeManager] sync restart failed: ${it.message}") }
+                }
+        }
+
         return object : WidgetBridgeManager.BridgeSession {
             override val hostUrl: String = parentUrl
 
@@ -138,6 +161,7 @@ class AndroidWidgetBridgeManager(
             }
 
             override fun close() {
+                syncWatchdogScope.cancel()
                 runCatching { server.close() }
             }
         }
