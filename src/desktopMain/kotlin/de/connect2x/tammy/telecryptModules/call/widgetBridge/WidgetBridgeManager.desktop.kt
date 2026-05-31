@@ -19,6 +19,7 @@ import net.folivo.trixnity.core.model.events.UnknownEventContent
 import net.folivo.trixnity.core.serialization.events.EventContentSerializerMappings
 import net.folivo.trixnity.core.serialization.events.StateEventContentSerializerMapping
 
+import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallLauncherImpl
 import java.util.concurrent.ConcurrentHashMap
 
 class DesktopWidgetBridgeManager : WidgetBridgeManager {
@@ -86,6 +87,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 matrixSendMessageEvent = sendMessageEvent,
                 matrixReadStateEvents = readStateEvents,
                 matrixGetOpenIdToken = getOpenIdToken,
+                onClose = { ElementCallLauncherImpl.closeCurrent() },
             )
         }
 

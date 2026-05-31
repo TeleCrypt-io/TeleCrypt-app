@@ -1248,8 +1248,14 @@ class ElementCallLauncherImpl : CallLauncher {
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--autoplay-policy=no-user-gesture-required",
+                // Prevent the browser from restoring its previous session on launch.
+                // Without this, Yandex (and some Chromium forks) open their last-session
+                // tabs in a separate window alongside the --app window on every call.
+                "--no-restore-last-session",
+                "--restore-last-session=false",
             )
-            ProcessBuilder(cmd).start()
+            val process = ProcessBuilder(cmd).start()
+            currentWidgetProcess = process
             println("[Call] Widget mode: launched ${browser.substringAfterLast('/')} with --app=$hostUrl")
         } catch (e: Exception) {
             println("[Call] Widget mode: failed to launch browser, falling back: ${e.message}")
@@ -1259,5 +1265,22 @@ class ElementCallLauncherImpl : CallLauncher {
 
     override fun isCallAvailable(roomId: String): Boolean {
         return true
+    }
+
+    companion object {
+        @Volatile private var currentWidgetProcess: Process? = null
+
+        /**
+         * Terminate the widget browser window opened by the most recent
+         * [joinByWidgetUrl] call. Safe to call from any thread.
+         * Wired from [DesktopWidgetBridgeManager] into [WidgetApiHandler]'s
+         * onClose callback, fired when EC sends `io.element.close`.
+         */
+        fun closeCurrent() {
+            val p = currentWidgetProcess ?: return
+            currentWidgetProcess = null
+            runCatching { p.destroy() }
+            println("[Call] Widget mode: browser process destroyed")
+        }
     }
 }
