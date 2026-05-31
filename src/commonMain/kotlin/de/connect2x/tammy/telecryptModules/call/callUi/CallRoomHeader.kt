@@ -141,6 +141,10 @@ class CallRoomHeader : RoomHeaderView {
             ?.let { rtcWatcher.roomState(it).collectAsState().value }
         val incomingCallId = incomingState?.session?.callId
 
+        // A call is live in this room but we haven't joined it yet — offer "join"
+        // instead of "start" so the user enters the existing call.
+        val canJoinOngoing = incomingState?.rtcActive == true && incomingState.localJoined != true
+
         val startCall: (CallMode) -> Unit = { mode ->
             scope.launch {
                 val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
@@ -171,6 +175,28 @@ class CallRoomHeader : RoomHeaderView {
                     deepLink,
                     mode,
                 )
+            }
+        }
+
+        val joinOngoingCall: (CallMode) -> Unit = { mode ->
+            scope.launch {
+                val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
+                val matrixClient = resolveMatrixClient(roomHeaderViewModel)
+                if (resolvedRoomId == null || matrixClient == null) {
+                    snackbarHostState.showSnackbar("Call unavailable. Open the room and try again.")
+                    return@launch
+                }
+                val joinResult = callCoordinator.joinCall(
+                    matrixClient = matrixClient,
+                    roomId = resolvedRoomId,
+                    roomName = roomName,
+                    mode = mode,
+                )
+                if (!joinResult.ok) {
+                    snackbarHostState.showSnackbar(
+                        joinResult.userMessage ?: "Could not join the call. Try again."
+                    )
+                }
             }
         }
         Box {
@@ -290,6 +316,13 @@ class CallRoomHeader : RoomHeaderView {
                                 },
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                             )
+                        } else if (canJoinOngoing) {
+                            // A call is already running in this room — highlight a
+                            // dedicated "join ongoing call" button instead of "start".
+                            JoinCallButton(
+                                onClick = { showCallDialog = true },
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                            )
                         } else {
                             CallButton(
                                 onClick = {
@@ -312,9 +345,13 @@ class CallRoomHeader : RoomHeaderView {
                     .padding(bottom = 16.dp)
             )
             if (showCallDialog) {
+                val onPick: (CallMode) -> Unit = { mode ->
+                    showCallDialog = false
+                    if (canJoinOngoing) joinOngoingCall(mode) else startCall(mode)
+                }
                 AlertDialog(
                     onDismissRequest = { showCallDialog = false },
-                    title = { Text("Start call") },
+                    title = { Text(if (canJoinOngoing) "Join call" else "Start call") },
                     text = { Text("Choose call type") },
                     confirmButton = {
                         Row(
@@ -322,10 +359,7 @@ class CallRoomHeader : RoomHeaderView {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Button(
-                                onClick = {
-                                    showCallDialog = false
-                                    startCall(CallMode.AUDIO)
-                                },
+                                onClick = { onPick(CallMode.AUDIO) },
                                 colors = ButtonDefaults.buttonColors(),
                             ) {
                                 Icon(Icons.Default.Phone, contentDescription = null)
@@ -333,10 +367,7 @@ class CallRoomHeader : RoomHeaderView {
                                 Text("Audio")
                             }
                             Button(
-                                onClick = {
-                                    showCallDialog = false
-                                    startCall(CallMode.VIDEO)
-                                },
+                                onClick = { onPick(CallMode.VIDEO) },
                                 colors = ButtonDefaults.buttonColors(),
                             ) {
                                 Icon(Icons.Default.Videocam, contentDescription = null)
@@ -411,6 +442,33 @@ fun CallButton(
         Icon(Icons.Default.Phone, "Call Button")
     }
 }
+/**
+ * Shown when a call is already in progress in the room but the local user has
+ * not joined yet. Visually distinct from [CallButton] (tinted + a small badge)
+ * so it reads as "a call is happening — tap to join", not "start a new call".
+ */
+@Composable
+fun JoinCallButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ThemedIconButton(
+        style = MaterialTheme.components.commonIconButton,
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        BadgedBox(
+            badge = { Badge() },
+        ) {
+            Icon(
+                imageVector = Icons.Default.Phone,
+                contentDescription = "Join ongoing call",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
 @Composable
 fun EndCallButton(
     onClick: () -> Unit,
