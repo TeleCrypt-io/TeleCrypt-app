@@ -50,6 +50,26 @@ class AndroidWidgetBridgeManager(
         baseUrl: String,
         widgetEcUrlBuilder: (parentUrl: String, widgetId: String) -> String,
     ): WidgetBridgeManager.BridgeSession {
+        // Clear any stale m.call.member left by a previous crash of this device.
+        // We do this BEFORE starting the bridge server so EC has not yet connected
+        // and sent its new join — ensuring our cleanup arrives first and EC starts
+        // from a clean slate. On a clean exit EC already sends a tombstone itself
+        // (via update_delayed_event action=send), so this is a harmless no-op then.
+        val localStateKey = "_${userId}_${deviceId}_m.call"
+        runCatching {
+            matrixClient.api.room.sendStateEvent(
+                roomId,
+                net.folivo.trixnity.core.model.events.UnknownEventContent(
+                    buildJsonObject {},
+                    "org.matrix.msc3401.call.member",
+                ),
+                localStateKey,
+            )
+            println("[WidgetBridgeManager] pre-cleared stale m.call.member stateKey=$localStateKey")
+        }.onFailure {
+            println("[WidgetBridgeManager] pre-clear stale m.call.member failed (non-fatal): ${it.message}")
+        }
+
         // Pre-fill state cache (mirror of desktop behaviour).
         val mappings = runCatching { matrixClient.di.get<EventContentSerializerMappings>() }.getOrNull()
         if (mappings != null) {

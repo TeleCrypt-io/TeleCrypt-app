@@ -34,6 +34,21 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         baseUrl: String,
         widgetEcUrlBuilder: (parentUrl: String, widgetId: String) -> String,
     ): WidgetBridgeManager.BridgeSession {
+        // Clear any stale m.call.member left by a previous crash of this device.
+        // Runs before the bridge server starts, so EC hasn't connected yet and
+        // cannot race with its own join event.
+        val localStateKey = "_${userId}_${deviceId}_m.call"
+        runCatching {
+            matrixClient.api.room.sendStateEvent(
+                roomId,
+                UnknownEventContent(buildJsonObject {}, "org.matrix.msc3401.call.member"),
+                localStateKey,
+            )
+            println("[WidgetBridgeManager] pre-cleared stale m.call.member stateKey=$localStateKey")
+        }.onFailure {
+            println("[WidgetBridgeManager] pre-clear stale m.call.member failed (non-fatal): ${it.message}")
+        }
+
         // Pre-fill state cache
         val mappings = runCatching { matrixClient.di.get<EventContentSerializerMappings>() }.getOrNull()
         if (mappings != null) {
