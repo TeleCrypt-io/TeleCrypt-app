@@ -444,8 +444,9 @@ fun CallButton(
 }
 /**
  * Shown when a call is already in progress in the room but the local user has
- * not joined yet. Visually distinct from [CallButton] (tinted + a small badge)
- * so it reads as "a call is happening — tap to join", not "start a new call".
+ * not joined yet. Mirrors [CallButton] (same icon + inherited content tint so it
+ * renders reliably) but adds a small badge dot to signal "a call is happening —
+ * tap to join", distinguishing it from the plain "start a call" button.
  */
 @Composable
 fun JoinCallButton(
@@ -460,11 +461,7 @@ fun JoinCallButton(
         BadgedBox(
             badge = { Badge() },
         ) {
-            Icon(
-                imageVector = Icons.Default.Phone,
-                contentDescription = "Join ongoing call",
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            Icon(Icons.Default.Phone, contentDescription = "Join ongoing call")
         }
     }
 }
