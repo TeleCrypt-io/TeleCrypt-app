@@ -1134,14 +1134,35 @@ private fun extractRoomIdFromUrl(url: String): String? {
 // ── Browser discovery helpers ────────────────────────────────────────────
 
 private fun findLinuxChromium(): String? {
-    val candidates = listOf("chromium", "chromium-browser", "google-chrome", "google-chrome-stable")
+    // Any Chromium-based browser works for widget mode (--app + WebView2-style flags).
+    // Ordered by preference: plain Chromium/Chrome first, then other Chromium forks.
+    val candidates = listOf(
+        "chromium",
+        "chromium-browser",
+        "google-chrome",
+        "google-chrome-stable",
+        "brave-browser",
+        "microsoft-edge",
+        "microsoft-edge-stable",
+        "vivaldi-stable",
+        "vivaldi",
+    )
+    // 1. Resolve via PATH (covers most distro/package-manager installs).
     for (name in candidates) {
-        val result = runCatching {
+        val onPath = runCatching {
             val process = ProcessBuilder("which", name).start()
-            val exitCode = process.waitFor()
-            if (exitCode == 0) name else null
+            if (process.waitFor() == 0) name else null
         }.getOrNull()
-        if (result != null) return result
+        if (onPath != null) return onPath
+    }
+    // 2. Fall back to well-known absolute locations not always on PATH:
+    //    distro bins, Snap shims (/snap/bin), and Flatpak exported wrappers.
+    val absoluteDirs = listOf("/usr/bin", "/usr/local/bin", "/snap/bin", "/var/lib/flatpak/exports/bin")
+    for (dir in absoluteDirs) {
+        for (name in candidates) {
+            val path = "$dir/$name"
+            if (File(path).canExecute()) return path
+        }
     }
     return null
 }
