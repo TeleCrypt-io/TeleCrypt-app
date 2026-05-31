@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import net.folivo.trixnity.client.MatrixClient
 import net.folivo.trixnity.client.room
+import net.folivo.trixnity.client.user
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 
@@ -97,9 +98,12 @@ class IncomingCallManager(
             return
         }
 
-        // Use the simplified name resolution for stability
-        val memberState = state.participants.firstOrNull { !it.isLocal }
-        val callerName = memberState?.userId?.full ?: "Unknown User"
+        // Resolve the caller's display name. The non-local participant's userId
+        // is the caller; look up their room-member display name and fall back to
+        // the userId localpart (e.g. "dimarus05") rather than the raw MXID or a
+        // generic "Unknown User".
+        val callerUserId = state.participants.firstOrNull { !it.isLocal }?.userId
+        val callerName = resolveCallerName(client, state.roomId, callerUserId)
 
         var isDirect = false
         var roomName = state.roomId.full
@@ -122,6 +126,26 @@ class IncomingCallManager(
             matrixClient = client,
             isDirect = isDirect,
         )
+    }
+
+    /**
+     * Resolves a human-friendly caller name:
+     *   1. the room-member display name (e.g. "DimaRus"), if known;
+     *   2. otherwise the userId localpart (e.g. "dimarus05");
+     *   3. "Unknown User" only if no userId is available at all.
+     */
+    private suspend fun resolveCallerName(
+        client: MatrixClient,
+        roomId: RoomId,
+        callerUserId: UserId?,
+    ): String {
+        if (callerUserId == null) return "Unknown User"
+        val displayName = runCatching {
+            client.user.getById(roomId, callerUserId).firstOrNull()?.name
+        }.getOrNull()?.trim()
+        if (!displayName.isNullOrEmpty()) return displayName
+        // Fall back to the localpart: "@dimarus05:antidote.network" -> "dimarus05"
+        return callerUserId.full.removePrefix("@").substringBefore(':')
     }
 
     private fun registerIncoming(
