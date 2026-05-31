@@ -132,20 +132,39 @@ class IncomingCallManager(
      * Resolves a human-friendly caller name:
      *   1. the room-member display name (e.g. "DimaRus"), if known;
      *   2. otherwise the userId localpart (e.g. "dimarus05");
-     *   3. "Unknown User" only if no userId is available at all.
+     *   3. "Unknown User" only if no caller userId can be determined at all.
+     *
+     * The RTC participant list is often still empty when the incoming call is
+     * first detected (the m.call.member event lags the slot/session), so when
+     * no participant userId is supplied we fall back to the other room member —
+     * which is exactly the caller in a 1:1 chat.
      */
     private suspend fun resolveCallerName(
         client: MatrixClient,
         roomId: RoomId,
         callerUserId: UserId?,
     ): String {
-        if (callerUserId == null) return "Unknown User"
+        val effectiveUserId = callerUserId ?: firstOtherRoomMember(client, roomId)
+        if (effectiveUserId == null) return "Unknown User"
         val displayName = runCatching {
-            client.user.getById(roomId, callerUserId).firstOrNull()?.name
+            client.user.getById(roomId, effectiveUserId).firstOrNull()?.name
         }.getOrNull()?.trim()
         if (!displayName.isNullOrEmpty()) return displayName
         // Fall back to the localpart: "@dimarus05:antidote.network" -> "dimarus05"
-        return callerUserId.full.removePrefix("@").substringBefore(':')
+        return effectiveUserId.full.removePrefix("@").substringBefore(':')
+    }
+
+    /**
+     * Returns the first room member that is not the local user — the caller in a
+     * 1:1 chat. Used when the RTC participant list hasn't populated yet.
+     */
+    private suspend fun firstOtherRoomMember(client: MatrixClient, roomId: RoomId): UserId? {
+        val localUserId = client.userId
+        return runCatching {
+            client.user.getAll(roomId).firstOrNull()
+                ?.keys
+                ?.firstOrNull { it != localUserId }
+        }.getOrNull()
     }
 
     private fun registerIncoming(
