@@ -246,12 +246,12 @@ private fun killExistingBrowserDataProcess(browserDataPath: String) {
             result.waitFor()
             if (pids.isNotBlank()) {
                 println("[Call] CDP: Killing existing browser processes with user-data-dir: PIDs=$pids")
-                ProcessBuilder("sh", "-c", "pkill -f 'user-data-dir=$escapedPath'")
+                // Use -9 (SIGKILL) so Chromium forks that ignore SIGTERM are also killed.
+                ProcessBuilder("sh", "-c", "pkill -9 -f 'user-data-dir=$escapedPath'")
                     .redirectErrorStream(true)
                     .start()
                     .waitFor()
-                // Wait a moment for processes to die
-                Thread.sleep(1500)
+                Thread.sleep(500)
             } else {
                 println("[Call] CDP: No existing browser processes found for user-data-dir")
             }
@@ -1237,7 +1237,10 @@ class ElementCallLauncherImpl : CallLauncher {
         try {
             val rootPath = System.getenv("TRIXNITY_MESSENGER_ROOT_PATH") ?: "./app-data"
             val browserDataPath = File(rootPath, "browser-data-widget").absolutePath
-            // Avoid stale singleton from previous run
+            // Force-kill the previous call's browser if it's still alive.
+            // destroyForcibly (SIGKILL) is used so Chromium-based browsers that
+            // ignore SIGTERM (Yandex, some Edge builds) are actually terminated.
+            closeCurrent()
             killExistingBrowserDataProcess(browserDataPath)
             removeBrowserLockFiles(browserDataPath)
             val cmd = mutableListOf(
@@ -1279,8 +1282,8 @@ class ElementCallLauncherImpl : CallLauncher {
         fun closeCurrent() {
             val p = currentWidgetProcess ?: return
             currentWidgetProcess = null
-            runCatching { p.destroy() }
-            println("[Call] Widget mode: browser process destroyed")
+            runCatching { p.destroyForcibly() }
+            println("[Call] Widget mode: browser process force-killed")
         }
     }
 }
