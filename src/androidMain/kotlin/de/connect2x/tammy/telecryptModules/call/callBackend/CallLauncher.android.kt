@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import android.Manifest
 import android.content.Context
 import android.content.Intent

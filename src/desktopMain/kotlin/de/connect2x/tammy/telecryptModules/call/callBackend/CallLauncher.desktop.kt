@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import com.github.winterreisender.webviewko.WebviewKo
 import com.github.winterreisender.webviewko.WebviewKo.WindowHint
 import java.io.File

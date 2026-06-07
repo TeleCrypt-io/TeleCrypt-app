@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import de.connect2x.trixnity.messenger.ConfigureMatrixClientConfiguration
 import net.folivo.trixnity.client.MatrixClientConfiguration
 import net.folivo.trixnity.clientserverapi.model.users.Filters

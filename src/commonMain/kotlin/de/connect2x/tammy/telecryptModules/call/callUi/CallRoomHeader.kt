@@ -1,7 +1,6 @@
 package de.connect2x.messenger.compose.view.room.timeline
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

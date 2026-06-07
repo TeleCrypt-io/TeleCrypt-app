@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import java.util.concurrent.ConcurrentHashMap

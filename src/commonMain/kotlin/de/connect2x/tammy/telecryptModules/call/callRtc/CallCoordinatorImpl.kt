@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.buildTelecryptCallDeepLink
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher

@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

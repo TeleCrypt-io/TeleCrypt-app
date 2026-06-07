@@ -2,7 +2,6 @@ package de.connect2x.tammy.telecryptModules.call.callRtc
 
 import de.connect2x.tammy.telecryptModules.call.callLog
 import de.connect2x.tammy.telecryptModules.call.callLogDebug
-
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcEventParser
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService

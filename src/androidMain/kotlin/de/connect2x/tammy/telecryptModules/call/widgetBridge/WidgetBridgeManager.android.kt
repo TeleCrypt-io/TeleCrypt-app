@@ -1,7 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import de.connect2x.tammy.telecryptModules.call.callLog
-
 import android.content.Context
 import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallActivity
 import kotlinx.coroutines.CoroutineScope
