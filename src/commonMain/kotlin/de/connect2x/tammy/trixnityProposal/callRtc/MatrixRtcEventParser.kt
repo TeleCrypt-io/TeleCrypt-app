@@ -8,6 +8,25 @@ import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import kotlin.runCatching
 
+/**
+ * Parses the canonical MSC4143 `m.rtc.slot` / `m.rtc.member` JSON payloads into
+ * normalized domain models.
+ *
+ * This mirrors, field-for-field, the typed event content we authored and merged
+ * upstream into the trixnity fork `de.connect2x.trixnity`
+ * (`de.connect2x.trixnity.core.model.events.m.rtc`):
+ *   - [parseSlotEvent]   <-> `RtcSlotEventContent` (+ `CallApplication`)
+ *   - [parseMemberEvent] <-> `RtcMemberEventContent`:
+ *       `slot_id` -> slotId, `sticky_key`/`msc4354_sticky_key` -> stickyKey,
+ *       `application` (`CallApplication`, `m.call.id`) -> callId,
+ *       `member.{id,claimed_user_id,claimed_device_id}` -> userId/deviceId,
+ *       `rtc_transports` -> connected, `disconnected` -> disconnect.
+ *
+ * NOTE: the LEGACY pre-MSC4143 payload that Element Call actually emits today
+ * (`org.matrix.msc3401.call.member` with `foci_preferred`/`focus_active`/`expires`)
+ * is parsed separately in [MatrixRtcSyncEventHandler]; this parser handles the
+ * upstream-shaped `m.rtc.member` events.
+ */
 object MatrixRtcEventParser {
     fun parseSlotEvent(
         roomId: RoomId,
