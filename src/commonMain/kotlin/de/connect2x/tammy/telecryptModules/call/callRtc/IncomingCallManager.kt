@@ -1,6 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcRoomState
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcRoomState
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

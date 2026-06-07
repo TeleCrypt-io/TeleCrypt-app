@@ -1,4 +1,4 @@
-package de.connect2x.tammy.trixnityProposal.callRtc
+package de.connect2x.tammy.trixnity.callRtc
 
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId

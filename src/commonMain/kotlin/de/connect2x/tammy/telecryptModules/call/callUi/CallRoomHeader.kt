@@ -60,7 +60,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncEventHandler
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel

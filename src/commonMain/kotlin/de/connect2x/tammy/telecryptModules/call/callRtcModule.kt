@@ -3,10 +3,10 @@ package de.connect2x.tammy.telecryptModules.call
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinatorImpl
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
-import de.connect2x.tammy.trixnityProposal.callRtc.InMemoryMatrixRtcCallStateStore
+import de.connect2x.tammy.trixnity.callRtc.InMemoryMatrixRtcCallStateStore
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcAutoStart
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcCallStateStore
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcCallStateStore
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcherImpl
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncFilterConfigurer

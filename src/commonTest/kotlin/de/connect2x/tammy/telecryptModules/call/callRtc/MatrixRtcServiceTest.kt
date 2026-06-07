@@ -1,9 +1,9 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.tammy.trixnityProposal.callRtc.InMemoryMatrixRtcCallStateStore
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcSlotEvent
+import de.connect2x.tammy.trixnity.callRtc.InMemoryMatrixRtcCallStateStore
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcSlotEvent
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import kotlin.test.Test

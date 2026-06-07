@@ -1,4 +1,4 @@
-package de.connect2x.tammy.trixnityProposal.callRtc
+package de.connect2x.tammy.trixnity.callRtc
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

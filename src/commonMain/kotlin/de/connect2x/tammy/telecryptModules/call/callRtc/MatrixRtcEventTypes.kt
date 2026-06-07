@@ -16,7 +16,7 @@ const val MATRIX_RTC_DEFAULT_SLOT_ID = "default"
  * canonical `m.rtc.member` shape, [normalize] folds all variants together; the
  * legacy payload is parsed in [MatrixRtcSyncEventHandler], while the
  * MSC4143-shaped payload is parsed in
- * [de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcEventParser] (mirrors
+ * [de.connect2x.tammy.trixnity.callRtc.MatrixRtcEventParser] (mirrors
  * `RtcMemberEventContent` field-for-field).
  */
 object MatrixRtcEventTypes {

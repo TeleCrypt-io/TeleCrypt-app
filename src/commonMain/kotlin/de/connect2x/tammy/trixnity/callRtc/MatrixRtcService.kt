@@ -1,4 +1,4 @@
-package de.connect2x.tammy.trixnityProposal.callRtc
+package de.connect2x.tammy.trixnity.callRtc
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow

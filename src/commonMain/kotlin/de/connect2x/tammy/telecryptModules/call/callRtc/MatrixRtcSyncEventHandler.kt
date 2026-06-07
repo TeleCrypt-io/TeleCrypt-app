@@ -1,10 +1,10 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcEventParser
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcSlotEvent
-import de.connect2x.tammy.trixnityProposal.callRtc.MATRIX_RTC_DEFAULT_SLOT_ID
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcEventParser
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcSlotEvent
+import de.connect2x.tammy.trixnity.callRtc.MATRIX_RTC_DEFAULT_SLOT_ID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
@@ -356,7 +356,7 @@ class MatrixRtcSyncEventHandler(
         val deviceIdFromKey = extractDeviceIdFromStateKey(stateKey)
         println("[Call] MSC3401 member state: empty content room=${roomId.full} user=$userId device=$deviceIdFromKey — treating as disconnect")
         val disconnectKey = if (deviceIdFromKey != null) "msc3401_${userId}_${deviceIdFromKey}" else "msc3401_${userId}"
-        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+        val memberEvent = de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent(
             roomId = roomId,
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = "",
@@ -431,7 +431,7 @@ class MatrixRtcSyncEventHandler(
                 "fociPreferred=${fociPreferred?.size ?: 0}"
         )
 
-        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+        val memberEvent = de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent(
             roomId = roomId,
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = effectiveCallId,
@@ -575,7 +575,7 @@ class MatrixRtcSyncEventHandler(
         // Empty content = disconnect
         println("[Call] MSC3401 member message: empty content room=${roomId.full} user=$userId — treating as disconnect")
         val disconnectKey = "msc3401_${userId}"
-        val memberEvent = de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcMemberEvent(
+        val memberEvent = de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent(
             roomId = roomId,
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = "",

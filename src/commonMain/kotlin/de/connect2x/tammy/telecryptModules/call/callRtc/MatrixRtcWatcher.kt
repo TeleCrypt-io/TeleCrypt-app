@@ -1,7 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcRoomState
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcRoomState
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import net.folivo.trixnity.core.model.RoomId
