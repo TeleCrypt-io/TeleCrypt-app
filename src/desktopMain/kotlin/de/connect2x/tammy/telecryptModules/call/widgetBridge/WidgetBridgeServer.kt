@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -67,7 +69,7 @@ class WidgetBridgeServer(
                 val client = try {
                     serverSocket.accept()
                 } catch (t: Throwable) {
-                    if (running) println("[WidgetBridge] accept error: ${t.message}")
+                    if (running) callLog("[WidgetBridge] accept error: ${t.message}")
                     break
                 }
                 executor.execute { handleConnection(client) }
@@ -76,19 +78,19 @@ class WidgetBridgeServer(
             isDaemon = true
             start()
         }
-        println("[WidgetBridge] started on port=$port (host=$hostHtmlUrl, ws=$wsUrl)")
+        callLog("[WidgetBridge] started on port=$port (host=$hostHtmlUrl, ws=$wsUrl)")
     }
 
     fun forwardSyncEvent(rawEvent: kotlinx.serialization.json.JsonObject) {
         val s = session ?: return
         runCatching { s.sendText(s.handler.forwardSyncEvent(rawEvent)) }
-            .onFailure { println("[WidgetBridge] forwardSyncEvent failed: ${it.message}") }
+            .onFailure { callLog("[WidgetBridge] forwardSyncEvent failed: ${it.message}") }
     }
 
     fun forwardToDeviceEvent(rawEvent: kotlinx.serialization.json.JsonObject) {
         val s = session ?: return
         runCatching { s.sendText(s.handler.forwardToDeviceEvent(rawEvent)) }
-            .onFailure { println("[WidgetBridge] forwardToDeviceEvent failed: ${it.message}") }
+            .onFailure { callLog("[WidgetBridge] forwardToDeviceEvent failed: ${it.message}") }
     }
 
     override fun close() {
@@ -103,16 +105,16 @@ class WidgetBridgeServer(
                 kotlinx.coroutines.runBlocking {
                     val committed = s.handler.flushPendingDelayedEvents()
                     if (committed > 0) {
-                        println("[WidgetBridge] close: flushed $committed pending delayed event(s) before teardown")
+                        callLog("[WidgetBridge] close: flushed $committed pending delayed event(s) before teardown")
                     }
                 }
-            }.onFailure { println("[WidgetBridge] close: flushPendingDelayedEvents failed: ${it.message}") }
+            }.onFailure { callLog("[WidgetBridge] close: flushPendingDelayedEvents failed: ${it.message}") }
         }
         runCatching { session?.close() }
         runCatching { serverSocket.close() }
         runCatching { executor.shutdownNow() }
         scope.cancel()
-        println("[WidgetBridge] stopped")
+        callLog("[WidgetBridge] stopped")
     }
 
     // ---------------- Connection dispatch ----------------
@@ -149,7 +151,7 @@ class WidgetBridgeServer(
                 }
             }
         } catch (t: Throwable) {
-            println("[WidgetBridge] connection error: ${t.message}")
+            callLog("[WidgetBridge] connection error: ${t.message}")
             runCatching { client.close() }
         }
     }
@@ -223,7 +225,7 @@ class WidgetBridgeServer(
             out.write(bytes)
             out.flush()
         } catch (t: Throwable) {
-            println("[WidgetBridge] host-html error: ${t.message}")
+            callLog("[WidgetBridge] host-html error: ${t.message}")
             val msg = ("error: " + t.message).toByteArray(StandardCharsets.UTF_8)
             val resp = buildString {
                 append("HTTP/1.1 500 Internal Server Error\r\n")
@@ -288,9 +290,9 @@ class WidgetBridgeServer(
             session = newSession
             onConnected(newSession)
             newSession.startReadLoop()
-            println("[WidgetBridge] WS connected widgetId=${handler.widgetId}")
+            callLog("[WidgetBridge] WS connected widgetId=${handler.widgetId}")
         } catch (t: Throwable) {
-            println("[WidgetBridge] WS upgrade failed: ${t.message}")
+            callLog("[WidgetBridge] WS upgrade failed: ${t.message}")
             runCatching { socket.close() }
         }
     }
@@ -350,7 +352,7 @@ class WidgetBridgeServer(
                             val text = String(frame.payload, StandardCharsets.UTF_8)
                             val replies = runCatching { handler.handleMessage(text) }
                                 .getOrElse {
-                                    println("[WidgetBridge] handler error: ${it.message}")
+                                    callLog("[WidgetBridge] handler error: ${it.message}")
                                     emptyList()
                                 }
                             for (reply in replies) {
@@ -359,7 +361,7 @@ class WidgetBridgeServer(
                         }
                     }
                 } catch (t: Throwable) {
-                    println("[WidgetBridge] read loop ended: ${t.message}")
+                    callLog("[WidgetBridge] read loop ended: ${t.message}")
                 } finally {
                     close()
                 }

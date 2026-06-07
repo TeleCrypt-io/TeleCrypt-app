@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import java.util.concurrent.ConcurrentHashMap
@@ -25,13 +27,13 @@ class BridgeForwardingRegistry {
 
     fun register(userId: UserId, roomId: RoomId, session: WidgetBridgeManager.BridgeSession) {
         sessions[Key(userId.full, roomId.full)] = session
-        println("[BridgeRegistry] register user=${userId.full} room=${roomId.full} (total=${sessions.size})")
+        callLog("[BridgeRegistry] register user=${userId.full} room=${roomId.full} (total=${sessions.size})")
     }
 
     fun unregister(userId: UserId, roomId: RoomId) {
         val removed = sessions.remove(Key(userId.full, roomId.full))
         if (removed != null) {
-            println("[BridgeRegistry] unregister user=${userId.full} room=${roomId.full} (total=${sessions.size})")
+            callLog("[BridgeRegistry] unregister user=${userId.full} room=${roomId.full} (total=${sessions.size})")
         }
     }
 

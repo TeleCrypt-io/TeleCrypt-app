@@ -1,5 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+import de.connect2x.tammy.telecryptModules.call.callLogDebug
+
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcEventParser
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
@@ -49,13 +52,13 @@ class MatrixRtcSyncEventHandler(
         if (!started.compareAndSet(false, true)) {
             return
         }
-        println("[Call] MatrixRtcSyncEventHandler started")
+        callLog("[Call] MatrixRtcSyncEventHandler started")
         scope.launch {
             accountStore.getAccountAsFlow().collectLatest { account ->
                 localUserId = account?.userId
                 localDeviceId = account?.deviceId
                 if (account != null) {
-                    println("[Call][DIAG] Local identity: userId=${account.userId.full} deviceId=${account.deviceId}")
+                    callLogDebug("[Call][DIAG] Local identity: userId=${account.userId.full} deviceId=${account.deviceId}")
                 }
             }
         }
@@ -67,15 +70,15 @@ class MatrixRtcSyncEventHandler(
             decrypter.subscribe { container ->
                 handleDecryptedOlmEvent(container)
             }
-            println("[Call] Subscribed to OlmDecrypter for decrypted to-device events")
-        } ?: println("[Call] OlmDecrypter not provided — decrypted to-device forwarding disabled")
+            callLog("[Call] Subscribed to OlmDecrypter for decrypted to-device events")
+        } ?: callLog("[Call] OlmDecrypter not provided — decrypted to-device forwarding disabled")
         syncApi.subscribeEachEventAsFlow()
             .onEach { event ->
                 if (loggedFirstEvent.compareAndSet(false, true)) {
                     val eventClass = event::class.simpleName
                     val contentClass = event.content::class.simpleName
                     val type = (event.content as? UnknownEventContent)?.eventType
-                    println("[Call] First sync event class=$eventClass content=$contentClass type=$type")
+                    callLogDebug("[Call] First sync event class=$eventClass content=$contentClass type=$type")
                 }
                 // DIAGNOSTIC: Log ALL UnknownEventContent events to see what types arrive
                 val unknown = event.content as? UnknownEventContent
@@ -89,7 +92,7 @@ class MatrixRtcSyncEventHandler(
                             is ClientEvent.EphemeralEvent<*> -> event.roomId?.full
                             else -> null
                         }
-                        println("[Call][DIAG] Sync event type=$t class=${event::class.simpleName} room=$roomId")
+                        callLogDebug("[Call][DIAG] Sync event type=$t class=${event::class.simpleName} room=$roomId")
                     }
                 }
                 // DIAGNOSTIC: Log EVERY ToDeviceEvent regardless of content type,
@@ -98,12 +101,12 @@ class MatrixRtcSyncEventHandler(
                     val contentClass = event.content::class.simpleName
                     val u = event.content as? UnknownEventContent
                     val rawSnippet = u?.raw?.toString()?.take(200)
-                    println("[Call][DIAG] ToDeviceEvent sender=${event.sender.full} contentClass=$contentClass type=${u?.eventType} rawSnippet=$rawSnippet")
+                    callLogDebug("[Call][DIAG] ToDeviceEvent sender=${event.sender.full} contentClass=$contentClass type=${u?.eventType} rawSnippet=$rawSnippet")
                 }
                 // Also log non-UnknownEventContent events that might be call-related
                 // (some events may be deserialized into known types)
                 if (unknown == null && eventCount.incrementAndGet() % 500 == 0L) {
-                    println("[Call][DIAG] Processed ${eventCount.get()} sync events total (latest class=${event::class.simpleName})")
+                    callLogDebug("[Call][DIAG] Processed ${eventCount.get()} sync events total (latest class=${event::class.simpleName})")
                 }
                 handleEvent(event)
                 forwardToBridgeIfNeeded(event)
@@ -138,17 +141,17 @@ class MatrixRtcSyncEventHandler(
         // Log everything that comes through for diagnostics
         val rawSnippet = unknown?.raw?.toString()?.take(200)
         val senderId = decrypted.sender.full
-        println("[Call][DIAG] DecryptedOlmEvent sender=$senderId type=$eventType contentClass=${content::class.simpleName} rawSnippet=$rawSnippet")
+        callLogDebug("[Call][DIAG] DecryptedOlmEvent sender=$senderId type=$eventType contentClass=${content::class.simpleName} rawSnippet=$rawSnippet")
         // Forward only encryption_keys
         if (eventType != "m.call.encryption_keys" && eventType != "io.element.call.encryption_keys") return
         val rawContent: JsonObject = unknown?.raw ?: run {
-            println("[Call] Skipping decrypted ${eventType}: content not UnknownEventContent (was ${content::class.simpleName})")
+            callLog("[Call] Skipping decrypted ${eventType}: content not UnknownEventContent (was ${content::class.simpleName})")
             return
         }
         val localUser = localUserId ?: return
         val sessions = registry.sessionsForUser(localUser)
         if (sessions.isEmpty()) {
-            println("[Call] Forward decrypted to-device type=$eventType: no bridge sessions for user=${localUser.full}")
+            callLog("[Call] Forward decrypted to-device type=$eventType: no bridge sessions for user=${localUser.full}")
             return
         }
         val envelope = buildJsonObject {
@@ -156,10 +159,10 @@ class MatrixRtcSyncEventHandler(
             put("sender", JsonPrimitive(senderId))
             put("content", rawContent)
         }
-        println("[Call] Forward decrypted to-device type=$eventType sender=$senderId -> ${sessions.size} bridge(s)")
+        callLog("[Call] Forward decrypted to-device type=$eventType sender=$senderId -> ${sessions.size} bridge(s)")
         sessions.forEach { session ->
             runCatching { session.forwardToDeviceEvent(envelope) }
-                .onFailure { println("[Call] forwardToDeviceEvent (decrypted) failed: ${it.message}") }
+                .onFailure { callLog("[Call] forwardToDeviceEvent (decrypted) failed: ${it.message}") }
         }
     }
 
@@ -185,9 +188,9 @@ class MatrixRtcSyncEventHandler(
                     put("origin_server_ts", JsonPrimitive(event.originTimestamp))
                     put("content", unknown.raw)
                 }
-                println("[Call] Forward state event type=$eventType room=${roomId.full} stateKey=${event.stateKey} -> bridge")
+                callLog("[Call] Forward state event type=$eventType room=${roomId.full} stateKey=${event.stateKey} -> bridge")
                 runCatching { session.forwardSyncEvent(envelope) }
-                    .onFailure { println("[Call] forwardSyncEvent failed: ${it.message}") }
+                    .onFailure { callLog("[Call] forwardSyncEvent failed: ${it.message}") }
             }
             is ClientEvent.ToDeviceEvent<*> -> {
                 if (eventType != "m.call.encryption_keys" && eventType != "io.element.call.encryption_keys") return
@@ -199,10 +202,10 @@ class MatrixRtcSyncEventHandler(
                     put("sender", JsonPrimitive(event.sender.full))
                     put("content", unknown.raw)
                 }
-                println("[Call] Forward to-device type=$eventType sender=${event.sender.full} -> ${sessions.size} bridge(s)")
+                callLog("[Call] Forward to-device type=$eventType sender=${event.sender.full} -> ${sessions.size} bridge(s)")
                 sessions.forEach { session ->
                     runCatching { session.forwardToDeviceEvent(envelope) }
-                        .onFailure { println("[Call] forwardToDeviceEvent failed: ${it.message}") }
+                        .onFailure { callLog("[Call] forwardToDeviceEvent failed: ${it.message}") }
                 }
             }
             else -> Unit
@@ -214,23 +217,23 @@ class MatrixRtcSyncEventHandler(
         val normalized = MatrixRtcEventTypes.normalize(unknown.eventType) ?: return
         when (event) {
             is ClientEvent.RoomEvent.StateEvent<*> -> {
-                println("[Call] RTC event type=$normalized class=StateEvent")
+                callLog("[Call] RTC event type=$normalized class=StateEvent")
                 handleStateEvent(event, unknown.raw, normalized)
             }
             is ClientEvent.EphemeralEvent<*> -> {
-                println("[Call] RTC event type=$normalized class=EphemeralEvent")
+                callLog("[Call] RTC event type=$normalized class=EphemeralEvent")
                 if (normalized == MatrixRtcEventTypes.MEMBER) {
                     handleMemberEvent(event, unknown.raw)
                 }
             }
             is ClientEvent.RoomAccountDataEvent<*> -> {
-                println("[Call] RTC event type=$normalized class=RoomAccountDataEvent")
+                callLog("[Call] RTC event type=$normalized class=RoomAccountDataEvent")
                 if (normalized == MatrixRtcEventTypes.MEMBER) {
                     handleMemberAccountDataEvent(event, unknown.raw)
                 }
             }
             is ClientEvent.RoomEvent.MessageEvent<*> -> {
-                println("[Call] RTC event type=$normalized class=MessageEvent")
+                callLog("[Call] RTC event type=$normalized class=MessageEvent")
                 if (normalized == MatrixRtcEventTypes.MEMBER) {
                     handleMemberMessageEvent(event, unknown.raw)
                 }
@@ -248,7 +251,7 @@ class MatrixRtcSyncEventHandler(
         if (normalized == MatrixRtcEventTypes.SLOT) {
             val slotId = event.stateKey.takeIf { it.isNotBlank() } ?: MATRIX_RTC_DEFAULT_SLOT_ID
             val slotEvent = MatrixRtcEventParser.parseSlotEvent(roomId, slotId, raw)
-            println("[Call] RTC slot update room=${roomId.full} slot=$slotId callId=${slotEvent.callId}")
+            callLog("[Call] RTC slot update room=${roomId.full} slot=$slotId callId=${slotEvent.callId}")
             rtcService.applySlotEvent(slotEvent)
             return
         }
@@ -262,7 +265,7 @@ class MatrixRtcSyncEventHandler(
             }
             val stickyKey = event.stateKey.takeIf { it.isNotBlank() }
             val sender = event.sender ?: return
-            println("[Call] RTC member state event room=${roomId.full} sender=${sender.full}")
+            callLog("[Call] RTC member state event room=${roomId.full} sender=${sender.full}")
             applyMemberRaw(
                 roomId = roomId,
                 senderUserId = sender.full,
@@ -304,8 +307,8 @@ class MatrixRtcSyncEventHandler(
         val sender = event.sender ?: return
 
         // DIAGNOSTIC: Log raw JSON to understand the structure
-        println("[Call][DIAG] MSC3401 state raw keys=${raw.keys} stateKey=$stateKey sender=${sender.full}")
-        println("[Call][DIAG] MSC3401 state raw JSON (first 500): ${raw.toString().take(500)}")
+        callLogDebug("[Call][DIAG] MSC3401 state raw keys=${raw.keys} stateKey=$stateKey sender=${sender.full}")
+        callLogDebug("[Call][DIAG] MSC3401 state raw JSON (first 500): ${raw.toString().take(500)}")
 
         // Determine the effective content — some serialization paths wrap in "content"
         val effectiveContent = (raw["content"] as? JsonObject) ?: raw
@@ -337,7 +340,7 @@ class MatrixRtcSyncEventHandler(
 
         if (memberships != null && memberships.isNotEmpty()) {
             val userId = stateKey.takeIf { it.isNotBlank() } ?: sender.full
-            println("[Call] MSC3401 member state (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
+            callLog("[Call] MSC3401 member state (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
             for (entry in memberships) {
                 val obj = entry as? JsonObject ?: continue
                 parseSingleMembershipFromContent(
@@ -354,7 +357,7 @@ class MatrixRtcSyncEventHandler(
         // Empty content = user left the call. Send disconnect.
         val userId = extractUserIdFromStateKey(stateKey) ?: sender.full
         val deviceIdFromKey = extractDeviceIdFromStateKey(stateKey)
-        println("[Call] MSC3401 member state: empty content room=${roomId.full} user=$userId device=$deviceIdFromKey — treating as disconnect")
+        callLog("[Call] MSC3401 member state: empty content room=${roomId.full} user=$userId device=$deviceIdFromKey — treating as disconnect")
         val disconnectKey = if (deviceIdFromKey != null) "msc3401_${userId}_${deviceIdFromKey}" else "msc3401_${userId}"
         val memberEvent = de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent(
             roomId = roomId,
@@ -390,7 +393,7 @@ class MatrixRtcSyncEventHandler(
     ) {
         val deviceId = content.string("device_id")
         if (deviceId == null) {
-            println("[Call] MSC3401: skipping membership without device_id in room=${roomId.full}")
+            callLog("[Call] MSC3401: skipping membership without device_id in room=${roomId.full}")
             return
         }
 
@@ -424,7 +427,7 @@ class MatrixRtcSyncEventHandler(
         // per-device state events are included regardless of the slot's callId.
         val effectiveCallId = if (callId.isNotBlank()) callId else "*"
 
-        println(
+        callLog(
             "[Call] MSC3401 membership: user=$userId device=$deviceId callId='$callId' " +
                 "effectiveCallId='$effectiveCallId' scope=$scope hasTransport=$hasTransport " +
                 "expires=$expiresMs isLocal=$isLocal focusActive=${focusActive != null} " +
@@ -484,7 +487,7 @@ class MatrixRtcSyncEventHandler(
     private fun handleMemberEvent(event: ClientEvent.EphemeralEvent<*>, raw: JsonObject) {
         val roomId = event.roomId ?: return
         val sender = event.sender ?: return
-        println("[Call] RTC member ephemeral room=${roomId.full} sender=${sender.full}")
+        callLog("[Call] RTC member ephemeral room=${roomId.full} sender=${sender.full}")
         applyMemberRaw(
             roomId = roomId,
             senderUserId = sender.full,
@@ -499,7 +502,7 @@ class MatrixRtcSyncEventHandler(
         val roomId = event.roomId ?: return
         val sender = event.sender ?: return
         val eventType = (event.content as? UnknownEventContent)?.eventType ?: ""
-        println("[Call] RTC member message room=${roomId.full} sender=${sender.full} type=$eventType")
+        callLog("[Call] RTC member message room=${roomId.full} sender=${sender.full} type=$eventType")
 
         // MSC3401 call.member events can arrive as timeline MessageEvents too.
         // They use the "memberships" array format instead of the m.rtc.member format.
@@ -531,8 +534,8 @@ class MatrixRtcSyncEventHandler(
         val userId = sender.full
 
         // DIAGNOSTIC: Log raw JSON to understand the structure
-        println("[Call][DIAG] MSC3401 message raw keys=${raw.keys} sender=${sender.full}")
-        println("[Call][DIAG] MSC3401 message raw JSON (first 500): ${raw.toString().take(500)}")
+        callLogDebug("[Call][DIAG] MSC3401 message raw keys=${raw.keys} sender=${sender.full}")
+        callLogDebug("[Call][DIAG] MSC3401 message raw JSON (first 500): ${raw.toString().take(500)}")
 
         val effectiveContent = (raw["content"] as? JsonObject) ?: raw
 
@@ -558,7 +561,7 @@ class MatrixRtcSyncEventHandler(
         }
 
         if (memberships != null && memberships.isNotEmpty()) {
-            println("[Call] MSC3401 member message (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
+            callLog("[Call] MSC3401 member message (old format): room=${roomId.full} user=$userId memberships=${memberships.size}")
             for (entry in memberships) {
                 val obj = entry as? JsonObject ?: continue
                 parseSingleMembershipFromContent(
@@ -573,7 +576,7 @@ class MatrixRtcSyncEventHandler(
         }
 
         // Empty content = disconnect
-        println("[Call] MSC3401 member message: empty content room=${roomId.full} user=$userId — treating as disconnect")
+        callLog("[Call] MSC3401 member message: empty content room=${roomId.full} user=$userId — treating as disconnect")
         val disconnectKey = "msc3401_${userId}"
         val memberEvent = de.connect2x.tammy.trixnity.callRtc.MatrixRtcMemberEvent(
             roomId = roomId,
@@ -595,7 +598,7 @@ class MatrixRtcSyncEventHandler(
     ) {
         val roomId = event.roomId
         val sender = localUserId ?: return
-        println("[Call] RTC member account data room=${roomId.full} sender=${sender.full}")
+        callLog("[Call] RTC member account data room=${roomId.full} sender=${sender.full}")
         applyMemberRaw(
             roomId = roomId,
             senderUserId = sender.full,

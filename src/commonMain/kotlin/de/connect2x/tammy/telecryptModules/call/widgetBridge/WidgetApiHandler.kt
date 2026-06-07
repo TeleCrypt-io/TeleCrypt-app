@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -112,7 +114,7 @@ class WidgetApiHandler(
     suspend fun handleMessage(rawJson: String): List<String> {
         val msg = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(rawJson).jsonObject }
             .getOrElse {
-                println("[WidgetApi] failed to parse incoming JSON (${rawJson.length} bytes): ${it.message}")
+                callLog("[WidgetApi] failed to parse incoming JSON (${rawJson.length} bytes): ${it.message}")
                 return emptyList()
             }
 
@@ -123,7 +125,7 @@ class WidgetApiHandler(
         if (msg["__hostLog"] != null) {
             val level = msg["level"]?.jsonPrimitive?.contentOrNull() ?: "log"
             val text = msg["msg"]?.jsonPrimitive?.contentOrNull() ?: ""
-            println("[WidgetHost/$level] $text")
+            callLog("[WidgetHost/$level] $text")
             return emptyList()
         }
 
@@ -131,18 +133,18 @@ class WidgetApiHandler(
         val action = msg["action"]?.jsonPrimitive?.contentOrNull()
         val requestId = msg["requestId"]?.jsonPrimitive?.contentOrNull()
         if (api == null || action == null || requestId == null) {
-            println("[WidgetApi] dropping malformed message: api=$api action=$action requestId=$requestId raw=${rawJson.take(300)}")
+            callLog("[WidgetApi] dropping malformed message: api=$api action=$action requestId=$requestId raw=${rawJson.take(300)}")
             return emptyList()
         }
         val data = msg["data"] as? JsonObject ?: JsonObject(emptyMap())
 
         if (api != "fromWidget") {
             // toWidget echo / replies — пока не используем.
-            println("[WidgetApi] ignoring api=$api action=$action requestId=$requestId")
+            callLog("[WidgetApi] ignoring api=$api action=$action requestId=$requestId")
             return emptyList()
         }
 
-        println(
+        callLog(
             "[WidgetApi] <- action=$action requestId=$requestId dataKeys=${data.keys} dataPreview=${data.toString().take(400)}"
         )
 
@@ -172,7 +174,7 @@ class WidgetApiHandler(
                 } ?: emptyList()
                 approvedCapabilities.clear()
                 approvedCapabilities.addAll(requested)
-                println("[WidgetApi] approved ${requested.size} capabilities: $requested")
+                callLog("[WidgetApi] approved ${requested.size} capabilities: $requested")
                 listOf(
                     buildResponse(msg, buildJsonObject {
                         put("capabilities", buildJsonArray {
@@ -198,7 +200,7 @@ class WidgetApiHandler(
                 if (delay != null) {
                     val fakeDelayId = "delayed-${delayedEventCounter++}-${kotlin.random.Random.nextLong()}"
                     delayedEvents[fakeDelayId] = DelayedEvent(type, stateKey, content)
-                    println(
+                    callLog(
                         "[WidgetApi] send_event MSC4140 delayed: type=$type stateKey=$stateKey " +
                             "contentKeys=${content.keys} delay=${delay}ms — cached, delay_id=$fakeDelayId " +
                             "(cache size=${delayedEvents.size})"
@@ -209,11 +211,11 @@ class WidgetApiHandler(
                 } else {
                     val eventId = if (stateKey == null) {
                         runCatching { matrixSendMessageEvent(type, content) }
-                            .onFailure { println("[WidgetApi] send_event (message) threw: ${it.message}") }
+                            .onFailure { callLog("[WidgetApi] send_event (message) threw: ${it.message}") }
                             .getOrNull()
                     } else {
                         runCatching { matrixSendStateEvent(type, stateKey, content) }
-                            .onFailure { println("[WidgetApi] send_event (state) threw: ${it.message}") }
+                            .onFailure { callLog("[WidgetApi] send_event (state) threw: ${it.message}") }
                             .getOrNull()
                     }
                     if (eventId != null) {
@@ -240,7 +242,7 @@ class WidgetApiHandler(
                                 put("origin_server_ts", JsonPrimitive(nowMillis()))
                                 put("content", content)
                             }
-                            println(
+                            callLog(
                                 "[WidgetApi] send_event self-echo type=$type stateKey=$stateKey eventId=$eventId"
                             )
                             listOf(ack, forwardSyncEvent(echoEnvelope))
@@ -268,14 +270,14 @@ class WidgetApiHandler(
                             val sk = cached.stateKey
                             val eventId = if (sk != null) {
                                 runCatching { matrixSendStateEvent(cached.type, sk, cached.content) }
-                                    .onFailure { println("[WidgetApi] delayed send_event (state) threw: ${it.message}") }
+                                    .onFailure { callLog("[WidgetApi] delayed send_event (state) threw: ${it.message}") }
                                     .getOrNull()
                             } else {
                                 runCatching { matrixSendMessageEvent(cached.type, cached.content) }
-                                    .onFailure { println("[WidgetApi] delayed send_event (message) threw: ${it.message}") }
+                                    .onFailure { callLog("[WidgetApi] delayed send_event (message) threw: ${it.message}") }
                                     .getOrNull()
                             }
-                            println(
+                            callLog(
                                 "[WidgetApi] update_delayed_event=send delay_id=$delayId committed " +
                                     "type=${cached.type} stateKey=$sk contentKeys=${cached.content.keys} eventId=$eventId"
                             )
@@ -295,22 +297,22 @@ class WidgetApiHandler(
                                 }
                             }
                         } else {
-                            println("[WidgetApi] update_delayed_event=send delay_id=$delayId — no cached payload, ack only")
+                            callLog("[WidgetApi] update_delayed_event=send delay_id=$delayId — no cached payload, ack only")
                         }
                     }
                     "cancel" -> {
                         val removed = delayedEvents.remove(delayId) != null
-                        println("[WidgetApi] update_delayed_event=cancel delay_id=$delayId removed=$removed")
+                        callLog("[WidgetApi] update_delayed_event=cancel delay_id=$delayId removed=$removed")
                     }
                     "restart" -> {
                         // Heartbeat — nothing to do, we're not actually scheduling.
                         // (Avoid spamming the log: only print when cache miss.)
                         if (cached == null) {
-                            println("[WidgetApi] update_delayed_event=restart delay_id=$delayId — UNKNOWN delay_id (cache miss)")
+                            callLog("[WidgetApi] update_delayed_event=restart delay_id=$delayId — UNKNOWN delay_id (cache miss)")
                         }
                     }
                     else -> {
-                        println("[WidgetApi] update_delayed_event delay_id=$delayId action=$delayedAction — unknown action, ack only")
+                        callLog("[WidgetApi] update_delayed_event delay_id=$delayId action=$delayedAction — unknown action, ack only")
                     }
                 }
                 val ack = buildResponse(msg, buildJsonObject { /* empty ack */ })
@@ -347,10 +349,10 @@ class WidgetApiHandler(
                 val limit = data["limit"]?.jsonPrimitive?.contentOrNull()?.toIntOrNull() ?: 50
                 val events = runCatching { matrixReadStateEvents(type, stateKey, limit) }
                     .getOrElse {
-                        println("[WidgetApi] read_events failed: ${it.message}")
+                        callLog("[WidgetApi] read_events failed: ${it.message}")
                         emptyList()
                     }
-                println(
+                callLog(
                     "[WidgetApi] read_events type=$type stateKey=$stateKey (raw=$stateKeyRaw) limit=$limit -> ${events.size} events"
                 )
                 listOf(buildResponse(msg, buildJsonObject {
@@ -376,10 +378,10 @@ class WidgetApiHandler(
                 // MSC1960. Пытаемся синхронно вернуть state=allowed с реальным токеном;
                 // если запрос упал — возвращаем state=blocked, чтобы EC явно показал ошибку, а не висел.
                 val token = runCatching { matrixGetOpenIdToken() }
-                    .onFailure { println("[WidgetApi] get_openid: token fetch threw: ${it.message}") }
+                    .onFailure { callLog("[WidgetApi] get_openid: token fetch threw: ${it.message}") }
                     .getOrNull()
                 if (token != null) {
-                    println("[WidgetApi] get_openid: returning allowed, server=${token["matrix_server_name"]} expires_in=${token["expires_in"]}")
+                    callLog("[WidgetApi] get_openid: returning allowed, server=${token["matrix_server_name"]} expires_in=${token["expires_in"]}")
                     listOf(buildResponse(msg, buildJsonObject {
                         put("state", JsonPrimitive("allowed"))
                         put("access_token", JsonPrimitive(token["access_token"] ?: ""))
@@ -390,7 +392,7 @@ class WidgetApiHandler(
                         }
                     }))
                 } else {
-                    println("[WidgetApi] get_openid: token fetch failed — returning blocked")
+                    callLog("[WidgetApi] get_openid: token fetch failed — returning blocked")
                     listOf(buildResponse(msg, buildJsonObject {
                         put("state", JsonPrimitive("blocked"))
                     }))
@@ -398,9 +400,9 @@ class WidgetApiHandler(
             }
 
             "io.element.close" -> {
-                println("[WidgetApi] io.element.close received — notifying host to tear down widget")
+                callLog("[WidgetApi] io.element.close received — notifying host to tear down widget")
                 runCatching { onClose() }
-                    .onFailure { println("[WidgetApi] onClose callback threw: ${it.message}") }
+                    .onFailure { callLog("[WidgetApi] onClose callback threw: ${it.message}") }
                 listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))
             }
 
@@ -411,7 +413,7 @@ class WidgetApiHandler(
             }
 
             else -> {
-                println("[WidgetApi] unhandled action='$action' — replying empty ack")
+                callLog("[WidgetApi] unhandled action='$action' — replying empty ack")
                 listOf(buildResponse(msg, buildJsonObject { /* empty */ }))
             }
         }
@@ -437,21 +439,21 @@ class WidgetApiHandler(
         if (delayedEvents.isEmpty()) return 0
         val snapshot = delayedEvents.toMap()
         delayedEvents.clear()
-        println("[WidgetApi] flushPendingDelayedEvents: firing ${snapshot.size} pending event(s) on teardown")
+        callLog("[WidgetApi] flushPendingDelayedEvents: firing ${snapshot.size} pending event(s) on teardown")
         var committed = 0
         snapshot.forEach { (delayId, ev) ->
             val sk = ev.stateKey
             val eventId = if (sk != null) {
                 runCatching { matrixSendStateEvent(ev.type, sk, ev.content) }
-                    .onFailure { println("[WidgetApi] flushPendingDelayedEvents send_state(delay_id=$delayId) failed: ${it.message}") }
+                    .onFailure { callLog("[WidgetApi] flushPendingDelayedEvents send_state(delay_id=$delayId) failed: ${it.message}") }
                     .getOrNull()
             } else {
                 runCatching { matrixSendMessageEvent(ev.type, ev.content) }
-                    .onFailure { println("[WidgetApi] flushPendingDelayedEvents send_message(delay_id=$delayId) failed: ${it.message}") }
+                    .onFailure { callLog("[WidgetApi] flushPendingDelayedEvents send_message(delay_id=$delayId) failed: ${it.message}") }
                     .getOrNull()
             }
             if (eventId != null) committed++
-            println(
+            callLog(
                 "[WidgetApi] flushPendingDelayedEvents committed delay_id=$delayId " +
                     "type=${ev.type} stateKey=$sk contentKeys=${ev.content.keys} eventId=$eventId"
             )
@@ -475,7 +477,7 @@ class WidgetApiHandler(
             put("response", responseData)
         }
         val rendered = responseObj.toString()
-        println(
+        callLog(
             "[WidgetApi] -> response action=$action requestId=$reqId responseKeys=${responseData.keys} preview=${responseData.toString().take(300)}"
         )
         return rendered
@@ -484,7 +486,7 @@ class WidgetApiHandler(
     private fun errorResponse(original: JsonObject, message: String): String {
         val action = original["action"]?.jsonPrimitive?.contentOrNull()
         val reqId = original["requestId"]?.jsonPrimitive?.contentOrNull()
-        println("[WidgetApi] -> ERROR response action=$action requestId=$reqId message='$message'")
+        callLog("[WidgetApi] -> ERROR response action=$action requestId=$reqId message='$message'")
         val responseObj = buildJsonObject {
             original.forEach { (k, v) -> put(k, v) }
             put("response", buildJsonObject {
@@ -498,7 +500,7 @@ class WidgetApiHandler(
 
     private fun buildHostRequest(action: String, data: JsonObject): String {
         val reqId = nextHostRequestId()
-        println("[WidgetApi] => host request action=$action requestId=$reqId dataKeys=${data.keys}")
+        callLog("[WidgetApi] => host request action=$action requestId=$reqId dataKeys=${data.keys}")
         return buildJsonObject {
             put("api", JsonPrimitive("toWidget"))
             put("widgetId", JsonPrimitive(widgetId))

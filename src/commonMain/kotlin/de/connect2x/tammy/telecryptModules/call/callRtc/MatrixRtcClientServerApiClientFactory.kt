@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.http.Url
@@ -35,7 +37,7 @@ class MatrixRtcClientServerApiClientFactory(
     ): MatrixClientServerApiClient {
         val rtcMappings = buildRtcMappings()
         val combined = eventContentSerializerMappings.plus(rtcMappings)
-        println("[Call] MatrixClientServerApiClientFactory.create added RTC mappings")
+        callLog("[Call] MatrixClientServerApiClientFactory.create added RTC mappings")
         return delegate.create(
             baseUrl = baseUrl,
             authProvider = authProvider,

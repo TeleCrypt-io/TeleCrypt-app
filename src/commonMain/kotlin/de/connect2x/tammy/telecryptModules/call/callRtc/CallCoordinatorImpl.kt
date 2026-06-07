@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.buildTelecryptCallDeepLink
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
@@ -134,8 +136,8 @@ class CallCoordinatorImpl(
             bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
         }
 
-        println("[Call] Launching Element Call (widget=${bridgeSession != null}): $urlToOpen")
-        println(
+        callLog("[Call] Launching Element Call (widget=${bridgeSession != null}): $urlToOpen")
+        callLog(
             "[Call] Session user=${session.userId} device=${session.deviceId} " +
                 "hs=${session.homeserver}"
         )
@@ -168,7 +170,7 @@ class CallCoordinatorImpl(
             "m.call.member",
         )
         val state = runCatching { matrixClient.api.room.getState(roomId).getOrThrow() }
-            .onFailure { println("[Call] clearOwnGhostMembership: getState failed: ${it.message}") }
+            .onFailure { callLog("[Call] clearOwnGhostMembership: getState failed: ${it.message}") }
             .getOrNull() ?: return
 
         var cleared = 0
@@ -197,17 +199,17 @@ class CallCoordinatorImpl(
                 )
                 true
             }.onFailure {
-                println("[Call] clearOwnGhostMembership: sendStateEvent type=$typeStr stateKey=$stateKey failed: ${it.message}")
+                callLog("[Call] clearOwnGhostMembership: sendStateEvent type=$typeStr stateKey=$stateKey failed: ${it.message}")
             }.getOrDefault(false)
             if (ok) {
                 cleared++
-                println("[Call] clearOwnGhostMembership: cleared type=$typeStr stateKey=$stateKey")
+                callLog("[Call] clearOwnGhostMembership: cleared type=$typeStr stateKey=$stateKey")
             }
         }
         if (cleared > 0) {
-            println("[Call] clearOwnGhostMembership: cleared $cleared stale ghost member state event(s) for ${localUser.full} in ${roomId.full}")
+            callLog("[Call] clearOwnGhostMembership: cleared $cleared stale ghost member state event(s) for ${localUser.full} in ${roomId.full}")
         } else {
-            println("[Call] clearOwnGhostMembership: no stale ghosts found for ${localUser.full} in ${roomId.full}")
+            callLog("[Call] clearOwnGhostMembership: no stale ghosts found for ${localUser.full} in ${roomId.full}")
         }
     }
 
@@ -283,7 +285,7 @@ class CallCoordinatorImpl(
             bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
         }
 
-        println("[Call] Joining Element Call (widget=${bridgeSession != null}): $urlToOpen")
+        callLog("[Call] Joining Element Call (widget=${bridgeSession != null}): $urlToOpen")
         if (bridgeSession != null) {
             callLauncher.joinByWidgetUrl(urlToOpen)
         } else {
@@ -317,7 +319,7 @@ class CallCoordinatorImpl(
         }
         // Tear down widget bridge (closes WS server, releases port).
         runCatching { session.bridgeSession?.close() }
-            .onFailure { println("[Call] bridgeSession.close() failed: ${it.message}") }
+            .onFailure { callLog("[Call] bridgeSession.close() failed: ${it.message}") }
         // No member disconnect event needed — Element Call sends its own disconnect
         // when the browser tab/window closes.
         if (endForAll) {
@@ -347,13 +349,13 @@ class CallCoordinatorImpl(
             resolveHomeserverUrl(matrixClient)
         }.trimEnd('/')
         if (baseUrl.isBlank()) {
-            println("[Call] startWidgetBridge: blank baseUrl, skipping widget mode")
+            callLog("[Call] startWidgetBridge: blank baseUrl, skipping widget mode")
             return null
         }
         val plainUserId = session.userId
         val plainDeviceId = session.deviceId
         if (plainUserId.isBlank() || plainDeviceId.isBlank()) {
-            println("[Call] startWidgetBridge: blank userId/deviceId, skipping widget mode")
+            callLog("[Call] startWidgetBridge: blank userId/deviceId, skipping widget mode")
             return null
         }
         return runCatching {
@@ -381,7 +383,7 @@ class CallCoordinatorImpl(
                 )
             }
         }.onFailure {
-            println("[Call] widgetBridgeManager.start() failed: ${it.message}")
+            callLog("[Call] widgetBridgeManager.start() failed: ${it.message}")
         }.getOrNull()
     }
 
@@ -398,7 +400,7 @@ class CallCoordinatorImpl(
         if (sendSlotStateEvent(matrixClient, roomId, slotId, content, MatrixRtcEventTypes.UNSTABLE_SLOT)) {
             return
         }
-        println("[Call] Failed to publish slot with both stable and unstable event types.")
+        callLog("[Call] Failed to publish slot with both stable and unstable event types.")
     }
 
     private suspend fun sendSlotStateEvent(
@@ -413,7 +415,7 @@ class CallCoordinatorImpl(
             matrixClient.api.room.sendStateEvent(roomId, event, slotId)
             true
         }.onFailure { error ->
-            println("[Call] Failed to publish slot type=$eventType: ${error.message}")
+            callLog("[Call] Failed to publish slot type=$eventType: ${error.message}")
         }.getOrDefault(false)
     }
 

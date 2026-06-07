@@ -1,5 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+import de.connect2x.tammy.telecryptModules.call.callLogDebug
+
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcRoomState
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +55,7 @@ class IncomingCallManager(
                 val callId = state.session?.callId
                 // DIAGNOSTIC: Log every state update that has a session or incoming flag
                 if (state.incoming || state.slotOpen || callId != null) {
-                    println(
+                    callLogDebug(
                         "[Call][DIAG] IncomingCallManager state room=${state.roomId.full} " +
                             "incoming=${state.incoming} slotOpen=${state.slotOpen} callId=$callId " +
                             "localJoined=${state.localJoined} currentIncoming=${_incomingCall.value?.callId}"
@@ -80,7 +83,7 @@ class IncomingCallManager(
         if (_incomingCall.value?.callId == callId) return
         if (_incomingCall.value != null) return
 
-        println("[Call][DIAG] processIncomingState room=${state.roomId.full} callId=$callId activeClients=${activeClientsMap.size}")
+        callLogDebug("[Call][DIAG] processIncomingState room=${state.roomId.full} callId=$callId activeClients=${activeClientsMap.size}")
 
         // Try to find a client that has this room in its local store.
         // If no client has the room cached yet (e.g. initial sync not complete),
@@ -90,11 +93,11 @@ class IncomingCallManager(
             runCatching { c.room.getById(state.roomId).firstOrNull() }.getOrNull() != null
         }
         if (client == null) {
-            println("[Call][DIAG] processIncomingState: no client has room=${state.roomId.full} cached — using fallback client")
+            callLogDebug("[Call][DIAG] processIncomingState: no client has room=${state.roomId.full} cached — using fallback client")
             client = activeClientsMap.values.firstOrNull()
         }
         if (client == null) {
-            println("[Call][DIAG] processIncomingState: no active clients at all — incoming call DROPPED")
+            callLogDebug("[Call][DIAG] processIncomingState: no active clients at all — incoming call DROPPED")
             return
         }
 
@@ -185,7 +188,7 @@ class IncomingCallManager(
             matrixClient = matrixClient,
             isDirect = isDirect,
         )
-        println("[Call] Global incoming call detected! room=${roomId.full} from=$callerName")
+        callLog("[Call] Global incoming call detected! room=${roomId.full} from=$callerName")
     }
 
     fun acceptCall() { _incomingCall.value = null }

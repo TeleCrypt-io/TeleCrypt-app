@@ -1,5 +1,7 @@
 package de.connect2x.tammy.trixnity.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLogDebug
+
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -53,7 +55,7 @@ class MatrixRtcService(
         val holder = holderFor(slot.roomId)
         holder.slotId = slot.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
         // DIAGNOSTIC: Log every slot event to trace incoming call detection
-        println("[Call][DIAG] applySlotEvent room=${slot.roomId.full} open=${slot.open} callId=${slot.callId} slotId=${slot.slotId}")
+        callLogDebug("[Call][DIAG] applySlotEvent room=${slot.roomId.full} open=${slot.open} callId=${slot.callId} slotId=${slot.slotId}")
         if (!slot.open || slot.callId.isNullOrBlank()) {
             holder.slotOpen = false
             holder.activeCallId = null
@@ -63,7 +65,7 @@ class MatrixRtcService(
             // in this room to be detected as incoming. Without this, the same callId
             // would be permanently blocked by lastSeenCallId from a previous call.
             callStateStore.clearLastSeenCallId(slot.roomId)
-            println("[Call][DIAG] Slot closed, cleared lastSeenCallId for room=${slot.roomId.full}")
+            callLogDebug("[Call][DIAG] Slot closed, cleared lastSeenCallId for room=${slot.roomId.full}")
             refresh(slot.roomId)
             return
         }
@@ -102,7 +104,7 @@ class MatrixRtcService(
         // without publishing a separate m.rtc.slot event. Without this, the
         // incoming call detection would never trigger because slotOpen stays false.
         if (!holder.slotOpen && member.callId.isNotBlank() && !member.isLocal) {
-            println(
+            callLogDebug(
                 "[Call][DIAG] Auto-opening slot from member event: room=${member.roomId.full} " +
                     "callId=${member.callId} user=${member.userId.full} device=${member.deviceId}"
             )
@@ -187,7 +189,7 @@ class MatrixRtcService(
         val incoming = holder.slotOpen && !localJoined && !callId.isNullOrBlank() && callId != lastSeenCallId
         // DIAGNOSTIC: Log incoming flag computation whenever slotOpen is true
         if (holder.slotOpen) {
-            println(
+            callLogDebug(
                 "[Call][DIAG] buildState room=${holder.roomId.full} slotOpen=${holder.slotOpen} " +
                     "callId=$callId localJoined=$localJoined lastSeenCallId=$lastSeenCallId " +
                     "incoming=$incoming participants=${participants.size}"

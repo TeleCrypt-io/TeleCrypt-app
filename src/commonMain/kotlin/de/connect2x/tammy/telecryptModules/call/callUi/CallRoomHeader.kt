@@ -1,5 +1,7 @@
 package de.connect2x.messenger.compose.view.room.timeline
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -129,7 +131,7 @@ class CallRoomHeader : RoomHeaderView {
         }
         LaunchedEffect(resolvedRoomId, contextMatrixClient) {
             val userId = contextMatrixClient?.userId?.full ?: "null"
-            println(
+            callLog(
                 "[Call] RTC wiring room=${resolvedRoomId?.full ?: "null"} " +
                     "matrixClient=$userId handlerReady=${rtcSyncHandler != null}"
             )
@@ -400,7 +402,7 @@ private suspend fun sendCallLinkMessage(
         formattedBody = formattedBody,
     )
     runCatching { matrixClient.api.room.sendMessageEvent(roomId, content) }
-        .onFailure { println("[Call] Failed to send call link: ${it.message}") }
+        .onFailure { callLog("[Call] Failed to send call link: ${it.message}") }
 }
 
 private const val MATRIX_HTML_FORMAT = "org.matrix.custom.html"

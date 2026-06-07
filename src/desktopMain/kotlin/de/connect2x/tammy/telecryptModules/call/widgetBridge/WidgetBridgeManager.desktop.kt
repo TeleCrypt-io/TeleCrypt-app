@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -44,9 +46,9 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 UnknownEventContent(buildJsonObject {}, "org.matrix.msc3401.call.member"),
                 localStateKey,
             )
-            println("[WidgetBridgeManager] pre-cleared stale m.call.member stateKey=$localStateKey")
+            callLog("[WidgetBridgeManager] pre-cleared stale m.call.member stateKey=$localStateKey")
         }.onFailure {
-            println("[WidgetBridgeManager] pre-clear stale m.call.member failed (non-fatal): ${it.message}")
+            callLog("[WidgetBridgeManager] pre-clear stale m.call.member failed (non-fatal): ${it.message}")
         }
 
         // Pre-fill state cache
@@ -70,7 +72,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                         }
                     }
                 }
-                println("[WidgetBridgeManager] preloaded $cachedCount state events into cache")
+                callLog("[WidgetBridgeManager] preloaded $cachedCount state events into cache")
             }
         }
 
@@ -116,7 +118,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val parentUrl = server.hostHtmlUrl
         val widgetUrl = widgetEcUrlBuilder(parentUrl, widgetId)
         server.setElementCallUrl(widgetUrl)
-        println("[WidgetBridgeManager] started: hostUrl=$parentUrl widgetUrl=$widgetUrl")
+        callLog("[WidgetBridgeManager] started: hostUrl=$parentUrl widgetUrl=$widgetUrl")
 
         return object : WidgetBridgeManager.BridgeSession {
             override val hostUrl: String = parentUrl
@@ -130,12 +132,12 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 }
 
                 runCatching { server.forwardSyncEvent(rawEvent) }
-                    .onFailure { println("[WidgetBridgeManager] forwardSyncEvent failed: ${it.message}") }
+                    .onFailure { callLog("[WidgetBridgeManager] forwardSyncEvent failed: ${it.message}") }
             }
 
             override fun forwardToDeviceEvent(rawEvent: JsonObject) {
                 runCatching { server.forwardToDeviceEvent(rawEvent) }
-                    .onFailure { println("[WidgetBridgeManager] forwardToDeviceEvent failed: ${it.message}") }
+                    .onFailure { callLog("[WidgetBridgeManager] forwardToDeviceEvent failed: ${it.message}") }
             }
 
             override fun close() {
@@ -154,10 +156,10 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val apiEx = apiResult?.exceptionOrNull()
         val response = apiResult?.getOrNull()
         if (response == null) {
-            println("[WidgetBridge] doGetOpenIdToken failed: callEx=${callEx?.message} apiEx=${apiEx?.message}")
+            callLog("[WidgetBridge] doGetOpenIdToken failed: callEx=${callEx?.message} apiEx=${apiEx?.message}")
             return null
         }
-        println(
+        callLog(
             "[WidgetBridge] doGetOpenIdToken ok: server=${response.matrixServerName} " +
                 "expires_in=${response.expiresIn} token_len=${response.accessToken.length}"
         )
@@ -193,7 +195,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                     encryptResult.getOrNull()?.let {
                         perDevice[deviceKey] = it
                     } ?: run {
-                        println("[WidgetBridge] doSendToDevice: encryptOlm failed for $userKey:$deviceKey — ${encryptResult.exceptionOrNull()?.message}")
+                        callLog("[WidgetBridge] doSendToDevice: encryptOlm failed for $userKey:$deviceKey — ${encryptResult.exceptionOrNull()?.message}")
                     }
                 } else {
                     perDevice[deviceKey] = rawContent
@@ -204,7 +206,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             }
         }
         if (converted.isEmpty()) {
-            println("[WidgetBridge] doSendToDevice type=$eventType: empty messages map, skipping")
+            callLog("[WidgetBridge] doSendToDevice type=$eventType: empty messages map, skipping")
             return true
         }
         val actualEventType = if (encrypted) "m.room.encrypted" else eventType
@@ -216,7 +218,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val apiResult = result.getOrNull()
         val apiEx = apiResult?.exceptionOrNull()
         val ok = result.isSuccess && apiResult?.isSuccess == true
-        println(
+        callLog(
             "[WidgetBridge] doSendToDevice type=$eventType users=${converted.size} devices=$deviceCount " +
                 "ok=$ok callEx=${ex?.message} apiEx=${apiEx?.message}"
         )
@@ -241,7 +243,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val apiResult = result.getOrNull()
         val apiEx = apiResult?.exceptionOrNull()
         val eventId = apiResult?.getOrNull()?.full
-        println(
+        callLog(
             "[WidgetBridge] doSendStateEvent room=${roomId.full} type=$eventType stateKey='$stateKey' " +
                 "contentKeys=${content.keys} eventId=$eventId callEx=${callEx?.message} apiEx=${apiEx?.message}"
         )
@@ -266,7 +268,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val apiResult = result.getOrNull()
         val apiEx = apiResult?.exceptionOrNull()
         val eventId = apiResult?.getOrNull()?.full
-        println(
+        callLog(
             "[WidgetBridge] doSendMessageEvent room=${roomId.full} type=$eventType " +
                 "contentKeys=${content.keys} txnId=$txnId eventId=$eventId " +
                 "callEx=${callEx?.message} apiEx=${apiEx?.message}"
@@ -299,7 +301,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
     ): List<JsonObject> {
         val json = matrixClient.api.json
         val mappings = runCatching { matrixClient.di.get<EventContentSerializerMappings>() }
-            .onFailure { println("[WidgetBridge] failed to obtain EventContentSerializerMappings: ${it.message}") }
+            .onFailure { callLog("[WidgetBridge] failed to obtain EventContentSerializerMappings: ${it.message}") }
             .getOrElse { return emptyList() }
 
         // ── PRIMARY PATH: local stateCache (filled from sync and initial load) ────
@@ -317,7 +319,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 }
                 val skipped = candidates.size - filtered.size
                 val result = filtered.take(limit)
-                println(
+                callLog(
                     "[WidgetBridge] doReadStateEvents(CACHE) room=${roomId.full} type=$eventType " +
                         "stateKey=$stateKey matched=${result.size}" +
                         if (skipped > 0) " (skipped $skipped empty m.call.member tombstones)" else ""
@@ -328,7 +330,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             }
         }
 
-        println(
+        callLog(
             "[WidgetBridge] doReadStateEvents(CACHE MISS) room=${roomId.full} type=$eventType " +
                 "stateKey=$stateKey — no unknown events cached, trying HTTP"
         )
@@ -343,17 +345,17 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             val singleEvent: Any? = singleResult?.getOrNull()
             if (singleEvent is ClientEvent.RoomEvent.StateEvent<*>) {
                 val asJson = runCatching { stateEventToCanonicalJson(json, mappings.state, singleEvent) }
-                    .onFailure { println("[WidgetBridge] stateEventToCanonicalJson failed (fast-path): ${it.message}") }
+                    .onFailure { callLog("[WidgetBridge] stateEventToCanonicalJson failed (fast-path): ${it.message}") }
                     .getOrNull()
                 if (asJson != null && isStaleCallMemberTombstone(eventType, asJson)) {
-                    println(
+                    callLog(
                         "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
                             "fast-path getStateEvent: skipping empty m.call.member tombstone -> []"
                     )
                     return emptyList()
                 }
                 if (asJson != null) {
-                    println(
+                    callLog(
                         "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
                             "fast-path getStateEvent ok"
                     )
@@ -368,14 +370,14 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             matrixClient.api.room.getState(roomId)
         }?.getOrNull()
         if (all == null) {
-            println(
+            callLog(
                 "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType FAILED after retries"
             )
             return emptyList()
         }
         val asJson = all.mapNotNull { ev ->
             runCatching { stateEventToCanonicalJson(json, mappings.state, ev) }
-                .onFailure { println("[WidgetBridge] stateEventToCanonicalJson failed for ${ev.stateKey}: ${it.message}") }
+                .onFailure { callLog("[WidgetBridge] stateEventToCanonicalJson failed for ${ev.stateKey}: ${it.message}") }
                 .getOrNull()
         }
         val typesSeen = asJson.mapNotNull { it["type"]?.jsonPrimitive?.contentOrNull }
@@ -386,7 +388,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             .filter { !isStaleCallMemberTombstone(eventType, it) }
             .take(limit)
             .toList()
-        println(
+        callLog(
             "[WidgetBridge] doReadStateEvents(HTTP) room=${roomId.full} type=$eventType stateKey=$stateKey " +
                 "totalState=${all.size} serialized=${asJson.size} matched=${filtered.size} " +
                 "typesSeen=$typesSeen"
@@ -489,16 +491,16 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             if (apiResult != null && apiResult.isSuccess) return apiResult
             if (apiResult != null && !transient) return apiResult
             if (callEx != null && !transient) {
-                println("[WidgetBridge] $label non-transient error on attempt ${attempt + 1}: ${callEx.message}")
+                callLog("[WidgetBridge] $label non-transient error on attempt ${attempt + 1}: ${callEx.message}")
                 return null
             }
             lastEx = callEx ?: apiEx
-            println("[WidgetBridge] $label transient failure attempt ${attempt + 1}/$maxAttempts: ${lastEx?.message}")
+            callLog("[WidgetBridge] $label transient failure attempt ${attempt + 1}/$maxAttempts: ${lastEx?.message}")
             if (attempt < maxAttempts - 1) {
                 kotlinx.coroutines.delay(500L * (attempt + 1))
             }
         }
-        println("[WidgetBridge] $label failed after $maxAttempts attempts: ${lastEx?.message}")
+        callLog("[WidgetBridge] $label failed after $maxAttempts attempts: ${lastEx?.message}")
         return null
     }
 

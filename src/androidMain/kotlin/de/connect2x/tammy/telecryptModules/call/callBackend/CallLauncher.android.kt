@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
+import de.connect2x.tammy.telecryptModules.call.callLog
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -238,7 +240,7 @@ class ElementCallLauncherImpl(private val appContext: Context) : CallLauncher {
     }
 
     override fun joinByWidgetUrl(hostUrl: String) {
-        println("[Call] Android widget mode: opening host page in WebView: $hostUrl")
+        callLog("[Call] Android widget mode: opening host page in WebView: $hostUrl")
         val intent = ElementCallActivity.newIntent(
             context = appContext,
             url = hostUrl,
