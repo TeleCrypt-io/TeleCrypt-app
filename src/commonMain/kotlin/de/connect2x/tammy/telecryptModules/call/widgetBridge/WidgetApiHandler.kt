@@ -72,6 +72,8 @@ class WidgetApiHandler(
      * (или это сделает Chromium при унлинке профиля).
      */
     private val onClose: () -> Unit = {},
+    /** Optional per-call metrics collector; the bridge prints its summary on teardown. */
+    private val metrics: CallMetrics? = null,
 ) {
     @OptIn(ExperimentalTime::class)
     private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
@@ -195,8 +197,10 @@ class WidgetApiHandler(
                 // so we MUST NOT post the event immediately (that would instantly
                 // overwrite the just-sent join state with an empty disconnect).
                 // Instead we silently fake-ack and let EC keep heartbeating.
+                metrics?.inc(CallCounter.SEND_EVENT)
                 val delay = data["delay"]?.jsonPrimitive?.contentOrNull()?.toLongOrNull()
                 if (delay != null) {
+                    metrics?.inc(CallCounter.DELAYED_SCHEDULED)
                     val fakeDelayId = "delayed-${delayedEventCounter++}-${kotlin.random.Random.nextLong()}"
                     delayedEvents[fakeDelayId] = DelayedEvent(type, stateKey, content)
                     callLog(
@@ -218,6 +222,10 @@ class WidgetApiHandler(
                             .getOrNull()
                     }
                     if (eventId != null) {
+                        if (stateKey != null) {
+                            metrics?.inc(CallCounter.SEND_STATE_EVENT)
+                            metrics?.mark(CallPhase.JOIN_SENT)
+                        }
                         val ack = buildResponse(msg, buildJsonObject {
                             put("room_id", JsonPrimitive(roomId))
                             put("event_id", JsonPrimitive(eventId))
@@ -244,6 +252,8 @@ class WidgetApiHandler(
                             callLog(
                                 "[WidgetApi] send_event self-echo type=$type stateKey=$stateKey eventId=$eventId"
                             )
+                            metrics?.inc(CallCounter.SELF_ECHO)
+                            metrics?.mark(CallPhase.FIRST_SELF_ECHO)
                             listOf(ack, forwardSyncEvent(echoEnvelope))
                         } else {
                             listOf(ack)
@@ -280,11 +290,13 @@ class WidgetApiHandler(
                                 "[WidgetApi] update_delayed_event=send delay_id=$delayId committed " +
                                     "type=${cached.type} stateKey=$sk contentKeys=${cached.content.keys} eventId=$eventId"
                             )
+                            metrics?.inc(CallCounter.DELAYED_COMMITTED)
                             // Same self-echo rationale as in send_event: echo
                             // the just-fired disconnect tombstone back to EC
                             // immediately so its membership view updates
                             // without waiting for /sync.
                             if (eventId != null && sk != null) {
+                                metrics?.inc(CallCounter.SELF_ECHO)
                                 selfEcho = buildJsonObject {
                                     put("type", JsonPrimitive(cached.type))
                                     put("state_key", JsonPrimitive(sk))
@@ -323,7 +335,12 @@ class WidgetApiHandler(
                 val messages = (data["messages"] as? JsonObject) ?: JsonObject(emptyMap())
                 val encryptedNode = data["encrypted"]?.jsonPrimitive
                 val encrypted = encryptedNode != null && (encryptedNode.content == "true" || encryptedNode.contentOrNull() == "true")
+                metrics?.inc(CallCounter.SEND_TO_DEVICE)
                 val ok = runCatching { matrixSendToDevice(type, messages, encrypted) }.getOrDefault(false)
+                if (ok && type.contains("encryption_keys")) {
+                    metrics?.inc(CallCounter.KEY_SENT)
+                    metrics?.mark(CallPhase.FIRST_KEY_SENT)
+                }
                 if (ok) {
                     listOf(buildResponse(msg, buildJsonObject { /* empty */ }))
                 } else {
@@ -346,6 +363,7 @@ class WidgetApiHandler(
                     else -> null
                 }
                 val limit = data["limit"]?.jsonPrimitive?.contentOrNull()?.toIntOrNull() ?: 50
+                metrics?.inc(CallCounter.READ_EVENTS)
                 val events = runCatching { matrixReadStateEvents(type, stateKey, limit) }
                     .getOrElse {
                         callLog("[WidgetApi] read_events failed: ${it.message}")
@@ -400,6 +418,8 @@ class WidgetApiHandler(
 
             "io.element.close" -> {
                 callLog("[WidgetApi] io.element.close received — notifying host to tear down widget")
+                metrics?.mark(CallPhase.CALL_END)
+                metrics?.summaryLines()?.forEach { callLog(it) }
                 runCatching { onClose() }
                     .onFailure { callLog("[WidgetApi] onClose callback threw: ${it.message}") }
                 listOf(buildResponse(msg, buildJsonObject { /* empty ack */ }))

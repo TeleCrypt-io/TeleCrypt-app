@@ -35,6 +35,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         baseUrl: String,
         widgetEcUrlBuilder: (parentUrl: String, widgetId: String) -> String,
     ): WidgetBridgeManager.BridgeSession {
+        val metrics = CallMetrics()
         // Clear any stale m.call.member left by a previous crash of this device.
         // Runs before the bridge server starts, so EC hasn't connected yet and
         // cannot race with its own join event.
@@ -74,6 +75,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 callLog("[WidgetBridgeManager] preloaded $cachedCount state events into cache")
             }
         }
+        metrics.mark(CallPhase.PRELOAD_DONE)
 
         val widgetId = "telecrypt-${System.currentTimeMillis().toString(36)}"
 
@@ -104,6 +106,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 matrixReadStateEvents = readStateEvents,
                 matrixGetOpenIdToken = getOpenIdToken,
                 onClose = { ElementCallLauncherImpl.closeCurrent() },
+                metrics = metrics,
             )
         }
 
@@ -129,17 +132,28 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 if (type != null && stateKey != null) {
                     stateCache.getOrPut(type) { ConcurrentHashMap() }[stateKey] = rawEvent
                 }
+                if ((type == "org.matrix.msc3401.call.member" || type == "m.call.member") &&
+                    rawEvent["sender"]?.jsonPrimitive?.contentOrNull != userId
+                ) {
+                    metrics.mark(CallPhase.FIRST_REMOTE_MEMBER)
+                }
 
                 runCatching { server.forwardSyncEvent(rawEvent) }
                     .onFailure { callLog("[WidgetBridgeManager] forwardSyncEvent failed: ${it.message}") }
             }
 
             override fun forwardToDeviceEvent(rawEvent: JsonObject) {
+                metrics.inc(CallCounter.KEY_RECEIVED)
+                metrics.mark(CallPhase.FIRST_KEY_RECEIVED)
                 runCatching { server.forwardToDeviceEvent(rawEvent) }
                     .onFailure { callLog("[WidgetBridgeManager] forwardToDeviceEvent failed: ${it.message}") }
             }
 
             override fun close() {
+                if (metrics.phaseMs(CallPhase.CALL_END) == null) {
+                    metrics.mark(CallPhase.CALL_END)
+                    metrics.summaryLines().forEach { callLog(it) }
+                }
                 runCatching { server.close() }
             }
         }

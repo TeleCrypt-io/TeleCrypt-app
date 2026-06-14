@@ -51,6 +51,7 @@ class AndroidWidgetBridgeManager(
         baseUrl: String,
         widgetEcUrlBuilder: (parentUrl: String, widgetId: String) -> String,
     ): WidgetBridgeManager.BridgeSession {
+        val metrics = CallMetrics()
         // Clear any stale m.call.member left by a previous crash of this device.
         // We do this BEFORE starting the bridge server so EC has not yet connected
         // and sent its new join — ensuring our cleanup arrives first and EC starts
@@ -95,6 +96,7 @@ class AndroidWidgetBridgeManager(
                 callLog("[WidgetBridgeManager] preloaded $cachedCount state events into cache")
             }
         }
+        metrics.mark(CallPhase.PRELOAD_DONE)
 
         val widgetId = "telecrypt-${System.currentTimeMillis().toString(36)}"
 
@@ -128,6 +130,7 @@ class AndroidWidgetBridgeManager(
                 // the WebView activity so we return to the chat instead of
                 // hanging on a black screen.
                 onClose = { ElementCallActivity.closeCurrent() },
+                metrics = metrics,
             )
         }
 
@@ -155,6 +158,7 @@ class AndroidWidgetBridgeManager(
                 .filter { it == SyncState.STOPPED }
                 .collect {
                     callLog("[WidgetBridgeManager] sync STOPPED during active call — restarting")
+                    metrics.inc(CallCounter.SYNC_RESTART)
                     runCatching { matrixClient.startSync() }
                         .onFailure { callLog("[WidgetBridgeManager] sync restart failed: ${it.message}") }
                 }
@@ -169,6 +173,11 @@ class AndroidWidgetBridgeManager(
                 if (type != null && stateKey != null) {
                     stateCache.getOrPut(type) { ConcurrentHashMap() }[stateKey] = rawEvent
                 }
+                if ((type == "org.matrix.msc3401.call.member" || type == "m.call.member") &&
+                    rawEvent["sender"]?.jsonPrimitive?.contentOrNull != userId
+                ) {
+                    metrics.mark(CallPhase.FIRST_REMOTE_MEMBER)
+                }
 
                 runCatching { server.forwardSyncEvent(rawEvent) }
                     .onFailure { callLog("[WidgetBridgeManager] forwardSyncEvent failed: ${it.message}") }
@@ -177,11 +186,17 @@ class AndroidWidgetBridgeManager(
             }
 
             override fun forwardToDeviceEvent(rawEvent: JsonObject) {
+                metrics.inc(CallCounter.KEY_RECEIVED)
+                metrics.mark(CallPhase.FIRST_KEY_RECEIVED)
                 runCatching { server.forwardToDeviceEvent(rawEvent) }
                     .onFailure { callLog("[WidgetBridgeManager] forwardToDeviceEvent failed: ${it.message}") }
             }
 
             override fun close() {
+                if (metrics.phaseMs(CallPhase.CALL_END) == null) {
+                    metrics.mark(CallPhase.CALL_END)
+                    metrics.summaryLines().forEach { callLog(it) }
+                }
                 syncWatchdogScope.cancel()
                 runCatching { server.close() }
             }
