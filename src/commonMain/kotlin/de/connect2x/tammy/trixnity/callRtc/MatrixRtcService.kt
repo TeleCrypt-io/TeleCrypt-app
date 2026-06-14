@@ -7,10 +7,15 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import net.folivo.trixnity.core.model.RoomId
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+
+@OptIn(ExperimentalTime::class)
+private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 class MatrixRtcService(
     private val callStateStore: MatrixRtcCallStateStore,
-    private val nowMs: () -> Long = System::currentTimeMillis,
+    private val nowMs: () -> Long = ::nowMillis,
 ) {
     private fun initialRoomState(roomId: RoomId): MatrixRtcRoomState {
         return MatrixRtcRoomState(

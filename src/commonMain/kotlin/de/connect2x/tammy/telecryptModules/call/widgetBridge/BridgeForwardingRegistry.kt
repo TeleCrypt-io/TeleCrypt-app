@@ -3,7 +3,7 @@ package de.connect2x.tammy.telecryptModules.call.widgetBridge
 import de.connect2x.tammy.telecryptModules.call.callLog
 import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.Volatile
 
 /**
  * Реестр активных widget‑bridge сессий, ключом является пара (userId, roomId).
@@ -22,16 +22,21 @@ class BridgeForwardingRegistry {
 
     private data class Key(val userId: String, val roomId: String)
 
-    private val sessions = ConcurrentHashMap<Key, WidgetBridgeManager.BridgeSession>()
+    // Copy-on-write: writes (rare — call start/stop) replace the whole map,
+    // reads (frequent — from the sync handler) get a consistent volatile snapshot.
+    // Avoids java.util.concurrent so the call module compiles for all targets.
+    @Volatile
+    private var sessions: Map<Key, WidgetBridgeManager.BridgeSession> = emptyMap()
 
     fun register(userId: UserId, roomId: RoomId, session: WidgetBridgeManager.BridgeSession) {
-        sessions[Key(userId.full, roomId.full)] = session
+        sessions = sessions + (Key(userId.full, roomId.full) to session)
         callLog("[BridgeRegistry] register user=${userId.full} room=${roomId.full} (total=${sessions.size})")
     }
 
     fun unregister(userId: UserId, roomId: RoomId) {
-        val removed = sessions.remove(Key(userId.full, roomId.full))
-        if (removed != null) {
+        val key = Key(userId.full, roomId.full)
+        if (sessions.containsKey(key)) {
+            sessions = sessions - key
             callLog("[BridgeRegistry] unregister user=${userId.full} room=${roomId.full} (total=${sessions.size})")
         }
     }

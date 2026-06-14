@@ -27,8 +27,7 @@ import net.folivo.trixnity.core.model.events.UnknownEventContent
 import net.folivo.trixnity.core.subscribeEachEventAsFlow
 import net.folivo.trixnity.crypto.olm.DecryptedOlmEventContainer
 import net.folivo.trixnity.crypto.olm.OlmDecrypter
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.Volatile
 import kotlin.runCatching
 
 class MatrixRtcSyncEventHandler(
@@ -39,18 +38,22 @@ class MatrixRtcSyncEventHandler(
     private val olmDecrypter: OlmDecrypter? = null,
     private val nowMs: () -> Long = ::currentTimeMillis,
 ) : EventHandler {
-    private val started = AtomicBoolean(false)
-    private val loggedFirstEvent = AtomicBoolean(false)
-    private val eventCount = AtomicLong(0)
+    // These guards run inside a single sequentially-collected sync flow, so plain
+    // volatile fields are sufficient (and keep the module free of java.util.concurrent).
+    @Volatile
+    private var started = false
+    @Volatile
+    private var loggedFirstEvent = false
+    @Volatile
+    private var eventCount = 0L
     @Volatile
     private var localUserId: UserId? = null
     @Volatile
     private var localDeviceId: String? = null
 
     override fun startInCoroutineScope(scope: CoroutineScope) {
-        if (!started.compareAndSet(false, true)) {
-            return
-        }
+        if (started) return
+        started = true
         callLog("[Call] MatrixRtcSyncEventHandler started")
         scope.launch {
             accountStore.getAccountAsFlow().collectLatest { account ->
@@ -73,7 +76,8 @@ class MatrixRtcSyncEventHandler(
         } ?: callLog("[Call] OlmDecrypter not provided — decrypted to-device forwarding disabled")
         syncApi.subscribeEachEventAsFlow()
             .onEach { event ->
-                if (loggedFirstEvent.compareAndSet(false, true)) {
+                if (!loggedFirstEvent) {
+                    loggedFirstEvent = true
                     val eventClass = event::class.simpleName
                     val contentClass = event.content::class.simpleName
                     val type = (event.content as? UnknownEventContent)?.eventType
@@ -104,8 +108,8 @@ class MatrixRtcSyncEventHandler(
                 }
                 // Also log non-UnknownEventContent events that might be call-related
                 // (some events may be deserialized into known types)
-                if (unknown == null && eventCount.incrementAndGet() % 500 == 0L) {
-                    callLogDebug("[Call][DIAG] Processed ${eventCount.get()} sync events total (latest class=${event::class.simpleName})")
+                if (unknown == null && (++eventCount) % 500 == 0L) {
+                    callLogDebug("[Call][DIAG] Processed $eventCount sync events total (latest class=${event::class.simpleName})")
                 }
                 handleEvent(event)
                 forwardToBridgeIfNeeded(event)

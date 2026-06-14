@@ -436,7 +436,7 @@ class CallCoordinatorImpl(
         val bytes = ByteArray(16) { Random.nextInt(0, 256).toByte() }
         bytes[6] = (bytes[6].toInt() and 0x0F or 0x40).toByte()
         bytes[8] = (bytes[8].toInt() and 0x3F or 0x80).toByte()
-        return bytes.joinToString(separator = "") { "%02x".format(it.toInt() and 0xFF) }
+        return bytes.joinToString(separator = "") { (it.toInt() and 0xFF).toString(16).padStart(2, '0') }
             .replaceFirst(
                 "(.{8})(.{4})(.{4})(.{4})(.{12})".toRegex(),
                 "$1-$2-$3-$4-$5",
