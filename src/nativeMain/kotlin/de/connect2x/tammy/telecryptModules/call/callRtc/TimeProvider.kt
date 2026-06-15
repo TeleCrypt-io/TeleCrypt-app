@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import kotlin.system.getTimeMillis
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
-actual fun currentTimeMillis(): Long = getTimeMillis()
+@OptIn(ExperimentalTime::class)
+actual fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()

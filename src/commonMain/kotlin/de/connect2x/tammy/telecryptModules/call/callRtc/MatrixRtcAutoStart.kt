@@ -1,6 +1,9 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.telecryptModules.call.callLog
+import de.connect2x.tammy.telecryptModules.call.callLogDebug
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.BridgeForwardingRegistry
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import de.connect2x.trixnity.messenger.MatrixClients
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,17 +14,19 @@ import kotlinx.coroutines.launch
 import net.folivo.trixnity.client.MatrixClient
 import net.folivo.trixnity.client.store.AccountStore
 import net.folivo.trixnity.core.model.UserId
+import net.folivo.trixnity.crypto.olm.OlmDecrypter
 
 class MatrixRtcAutoStart(
     private val matrixClients: MatrixClients,
     private val rtcService: MatrixRtcService,
+    private val bridgeRegistry: BridgeForwardingRegistry,
 ) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val handlers = mutableMapOf<String, HandlerEntry>()
     private val upgradedFilterUsers = mutableSetOf<String>()
 
     init {
-        println("[Call] MatrixRtcAutoStart initialized")
+        callLog("[Call] MatrixRtcAutoStart initialized")
         scope.launch {
             matrixClients.collectLatest { clients ->
                 ensureHandlers(clients)
@@ -39,18 +44,24 @@ class MatrixRtcAutoStart(
             val handler = createHandler(client, key) ?: continue
             handlers[key] = HandlerEntry(client, handler)
             handler.startInCoroutineScope(scope)
-            println("[Call] Auto-start RTC handler user=$key")
+            callLog("[Call] Auto-start RTC handler user=$key")
         }
     }
 
     private suspend fun createHandler(client: MatrixClient, userKey: String): MatrixRtcSyncEventHandler? {
         val accountStore = runCatching { client.di.get<AccountStore>() }.getOrNull()
         if (accountStore == null) {
-            println("[Call] Auto-start RTC handler skipped (no AccountStore)")
+            callLog("[Call] Auto-start RTC handler skipped (no AccountStore)")
             return null
         }
+        val olmDecrypter = runCatching { client.di.get<OlmDecrypter>() }.getOrNull()
+        if (olmDecrypter == null) {
+            callLog("[Call][WARN] OlmDecrypter not available — incoming encrypted to-device events won't be forwarded to widget")
+        } else {
+            callLog("[Call] OlmDecrypter resolved for user=$userKey")
+        }
         ensureRtcFilters(client, userKey, accountStore)
-        return MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore)
+        return MatrixRtcSyncEventHandler(client.api.sync, rtcService, accountStore, bridgeRegistry, olmDecrypter)
     }
 
     private suspend fun ensureRtcFilters(
@@ -66,37 +77,58 @@ class MatrixRtcAutoStart(
         var newBackgroundFilterId = account.backgroundFilterId
         var changed = false
 
+        // DIAGNOSTIC: Log filter IDs to detect if filter patching is ever attempted
+        callLogDebug("[Call][DIAG] ensureRtcFilters user=$userKey filterId=${account.filterId} backgroundFilterId=${account.backgroundFilterId}")
+
         if (account.filterId != null) {
             val current = runCatching { userApi.getFilter(userId, account.filterId!!) }.getOrNull()?.getOrNull()
+            callLogDebug("[Call][DIAG] Current sync filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
-                if (patched != current) {
+                val filterChanged = patched != current
+                callLogDebug("[Call][DIAG] Filter patch needed=$filterChanged for user=$userKey")
+                if (filterChanged) {
                     val created = runCatching { userApi.setFilter(userId, patched) }.getOrNull()?.getOrNull()
+                    callLogDebug("[Call][DIAG] New filter upload result=$created for user=$userKey")
                     if (!created.isNullOrBlank()) {
                         newFilterId = created
                         changed = true
-                        println("[Call] Updated sync filter for user=$userKey id=$created")
+                        callLog("[Call] Updated sync filter for user=$userKey id=$created")
                     }
                 }
+            } else {
+                callLogDebug("[Call][DIAG] Could not fetch current filter for user=$userKey filterId=${account.filterId}")
             }
+        } else {
+            // No filterId set yet — the server uses no filter, so all events (including RTC)
+            // pass through. When trixnity-messenger eventually creates a filter,
+            // MatrixRtcSyncFilterConfigurer ensures RTC types are included.
+            callLogDebug("[Call][DIAG] No filterId set for user=$userKey — no filter to patch (all events pass through)")
         }
 
         if (account.backgroundFilterId != null) {
             val current = runCatching { userApi.getFilter(userId, account.backgroundFilterId!!) }.getOrNull()?.getOrNull()
+            callLogDebug("[Call][DIAG] Current background filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
-                if (patched != current) {
+                val bgFilterChanged = patched != current
+                callLogDebug("[Call][DIAG] Background filter patch needed=$bgFilterChanged for user=$userKey")
+                if (bgFilterChanged) {
                     val created = runCatching { userApi.setFilter(userId, patched) }.getOrNull()?.getOrNull()
+                    callLogDebug("[Call][DIAG] New background filter upload result=$created for user=$userKey")
                     if (!created.isNullOrBlank()) {
                         newBackgroundFilterId = created
                         changed = true
-                        println("[Call] Updated background sync filter for user=$userKey id=$created")
+                        callLog("[Call] Updated background sync filter for user=$userKey id=$created")
                     }
                 }
             }
         }
 
-        if (!changed) return
+        if (!changed) {
+            callLogDebug("[Call][DIAG] No filter changes applied for user=$userKey")
+            return
+        }
         accountStore.updateAccount { current ->
             current!!.copy(
                 filterId = newFilterId,
@@ -107,9 +139,9 @@ class MatrixRtcAutoStart(
             client.api.sync.stop()
             client.api.sync.start()
         }.onSuccess {
-            println("[Call] Restarted sync to apply RTC filters for user=$userKey")
+            callLog("[Call] Restarted sync to apply RTC filters for user=$userKey")
         }.onFailure { error ->
-            println("[Call] Failed to restart sync for user=$userKey: ${error.message}")
+            callLog("[Call] Failed to restart sync for user=$userKey: ${error.message}")
         }
     }
 

@@ -19,6 +19,7 @@ out/
 
 app-data/
 app-data-2/
+app-data-B/
 .kotlin
 local.properties
 
@@ -42,3 +43,4 @@ TEAM_INBOX.md
 logs/
 .tmp/
 .tmp-element-call/
+hs_err_pid*.log

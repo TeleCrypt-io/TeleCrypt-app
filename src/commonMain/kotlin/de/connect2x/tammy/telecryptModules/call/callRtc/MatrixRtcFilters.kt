@@ -7,6 +7,8 @@ internal val MATRIX_RTC_EVENT_TYPES = setOf(
     MatrixRtcEventTypes.MEMBER,
     MatrixRtcEventTypes.UNSTABLE_SLOT,
     MatrixRtcEventTypes.UNSTABLE_MEMBER,
+    MatrixRtcEventTypes.MSC3401_CALL_MEMBER,
+    MatrixRtcEventTypes.CALL_MEMBER,
 )
 
 internal fun patchFiltersForRtc(filters: Filters): Filters {

@@ -1,5 +1,6 @@
 package de.connect2x.messenger.compose.view.room.timeline
 
+import de.connect2x.tammy.telecryptModules.call.callLog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,7 +61,7 @@ import de.connect2x.messenger.compose.view.theme.components.ThemedUserAvatar
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.callRtc.CallCoordinator
 import de.connect2x.tammy.telecryptModules.call.callRtc.IncomingCallManager
-import de.connect2x.tammy.trixnityProposal.callRtc.MatrixRtcService
+import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcSyncEventHandler
 import de.connect2x.tammy.telecryptModules.call.callRtc.MatrixRtcWatcher
 import de.connect2x.trixnity.messenger.viewmodel.room.timeline.RoomHeaderViewModel
@@ -129,7 +130,7 @@ class CallRoomHeader : RoomHeaderView {
         }
         LaunchedEffect(resolvedRoomId, contextMatrixClient) {
             val userId = contextMatrixClient?.userId?.full ?: "null"
-            println(
+            callLog(
                 "[Call] RTC wiring room=${resolvedRoomId?.full ?: "null"} " +
                     "matrixClient=$userId handlerReady=${rtcSyncHandler != null}"
             )
@@ -140,6 +141,10 @@ class CallRoomHeader : RoomHeaderView {
         val incomingState = resolvedRoomId
             ?.let { rtcWatcher.roomState(it).collectAsState().value }
         val incomingCallId = incomingState?.session?.callId
+
+        // A call is live in this room but we haven't joined it yet — offer "join"
+        // instead of "start" so the user enters the existing call.
+        val canJoinOngoing = incomingState?.rtcActive == true && incomingState.localJoined != true
 
         val startCall: (CallMode) -> Unit = { mode ->
             scope.launch {
@@ -171,6 +176,28 @@ class CallRoomHeader : RoomHeaderView {
                     deepLink,
                     mode,
                 )
+            }
+        }
+
+        val joinOngoingCall: (CallMode) -> Unit = { mode ->
+            scope.launch {
+                val roomName = roomHeaderElement.roomName ?: "TeleCrypt Call"
+                val matrixClient = resolveMatrixClient(roomHeaderViewModel)
+                if (resolvedRoomId == null || matrixClient == null) {
+                    snackbarHostState.showSnackbar("Call unavailable. Open the room and try again.")
+                    return@launch
+                }
+                val joinResult = callCoordinator.joinCall(
+                    matrixClient = matrixClient,
+                    roomId = resolvedRoomId,
+                    roomName = roomName,
+                    mode = mode,
+                )
+                if (!joinResult.ok) {
+                    snackbarHostState.showSnackbar(
+                        joinResult.userMessage ?: "Could not join the call. Try again."
+                    )
+                }
             }
         }
         Box {
@@ -290,6 +317,13 @@ class CallRoomHeader : RoomHeaderView {
                                 },
                                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
                             )
+                        } else if (canJoinOngoing) {
+                            // A call is already running in this room — highlight a
+                            // dedicated "join ongoing call" button instead of "start".
+                            JoinCallButton(
+                                onClick = { showCallDialog = true },
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                            )
                         } else {
                             CallButton(
                                 onClick = {
@@ -312,9 +346,13 @@ class CallRoomHeader : RoomHeaderView {
                     .padding(bottom = 16.dp)
             )
             if (showCallDialog) {
+                val onPick: (CallMode) -> Unit = { mode ->
+                    showCallDialog = false
+                    if (canJoinOngoing) joinOngoingCall(mode) else startCall(mode)
+                }
                 AlertDialog(
                     onDismissRequest = { showCallDialog = false },
-                    title = { Text("Start call") },
+                    title = { Text(if (canJoinOngoing) "Join call" else "Start call") },
                     text = { Text("Choose call type") },
                     confirmButton = {
                         Row(
@@ -322,10 +360,7 @@ class CallRoomHeader : RoomHeaderView {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Button(
-                                onClick = {
-                                    showCallDialog = false
-                                    startCall(CallMode.AUDIO)
-                                },
+                                onClick = { onPick(CallMode.AUDIO) },
                                 colors = ButtonDefaults.buttonColors(),
                             ) {
                                 Icon(Icons.Default.Phone, contentDescription = null)
@@ -333,10 +368,7 @@ class CallRoomHeader : RoomHeaderView {
                                 Text("Audio")
                             }
                             Button(
-                                onClick = {
-                                    showCallDialog = false
-                                    startCall(CallMode.VIDEO)
-                                },
+                                onClick = { onPick(CallMode.VIDEO) },
                                 colors = ButtonDefaults.buttonColors(),
                             ) {
                                 Icon(Icons.Default.Videocam, contentDescription = null)
@@ -369,7 +401,7 @@ private suspend fun sendCallLinkMessage(
         formattedBody = formattedBody,
     )
     runCatching { matrixClient.api.room.sendMessageEvent(roomId, content) }
-        .onFailure { println("[Call] Failed to send call link: ${it.message}") }
+        .onFailure { callLog("[Call] Failed to send call link: ${it.message}") }
 }
 
 private const val MATRIX_HTML_FORMAT = "org.matrix.custom.html"
@@ -411,6 +443,30 @@ fun CallButton(
         Icon(Icons.Default.Phone, "Call Button")
     }
 }
+/**
+ * Shown when a call is already in progress in the room but the local user has
+ * not joined yet. Mirrors [CallButton] (same icon + inherited content tint so it
+ * renders reliably) but adds a small badge dot to signal "a call is happening —
+ * tap to join", distinguishing it from the plain "start a call" button.
+ */
+@Composable
+fun JoinCallButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ThemedIconButton(
+        style = MaterialTheme.components.commonIconButton,
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        BadgedBox(
+            badge = { Badge() },
+        ) {
+            Icon(Icons.Default.Phone, contentDescription = "Join ongoing call")
+        }
+    }
+}
+
 @Composable
 fun EndCallButton(
     onClick: () -> Unit,

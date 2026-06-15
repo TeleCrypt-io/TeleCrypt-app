@@ -1,15 +1,21 @@
-package de.connect2x.tammy.trixnityProposal.callRtc
+package de.connect2x.tammy.trixnity.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLogDebug
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import net.folivo.trixnity.core.model.RoomId
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+
+@OptIn(ExperimentalTime::class)
+private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
 class MatrixRtcService(
     private val callStateStore: MatrixRtcCallStateStore,
-    private val nowMs: () -> Long = System::currentTimeMillis,
+    private val nowMs: () -> Long = ::nowMillis,
 ) {
     private fun initialRoomState(roomId: RoomId): MatrixRtcRoomState {
         return MatrixRtcRoomState(
@@ -19,6 +25,8 @@ class MatrixRtcService(
             session = null,
             participants = emptyList(),
             participantsCount = 0,
+            aggregatedParticipants = emptyList(),
+            aggregatedParticipantsCount = 0,
             localJoined = false,
             rtcActive = false,
             incoming = false,
@@ -50,11 +58,18 @@ class MatrixRtcService(
     fun applySlotEvent(slot: MatrixRtcSlotEvent) {
         val holder = holderFor(slot.roomId)
         holder.slotId = slot.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
+        // DIAGNOSTIC: Log every slot event to trace incoming call detection
+        callLogDebug("[Call][DIAG] applySlotEvent room=${slot.roomId.full} open=${slot.open} callId=${slot.callId} slotId=${slot.slotId}")
         if (!slot.open || slot.callId.isNullOrBlank()) {
             holder.slotOpen = false
             holder.activeCallId = null
             holder.sessionStartedAtMs = 0L
             holder.participants.clear()
+            // Clear lastSeenCallId when slot closes — this allows the NEXT call
+            // in this room to be detected as incoming. Without this, the same callId
+            // would be permanently blocked by lastSeenCallId from a previous call.
+            callStateStore.clearLastSeenCallId(slot.roomId)
+            callLogDebug("[Call][DIAG] Slot closed, cleared lastSeenCallId for room=${slot.roomId.full}")
             refresh(slot.roomId)
             return
         }
@@ -86,25 +101,56 @@ class MatrixRtcService(
             expiresAtMs = member.expiresAtMs,
             isLocal = member.isLocal,
         )
+
+        // Auto-open slot when we see a remote member event with a valid callId
+        // but no slot is currently open. This handles the case where the remote
+        // client (e.g., ElementX) starts a call using only m.rtc.member state events
+        // without publishing a separate m.rtc.slot event. Without this, the
+        // incoming call detection would never trigger because slotOpen stays false.
+        if (!holder.slotOpen && member.callId.isNotBlank() && !member.isLocal) {
+            callLogDebug(
+                "[Call][DIAG] Auto-opening slot from member event: room=${member.roomId.full} " +
+                    "callId=${member.callId} user=${member.userId.full} device=${member.deviceId}"
+            )
+            holder.slotOpen = true
+            holder.activeCallId = member.callId
+            holder.slotId = member.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
+            if (holder.sessionStartedAtMs == 0L) {
+                holder.sessionStartedAtMs = nowMs()
+            }
+        }
+
         refresh(member.roomId)
     }
 
     private fun refresh(roomId: RoomId) {
         val holder = holderFor(roomId)
         val now = nowMs()
-        purgeExpiredParticipants(holder, now)
+        purgeNonActiveAndExpiredParticipants(holder, now)
         val newState = buildState(holder, now)
         holder.state.value = newState
         _allRoomStates.tryEmit(newState)
     }
 
-    private fun purgeExpiredParticipants(holder: RoomHolder, nowMs: Long) {
+    private fun purgeNonActiveAndExpiredParticipants(holder: RoomHolder, nowMs: Long) {
+        val activeCallId = holder.activeCallId
+        val activeSlotId = holder.slotId
         val iterator = holder.participants.iterator()
         while (iterator.hasNext()) {
             val participant = iterator.next().value
-            if (participant.isExpired(nowMs)) {
-                iterator.remove()
-            }
+            // CallId matching for MSC4143 per-device format:
+            // - Participant callId "*" = wildcard, matches any active call
+            // - Participant callId == activeCallId = exact match
+            // - activeCallId == "*" = slot was auto-opened from wildcard member event
+            val callIdMatches = participant.callId == activeCallId ||
+                participant.callId == "*" ||
+                activeCallId == "*"
+            val keepForActiveSession = holder.slotOpen &&
+                !activeCallId.isNullOrBlank() &&
+                participant.slotId == activeSlotId &&
+                callIdMatches
+            val remove = !keepForActiveSession || participant.isExpired(nowMs)
+            if (remove) iterator.remove()
         }
     }
 
@@ -114,15 +160,45 @@ class MatrixRtcService(
             emptyList()
         } else {
             holder.participants.values.filter { participant ->
+                // Same wildcard matching as in purge
+                val callIdMatches = participant.callId == callId ||
+                    participant.callId == "*" ||
+                    callId == "*"
                 participant.slotId == holder.slotId &&
-                    participant.callId == callId &&
+                    callIdMatches &&
                     !participant.isExpired(nowMs)
             }
         }
+
+        val aggregatedParticipants = participants
+            .groupBy { it.userId }
+            .map { (userId, devices) ->
+                val connectedDevicesCount = devices.count { it.connected }
+                val localDevicesCount = devices.count { it.isLocal && it.connected }
+                MatrixRtcAggregatedParticipant(
+                    userId = userId,
+                    deviceParticipants = devices.sortedBy { it.deviceKey() },
+                    devicesCount = devices.size,
+                    connectedDevicesCount = connectedDevicesCount,
+                    localDevicesCount = localDevicesCount,
+                    anyLocal = localDevicesCount > 0,
+                    anyConnected = connectedDevicesCount > 0,
+                )
+            }
+            .sortedBy { it.userId.full }
+
         val localJoined = participants.any { it.isLocal }
         val rtcActive = holder.slotOpen && participants.isNotEmpty()
         val lastSeenCallId = callStateStore.getLastSeenCallId(holder.roomId)
         val incoming = holder.slotOpen && !localJoined && !callId.isNullOrBlank() && callId != lastSeenCallId
+        // DIAGNOSTIC: Log incoming flag computation whenever slotOpen is true
+        if (holder.slotOpen) {
+            callLogDebug(
+                "[Call][DIAG] buildState room=${holder.roomId.full} slotOpen=${holder.slotOpen} " +
+                    "callId=$callId localJoined=$localJoined lastSeenCallId=$lastSeenCallId " +
+                    "incoming=$incoming participants=${participants.size}"
+            )
+        }
         val phase = when {
             incoming -> MatrixRtcCallPhase.INCOMING
             rtcActive -> MatrixRtcCallPhase.IN_CALL
@@ -142,6 +218,8 @@ class MatrixRtcService(
             session = session,
             participants = participants,
             participantsCount = participants.size,
+            aggregatedParticipants = aggregatedParticipants,
+            aggregatedParticipantsCount = aggregatedParticipants.size,
             localJoined = localJoined,
             rtcActive = rtcActive,
             incoming = incoming,

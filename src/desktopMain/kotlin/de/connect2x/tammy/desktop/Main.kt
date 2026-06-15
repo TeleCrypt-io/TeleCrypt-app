@@ -224,8 +224,9 @@ class SsoRuntimeHandler(
             sendNotificationType = null,
             skipLobby = true,
             homeserver = homeserverUrl,
-            callMode = mode,
-            autoJoin = true,
+            hideHeader = true,
+            disableVideo = (mode == "audio"),
+            session = session,
         )
         callLauncher.joinByUrlWithSession(url, session)
     }

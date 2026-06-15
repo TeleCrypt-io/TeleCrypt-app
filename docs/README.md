@@ -8,6 +8,7 @@ we mirror it into the GitHub wiki.
 - ARCHITECTURE.md: high-level architecture and module map
 - CALLS.md: current call approach and known gaps
 - CALLS_PROTOCOL.md: MatrixRTC signaling notes and call state model
+- ANDROID_WIDGET_TESTING.md: how to build, install and test calls on Android
 - CI.md: CI pipelines and required secrets
 
 ## Contributing

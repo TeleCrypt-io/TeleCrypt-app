@@ -1,60 +1,57 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
+import de.connect2x.tammy.telecryptModules.call.callLog
 import de.connect2x.tammy.telecryptModules.call.CallMode
 import de.connect2x.tammy.telecryptModules.call.buildTelecryptCallDeepLink
 import de.connect2x.tammy.telecryptModules.call.callBackend.CallLauncher
 import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallUrl
+import de.connect2x.tammy.telecryptModules.call.callBackend.buildElementCallWidgetUrl
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveElementCallSession
 import de.connect2x.tammy.telecryptModules.call.callBackend.resolveHomeserverUrl
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import io.ktor.client.request.put
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
-import io.ktor.http.Url
-import io.ktor.http.contentType
-import io.ktor.http.encodeURLPath
-import io.ktor.http.isSuccess
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.JsonArray
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.BridgeForwardingRegistry
+import de.connect2x.tammy.telecryptModules.call.widgetBridge.WidgetBridgeManager
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import net.folivo.trixnity.core.model.events.UnknownEventContent
 import net.folivo.trixnity.client.MatrixClient
 import net.folivo.trixnity.core.model.RoomId
 import kotlin.random.Random
 
+/**
+ * Call coordinator that manages the lifecycle of calls.
+ *
+ * IMPORTANT DESIGN DECISION (dual-client fix):
+ * TeleCrypt does NOT publish m.rtc.member events. Only m.rtc.slot events are published
+ * to open/close the call session in the room. Element Call (opened in the browser) is
+ * the sole Matrix client that handles WebRTC media and publishes its own member events
+ * with its own device_id. If TeleCrypt also published member events, remote peers would
+ * see TWO participants (TeleCrypt's signaling ghost + Element Call's real media peer),
+ * causing video/audio to never connect.
+ *
+ * The slot event tells the room "a call is happening"; Element Call's member events
+ * tell the room "this device is participating with media".
+ */
 class CallCoordinatorImpl(
     private val callLauncher: CallLauncher,
     private val watcher: MatrixRtcWatcher,
+    private val widgetBridgeManager: WidgetBridgeManager,
+    private val bridgeRegistry: BridgeForwardingRegistry,
 ) : CallCoordinator {
+    /**
+     * Tracks active call sessions per room. Only stores slot-level info now —
+     * member refresh has been removed (Element Call handles its own membership).
+     *
+     * [bridgeSession] is non-null when the desktop widget bridge is active for this
+     * room — it must be closed when the call ends to release the WS server / port.
+     */
     private data class ActiveCallSession(
         val callId: String,
         val slotId: String,
-        val stickyKey: String,
-        val rtcTransports: List<MatrixRtcTransport>,
-        val refreshJob: Job,
-        val memberSendMode: MemberSendMode,
+        val bridgeSession: WidgetBridgeManager.BridgeSession? = null,
     )
 
-    private sealed class MemberSendMode {
-        data class Sticky(val eventType: String) : MemberSendMode()
-        object StateFallback : MemberSendMode()
-    }
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val activeCalls = mutableMapOf<RoomId, ActiveCallSession>()
-    private var cachedTransports: List<MatrixRtcTransport> = emptyList()
-    private var cachedTransportsAtMs: Long = 0L
-    private val nowMs: () -> Long = ::currentTimeMillis
-    private val forceStateFallback: Boolean = true
 
     override suspend fun startCall(
         matrixClient: MatrixClient,
@@ -71,39 +68,148 @@ class CallCoordinatorImpl(
         val callId = generateCallId()
         val slotId = MATRIX_RTC_DEFAULT_SLOT_ID
         stopActiveSession(matrixClient, roomId, endForAll = false)
+
+        // Clear any stale ghost membership state events left over from previous
+        // sessions (crashes, killed-with-active-call, MSC4140 delayed events that
+        // never fired). Without this, Element Call sees the user already "in"
+        // the call and the room contains zombie participants forever.
+        clearOwnGhostMembership(matrixClient, roomId)
+
+        // Publish slot event to signal "a call is active in this room".
+        // We do NOT publish member events — Element Call handles that.
         publishSlot(matrixClient, roomId, slotId, callId)
-        val transports = resolveRtcTransports(matrixClient)
-        startMemberRefresh(matrixClient, roomId, slotId, callId, transports)
+
         watcher.ackIncoming(roomId, callId)
         val displayName = resolveDisplayName(matrixClient, session.displayName)
-        val homeserverUrl = session.homeserver.ifBlank {
-            resolveHomeserverUrl(matrixClient).ifBlank { "" }
-        }.ifBlank { null }
-        val intent = if (isDirect) "start_call_dm" else "start_call"
+        // Use the server name (from room ID) as the homeserver parameter for Element Call.
+        // Element Call fetches .well-known/matrix/client from this domain to discover
+        // LiveKit transports (rtc_foci). The server name (e.g., "antidote.network") has
+        // the correct .well-known, while the homeserver URL (e.g., "cht.antidote.network")
+        // may not. Element Call will then use the base_url from .well-known for API calls.
+        val serverName = roomId.full.substringAfter(":", "").trim()
+        val homeserverUrl = if (serverName.isNotBlank()) {
+            "https://$serverName"
+        } else {
+            session.homeserver.ifBlank {
+                resolveHomeserverUrl(matrixClient).ifBlank { "" }
+            }.ifBlank { null }
+        }
+        // Element Call v0.19.1 only recognizes: "start_call", "join_existing", "room"
+        // "start_call_dm" is parsed as "unknown" and causes skipLobby to be ignored.
+        val intent = "start_call"
         val sendNotificationType = if (isDirect) "ring" else "notification"
         val waitForCallPickup = isDirect
-        
-        val callUrl = buildElementCallUrl(
+
+        val standaloneUrl = buildElementCallUrl(
             roomId.full,
             roomName,
             displayName,
             intent = intent,
             sendNotificationType = sendNotificationType,
-            skipLobby = false, // Changed to false to prevent camera/mic flickering during init
+            skipLobby = true,
             waitForCallPickup = waitForCallPickup,
             homeserver = homeserverUrl,
-            callMode = mode.name.lowercase(),
-            autoJoin = false, // Changed to false for stability
+            hideHeader = true,
             disableVideo = (mode == CallMode.AUDIO),
+            session = session,
         )
-        println("[Call] Launching Element Call: $callUrl")
-        println(
+
+        val bridgeSession = startWidgetBridge(
+            matrixClient = matrixClient,
+            roomId = roomId,
+            roomName = roomName,
+            displayName = displayName,
+            session = session,
+            homeserverUrl = homeserverUrl,
+            intent = intent,
+            mode = mode,
+        )
+        val urlToOpen = bridgeSession?.hostUrl ?: standaloneUrl
+
+        activeCalls[roomId] = ActiveCallSession(
+            callId = callId,
+            slotId = slotId,
+            bridgeSession = bridgeSession,
+        )
+        if (bridgeSession != null) {
+            bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
+        }
+
+        callLog("[Call] Launching Element Call (widget=${bridgeSession != null}): $urlToOpen")
+        callLog(
             "[Call] Session user=${session.userId} device=${session.deviceId} " +
                 "hs=${session.homeserver}"
         )
-        callLauncher.joinByUrlWithSession(callUrl, session)
+        if (bridgeSession != null) {
+            callLauncher.joinByWidgetUrl(urlToOpen)
+        } else {
+            callLauncher.joinByUrlWithSession(urlToOpen, session)
+        }
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
+    }
+
+    /**
+     * Removes any leftover `m.rtc.member` / `org.matrix.msc3401.call.member`
+     * state events whose `sender` is the local user. These accumulate when
+     * Element Call's MSC4140 delayed "leave" tombstones don't fire (we used
+     * to fake-ack them; even with the new flush-on-teardown logic, prior
+     * crashed sessions may still have ghosts on the server).
+     *
+     * Without this, when the user joins a call EC reads the room state, sees
+     * its own user already "participating", and the room shows duplicate
+     * ghost participants. Worse, EC may refuse to publish a fresh membership.
+     */
+    private suspend fun clearOwnGhostMembership(matrixClient: MatrixClient, roomId: RoomId) {
+        val localUser = matrixClient.userId
+        val memberTypes = setOf(
+            MatrixRtcEventTypes.MEMBER,                 // m.rtc.member
+            MatrixRtcEventTypes.UNSTABLE_MEMBER,        // org.matrix.msc4143.rtc.member
+            MatrixRtcEventTypes.MSC3401_CALL_MEMBER,    // org.matrix.msc3401.call.member
+            "m.call.member",
+        )
+        val state = runCatching { matrixClient.api.room.getState(roomId).getOrThrow() }
+            .onFailure { callLog("[Call] clearOwnGhostMembership: getState failed: ${it.message}") }
+            .getOrNull() ?: return
+
+        var cleared = 0
+        for (evt in state) {
+            if (evt.sender != localUser) continue
+            val content = evt.content
+            // Resolve the event type string regardless of whether the content
+            // was parsed into a typed Trixnity model or is still raw Unknown.
+            val typeStr: String = if (content is UnknownEventContent) {
+                content.eventType
+            } else {
+                // Trixnity strips the wire `type` for typed contents — fall back
+                // to class-name heuristics. For MSC3401/MSC4143 we always get
+                // UnknownEventContent (no model), so this branch is rare.
+                content::class.simpleName.orEmpty()
+            }
+            if (typeStr !in memberTypes) continue
+            // Skip if already cleared (empty raw content).
+            if (content is UnknownEventContent && content.raw == JsonObject(emptyMap())) continue
+            val stateKey = evt.stateKey
+            val ok = runCatching {
+                matrixClient.api.room.sendStateEvent(
+                    roomId,
+                    UnknownEventContent(JsonObject(emptyMap()), typeStr),
+                    stateKey,
+                )
+                true
+            }.onFailure {
+                callLog("[Call] clearOwnGhostMembership: sendStateEvent type=$typeStr stateKey=$stateKey failed: ${it.message}")
+            }.getOrDefault(false)
+            if (ok) {
+                cleared++
+                callLog("[Call] clearOwnGhostMembership: cleared type=$typeStr stateKey=$stateKey")
+            }
+        }
+        if (cleared > 0) {
+            callLog("[Call] clearOwnGhostMembership: cleared $cleared stale ghost member state event(s) for ${localUser.full} in ${roomId.full}")
+        } else {
+            callLog("[Call] clearOwnGhostMembership: no stale ghosts found for ${localUser.full} in ${roomId.full}")
+        }
     }
 
     override suspend fun joinCall(
@@ -126,31 +232,64 @@ class CallCoordinatorImpl(
         val callId = sessionState.callId
         val slotId = sessionState.slotId.ifBlank { MATRIX_RTC_DEFAULT_SLOT_ID }
         stopActiveSession(matrixClient, roomId, endForAll = false)
-        val transports = resolveRtcTransports(matrixClient)
-        startMemberRefresh(matrixClient, roomId, slotId, callId, transports)
+
+        // Clear our own stale ghost members before EC reads room state.
+        clearOwnGhostMembership(matrixClient, roomId)
+
+        // No member publishing — Element Call handles its own membership.
         watcher.ackIncoming(roomId, callId)
         val displayName = resolveDisplayName(matrixClient, session.displayName)
-        val homeserverUrl = session.homeserver.ifBlank {
-            resolveHomeserverUrl(matrixClient).ifBlank { "" }
-        }.ifBlank { null }
-        
-        // Fix: for incoming calls, NEVER skip lobby or auto-join.
-        // This gives the user time to see the lobby and press Join in the browser.
-        val callUrl = buildElementCallUrl(
+        // Use server name for homeserver param (same logic as startCall)
+        val serverName = roomId.full.substringAfter(":", "").trim()
+        val homeserverUrl = if (serverName.isNotBlank()) {
+            "https://$serverName"
+        } else {
+            session.homeserver.ifBlank {
+                resolveHomeserverUrl(matrixClient).ifBlank { "" }
+            }.ifBlank { null }
+        }
+
+        val standaloneUrl = buildElementCallUrl(
             roomId.full,
             roomName,
             displayName,
             intent = "join_existing",
             sendNotificationType = null,
-            skipLobby = false, 
+            skipLobby = true,
             waitForCallPickup = false,
             homeserver = homeserverUrl,
-            callMode = mode.name.lowercase(),
-            autoJoin = false,
+            hideHeader = true,
             disableVideo = (mode == CallMode.AUDIO),
+            session = session,
         )
-        println("[Call] Joining Element Call: $callUrl")
-        callLauncher.joinByUrlWithSession(callUrl, session)
+
+        val bridgeSession = startWidgetBridge(
+            matrixClient = matrixClient,
+            roomId = roomId,
+            roomName = roomName,
+            displayName = displayName,
+            session = session,
+            homeserverUrl = homeserverUrl,
+            intent = "join_existing",
+            mode = mode,
+        )
+        val urlToOpen = bridgeSession?.hostUrl ?: standaloneUrl
+
+        activeCalls[roomId] = ActiveCallSession(
+            callId = callId,
+            slotId = slotId,
+            bridgeSession = bridgeSession,
+        )
+        if (bridgeSession != null) {
+            bridgeRegistry.register(matrixClient.userId, roomId, bridgeSession)
+        }
+
+        callLog("[Call] Joining Element Call (widget=${bridgeSession != null}): $urlToOpen")
+        if (bridgeSession != null) {
+            callLauncher.joinByWidgetUrl(urlToOpen)
+        } else {
+            callLauncher.joinByUrlWithSession(urlToOpen, session)
+        }
         val deepLink = buildTelecryptCallDeepLink(roomId.full, roomName, mode)
         return CallStartResult(ok = true, deepLink = deepLink)
     }
@@ -173,64 +312,78 @@ class CallCoordinatorImpl(
         endForAll: Boolean,
     ): Boolean {
         val session = activeCalls.remove(roomId) ?: return false
-        session.refreshJob.cancel()
-        publishMember(
-            matrixClient,
-            roomId,
-            session.slotId,
-            session.callId,
-            session.stickyKey,
-            session.rtcTransports,
-            disconnected = true,
-            sendMode = session.memberSendMode,
-        )
+        // Unregister from forwarding registry BEFORE closing the bridge.
+        if (session.bridgeSession != null) {
+            bridgeRegistry.unregister(matrixClient.userId, roomId)
+        }
+        // Tear down widget bridge (closes WS server, releases port).
+        runCatching { session.bridgeSession?.close() }
+            .onFailure { callLog("[Call] bridgeSession.close() failed: ${it.message}") }
+        // No member disconnect event needed — Element Call sends its own disconnect
+        // when the browser tab/window closes.
         if (endForAll) {
+            // Close the slot to signal "call ended for everyone"
             publishSlot(matrixClient, roomId, session.slotId, null)
         }
         return true
     }
 
-    private suspend fun startMemberRefresh(
+    /**
+     * Поднимает widget‑bridge (если платформа поддерживает) и возвращает [BridgeSession].
+     * На non‑desktop платформах (NoopWidgetBridgeManager) вернёт `null`, и caller
+     * откатится на обычный standalone‑URL — это фоллбек, чтобы не сломать существующее
+     * поведение android/web.
+     */
+    private suspend fun startWidgetBridge(
         matrixClient: MatrixClient,
         roomId: RoomId,
-        slotId: String,
-        callId: String,
-        rtcTransports: List<MatrixRtcTransport>,
-    ) {
-        val stickyKey = buildStickyKey(matrixClient)
-        val sendMode = publishMember(
-            matrixClient,
-            roomId,
-            slotId,
-            callId,
-            stickyKey,
-            rtcTransports,
-            disconnected = false,
-            sendMode = null,
-        )
-        val refreshJob = scope.launch {
-            while (isActive) {
-                delay(MEMBER_REFRESH_MS)
-                publishMember(
-                    matrixClient,
-                    roomId,
-                    slotId,
-                    callId,
-                    stickyKey,
-                    rtcTransports,
-                    disconnected = false,
-                    sendMode = sendMode,
+        roomName: String,
+        displayName: String,
+        session: de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallSession,
+        homeserverUrl: String?,
+        intent: String,
+        mode: CallMode,
+    ): WidgetBridgeManager.BridgeSession? {
+        val baseUrl = homeserverUrl?.trimEnd('/') ?: session.homeserver.ifBlank {
+            resolveHomeserverUrl(matrixClient)
+        }.trimEnd('/')
+        if (baseUrl.isBlank()) {
+            callLog("[Call] startWidgetBridge: blank baseUrl, skipping widget mode")
+            return null
+        }
+        val plainUserId = session.userId
+        val plainDeviceId = session.deviceId
+        if (plainUserId.isBlank() || plainDeviceId.isBlank()) {
+            callLog("[Call] startWidgetBridge: blank userId/deviceId, skipping widget mode")
+            return null
+        }
+        return runCatching {
+            widgetBridgeManager.start(
+                matrixClient = matrixClient,
+                roomId = roomId,
+                userId = plainUserId,
+                deviceId = plainDeviceId,
+                baseUrl = baseUrl,
+            ) { parentUrl, widgetId ->
+                buildElementCallWidgetUrl(
+                    widgetId = widgetId,
+                    parentUrl = parentUrl,
+                    userId = plainUserId,
+                    deviceId = plainDeviceId,
+                    baseUrl = baseUrl,
+                    roomId = roomId.full,
+                    roomName = roomName,
+                    displayName = displayName,
+                    skipLobby = true,
+                    hideHeader = true,
+                    disableAudio = false,
+                    disableVideo = (mode == CallMode.AUDIO),
+                    intent = intent,
                 )
             }
-        }
-        activeCalls[roomId] = ActiveCallSession(
-            callId = callId,
-            slotId = slotId,
-            stickyKey = stickyKey,
-            rtcTransports = rtcTransports,
-            refreshJob = refreshJob,
-            memberSendMode = sendMode,
-        )
+        }.onFailure {
+            callLog("[Call] widgetBridgeManager.start() failed: ${it.message}")
+        }.getOrNull()
     }
 
     private suspend fun publishSlot(
@@ -246,7 +399,7 @@ class CallCoordinatorImpl(
         if (sendSlotStateEvent(matrixClient, roomId, slotId, content, MatrixRtcEventTypes.UNSTABLE_SLOT)) {
             return
         }
-        println("[Call] Failed to publish slot with both stable and unstable event types.")
+        callLog("[Call] Failed to publish slot with both stable and unstable event types.")
     }
 
     private suspend fun sendSlotStateEvent(
@@ -261,121 +414,8 @@ class CallCoordinatorImpl(
             matrixClient.api.room.sendStateEvent(roomId, event, slotId)
             true
         }.onFailure { error ->
-            println("[Call] Failed to publish slot type=$eventType: ${error.message}")
+            callLog("[Call] Failed to publish slot type=$eventType: ${error.message}")
         }.getOrDefault(false)
-    }
-
-    private suspend fun publishMember(
-        matrixClient: MatrixClient,
-        roomId: RoomId,
-        slotId: String,
-        callId: String,
-        stickyKey: String,
-        rtcTransports: List<MatrixRtcTransport>,
-        disconnected: Boolean,
-        sendMode: MemberSendMode?,
-    ): MemberSendMode {
-        val content = buildMemberContent(
-            matrixClient = matrixClient,
-            slotId = slotId,
-            callId = callId,
-            stickyKey = stickyKey,
-            rtcTransports = rtcTransports,
-            disconnected = disconnected,
-        )
-        val mode = sendMode ?: resolveMemberSendMode(matrixClient, roomId, content)
-        if (sendMode == null) {
-            if (mode is MemberSendMode.Sticky && forceStateFallback) {
-                sendMemberStateFallback(matrixClient, roomId, stickyKey, content)
-            }
-            return mode
-        }
-        when (mode) {
-            is MemberSendMode.Sticky -> {
-                val sent = sendStickyMemberEvent(
-                    matrixClient,
-                    roomId,
-                    mode.eventType,
-                    content,
-                    MEMBER_TTL_MS,
-                )
-                if (!sent) {
-                    println("[Call] Failed to publish sticky member event.")
-                } else if (forceStateFallback) {
-                    sendMemberStateFallback(matrixClient, roomId, stickyKey, content)
-                }
-            }
-            MemberSendMode.StateFallback -> {
-                sendMemberStateFallback(matrixClient, roomId, stickyKey, content)
-            }
-        }
-        return mode
-    }
-
-    private suspend fun resolveMemberSendMode(
-        matrixClient: MatrixClient,
-        roomId: RoomId,
-        content: JsonObject,
-    ): MemberSendMode {
-        if (sendStickyMemberEvent(
-                matrixClient,
-                roomId,
-                MatrixRtcEventTypes.MEMBER,
-                content,
-                MEMBER_TTL_MS,
-            )
-        ) {
-            println("[Call] RTC member send: sticky ${MatrixRtcEventTypes.MEMBER}")
-            return MemberSendMode.Sticky(MatrixRtcEventTypes.MEMBER)
-        }
-        if (sendStickyMemberEvent(
-                matrixClient,
-                roomId,
-                MatrixRtcEventTypes.UNSTABLE_MEMBER,
-                content,
-                MEMBER_TTL_MS,
-            )
-        ) {
-            println("[Call] RTC member send: sticky ${MatrixRtcEventTypes.UNSTABLE_MEMBER}")
-            return MemberSendMode.Sticky(MatrixRtcEventTypes.UNSTABLE_MEMBER)
-        }
-        println("[Call] RTC member send: state fallback")
-        sendMemberStateFallback(matrixClient, roomId, content.string("sticky_key"), content)
-        return MemberSendMode.StateFallback
-    }
-
-    private suspend fun sendStickyMemberEvent(
-        matrixClient: MatrixClient,
-        roomId: RoomId,
-        eventType: String,
-        content: JsonObject,
-        stickyDurationMs: Long,
-    ): Boolean {
-        val baseUrl = matrixClient.api.baseClient.baseUrl ?: return false
-        val url = buildStickySendUrl(baseUrl, roomId.full, eventType, buildTxnId(), stickyDurationMs)
-        val body = matrixClient.api.json.encodeToString(JsonObject.serializer(), content)
-        val response = runCatching {
-            matrixClient.api.baseClient.baseClient.put(url) {
-                contentType(ContentType.Application.Json)
-                setBody(body)
-            }
-        }.getOrNull() ?: return false
-        return response.status.isSuccess()
-    }
-
-    private suspend fun sendMemberStateFallback(
-        matrixClient: MatrixClient,
-        roomId: RoomId,
-        stickyKey: String?,
-        content: JsonObject,
-    ) {
-        val stateKey = stickyKey?.takeIf { it.isNotBlank() } ?: STICKY_KEY_PREFIX
-        val event = UnknownEventContent(content, MatrixRtcEventTypes.MEMBER)
-        runCatching {
-            matrixClient.api.room.sendStateEvent(roomId, event, stateKey)
-        }.onFailure { error ->
-            println("[Call] Failed to publish member: ${error.message}")
-        }
     }
 
     private fun buildSlotContent(callId: String): JsonObject {
@@ -392,121 +432,15 @@ class CallCoordinatorImpl(
         }
     }
 
-    private fun buildMemberContent(
-        matrixClient: MatrixClient,
-        slotId: String,
-        callId: String,
-        stickyKey: String,
-        rtcTransports: List<MatrixRtcTransport>,
-        disconnected: Boolean,
-    ): JsonObject {
-        val userId = matrixClient.userId.full
-        val deviceId = matrixClient.deviceId
-        val expiresAtMs = nowMs() + MEMBER_TTL_MS
-        val member = buildJsonObject {
-            put("id", JsonPrimitive(stickyKey))
-            val deviceValue = deviceId.takeIf { it.isNotBlank() }
-            if (deviceValue != null) {
-                put("claimed_device_id", JsonPrimitive(deviceValue))
-            }
-            put("claimed_user_id", JsonPrimitive(userId))
-        }
-        val callObject = buildJsonObject {
-            put("id", JsonPrimitive(callId))
-        }
-        val application = buildJsonObject {
-            put("type", JsonPrimitive("m.call"))
-            put("m.call", callObject)
-        }
-        return buildJsonObject {
-            put("slot_id", JsonPrimitive(slotId))
-            put("application", application)
-            put("member", member)
-            put("rtc_transports", encodeRtcTransports(rtcTransports))
-            put("sticky_key", JsonPrimitive(stickyKey))
-            put("expires_ts", JsonPrimitive(expiresAtMs))
-            if (disconnected) {
-                put("disconnected", JsonPrimitive(true))
-            }
-        }
-    }
-
-    private fun buildStickyKey(matrixClient: MatrixClient): String {
-        val device = matrixClient.deviceId.trim()
-        return if (device.isNotEmpty()) {
-            "$STICKY_KEY_PREFIX-$device"
-        } else {
-            "$STICKY_KEY_PREFIX-${generateCallId()}"
-        }
-    }
-
     private fun generateCallId(): String {
         val bytes = ByteArray(16) { Random.nextInt(0, 256).toByte() }
         bytes[6] = (bytes[6].toInt() and 0x0F or 0x40).toByte()
         bytes[8] = (bytes[8].toInt() and 0x3F or 0x80).toByte()
-        return bytes.joinToString(separator = "") { "%02x".format(it.toInt() and 0xFF) }
+        return bytes.joinToString(separator = "") { (it.toInt() and 0xFF).toString(16).padStart(2, '0') }
             .replaceFirst(
                 "(.{8})(.{4})(.{4})(.{4})(.{12})".toRegex(),
                 "$1-$2-$3-$4-$5",
             )
-    }
-
-    private fun buildTxnId(): String {
-        val suffix = generateCallId()
-        return "rtc-$suffix"
-    }
-
-    private fun buildStickySendUrl(
-        baseUrl: Url,
-        roomId: String,
-        eventType: String,
-        txnId: String,
-        stickyDurationMs: Long,
-    ): String {
-        val base = baseUrl.toString().trimEnd('/')
-        val encodedRoomId = roomId.encodeURLPath()
-        val encodedEventType = eventType.encodeURLPath()
-        val encodedTxnId = txnId.encodeURLPath()
-        val path =
-            "/_matrix/client/v3/rooms/$encodedRoomId/send/$encodedEventType/$encodedTxnId"
-        return "$base$path?org.matrix.msc4354.sticky_duration_ms=$stickyDurationMs"
-    }
-
-    private suspend fun resolveRtcTransports(matrixClient: MatrixClient): List<MatrixRtcTransport> {
-        val now = nowMs()
-        if (cachedTransports.isNotEmpty() && now - cachedTransportsAtMs < TRANSPORT_CACHE_MS) {
-            return cachedTransports
-        }
-        val transports = runCatching { discoverRtcTransports(matrixClient) }
-            .getOrDefault(emptyList())
-        if (transports.isNotEmpty()) {
-            cachedTransports = transports
-            cachedTransportsAtMs = now
-        }
-        return transports
-    }
-
-    private fun encodeRtcTransports(transports: List<MatrixRtcTransport>): JsonArray {
-        if (transports.isEmpty()) {
-            return JsonArray(emptyList())
-        }
-        return buildJsonArray {
-            transports.forEach { transport ->
-                add(
-                    buildJsonObject {
-                        put("type", JsonPrimitive(transport.type))
-                        transport.uri?.let { put("uri", JsonPrimitive(it)) }
-                        if (transport.params.isNotEmpty()) {
-                            put("params", transport.params)
-                        }
-                    }
-                )
-            }
-        }
-    }
-
-    private fun JsonObject.string(key: String): String? {
-        return (get(key) as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
     }
 }
 
@@ -517,8 +451,4 @@ private fun resolveDisplayName(matrixClient: MatrixClient, sessionName: String):
     return displayName.ifEmpty { matrixClient.userId.full }
 }
 
-private const val MEMBER_TTL_MS = 20_000L
-private const val MEMBER_REFRESH_MS = 10_000L
-private const val TRANSPORT_CACHE_MS = 5 * 60_000L
-private const val STICKY_KEY_PREFIX = "telecrypt"
 private const val ELEMENT_CALL_BASE_URL = "https://call.element.io"

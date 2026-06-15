@@ -55,6 +55,50 @@ jobs:
             echo "APPLE_KEYCHAIN_FILE_BASE64: missing"
           fi
 
+  test:
+    name: Unit Tests (commonTest + desktopTest)
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fix permissions
+        run: chmod +x gradlew tools/*.sh
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Cache Gradle state
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle/caches
+            .gradle/wrapper
+            .gradle/configuration-cache
+          key: ${{ runner.os }}-gradle-${{ hashFiles('gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Run unit tests
+        run: ./gradlew --stacktrace desktopTest
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/
+          if-no-files-found: ignore
+
   android:
     name: Android Release Build
     runs-on: ubuntu-latest

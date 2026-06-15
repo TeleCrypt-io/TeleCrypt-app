@@ -1,4 +1,4 @@
-package de.connect2x.tammy.trixnityProposal.callRtc
+package de.connect2x.tammy.trixnity.callRtc
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -8,6 +8,25 @@ import net.folivo.trixnity.core.model.RoomId
 import net.folivo.trixnity.core.model.UserId
 import kotlin.runCatching
 
+/**
+ * Parses the canonical MSC4143 `m.rtc.slot` / `m.rtc.member` JSON payloads into
+ * normalized domain models.
+ *
+ * This mirrors, field-for-field, the typed event content we authored and merged
+ * upstream into the trixnity fork `de.connect2x.trixnity`
+ * (`de.connect2x.trixnity.core.model.events.m.rtc`):
+ *   - [parseSlotEvent]   <-> `RtcSlotEventContent` (+ `CallApplication`)
+ *   - [parseMemberEvent] <-> `RtcMemberEventContent`:
+ *       `slot_id` -> slotId, `sticky_key`/`msc4354_sticky_key` -> stickyKey,
+ *       `application` (`CallApplication`, `m.call.id`) -> callId,
+ *       `member.{id,claimed_user_id,claimed_device_id}` -> userId/deviceId,
+ *       `rtc_transports` -> connected, `disconnected` -> disconnect.
+ *
+ * NOTE: the LEGACY pre-MSC4143 payload that Element Call actually emits today
+ * (`org.matrix.msc3401.call.member` with `foci_preferred`/`focus_active`/`expires`)
+ * is parsed separately in [MatrixRtcSyncEventHandler]; this parser handles the
+ * upstream-shaped `m.rtc.member` events.
+ */
 object MatrixRtcEventParser {
     fun parseSlotEvent(
         roomId: RoomId,
@@ -145,6 +164,18 @@ object MatrixRtcEventParser {
         )
     }
 
+    /**
+     * Validates whether a member event represents a valid "connected" participant.
+     *
+     * NOTE: The stickyKey != memberId check has been relaxed. Different Matrix clients
+     * use different naming conventions for member IDs:
+     * - TeleCrypt uses "telecrypt-DEVICEID"
+     * - Element Call uses "_DEVICEID" or "device:DEVICEID"
+     * - Other clients may use other formats
+     *
+     * Requiring exact match between stickyKey and memberId would reject valid events
+     * from other clients. We now only require that both are non-blank.
+     */
     private fun isValidConnectEvent(
         slotId: String,
         stickyKey: String,
@@ -155,7 +186,8 @@ object MatrixRtcEventParser {
         if (slotId.isBlank()) return false
         if (callId.isNullOrBlank()) return false
         if (memberId.isNullOrBlank()) return false
-        if (stickyKey != memberId) return false
+        // Relaxed: do NOT require stickyKey == memberId.
+        // Different clients use different naming conventions.
         if (rtcTransports == null) return false
         if (rtcTransports.isEmpty()) return false
         val hasAnyTypedTransport = rtcTransports.any { element ->
