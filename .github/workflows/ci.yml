@@ -730,6 +730,11 @@ jobs:
           echo "IOS_IPA_PATH=${IPA_ABS}" >> "$GITHUB_ENV"
 
       - name: Fastlane iOS beta (optional upload)
+        # Apple now requires uploads built with the iOS 26 SDK (Xcode 26+); the
+        # runner still ships Xcode 16.x, so TestFlight upload is rejected (409).
+        # Keep it non-blocking until the runner/Xcode is bumped — the build and
+        # archive steps above still validate the iOS target.
+        continue-on-error: true
         if: env.UPLOAD_TO_STORES == 'true' && github.ref == 'refs/heads/main'
         run: bundle exec fastlane ios beta
 
