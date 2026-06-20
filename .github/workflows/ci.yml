@@ -88,8 +88,32 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Run unit tests
-        run: ./gradlew --stacktrace desktopTest
+      - name: Run unit tests + coverage
+        run: ./gradlew --stacktrace desktopTest koverXmlReport koverHtmlReport
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET, glob, sys
+          files = glob.glob("build/reports/kover/report.xml")
+          if not files:
+              print("No coverage report found."); sys.exit(0)
+          t = ET.parse(files[0]).getroot()
+          def cov(ty):
+              for c in t.findall('counter'):
+                  if c.get('type') == ty:
+                      cv = int(c.get('covered')); mis = int(c.get('missed')); to = cv + mis
+                      return cv, to, (100 * cv / to if to else 0)
+              return 0, 0, 0
+          lc, lt, lp = cov('LINE'); bc, bt, bp = cov('BRANCH')
+          print("## Call-logic coverage (unit-testable)")
+          print("")
+          print("| Metric | Covered | Total | % |")
+          print("|---|---|---|---|")
+          print(f"| Lines | {lc} | {lt} | **{lp:.1f}%** |")
+          print(f"| Branches | {bc} | {bt} | **{bp:.1f}%** |")
+          PY
 
       - name: Upload test reports
         if: always()
@@ -97,6 +121,14 @@ jobs:
         with:
           name: test-reports
           path: build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/reports/kover/
           if-no-files-found: ignore
 
   android:
