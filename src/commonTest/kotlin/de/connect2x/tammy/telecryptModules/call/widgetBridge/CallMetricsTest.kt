@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -32,6 +34,19 @@ class CallMetricsTest {
         val first = m.phaseMs(CallPhase.JOIN_SENT)
         m.mark(CallPhase.JOIN_SENT)
         assertEquals(first, m.phaseMs(CallPhase.JOIN_SENT))
+    }
+
+    @Test
+    fun jsonLineHasSchemaLatencyAndCounters() {
+        val m = CallMetrics()
+        m.mark(CallPhase.JOIN_SENT)
+        m.inc(CallCounter.KEY_SENT)
+        val obj = kotlinx.serialization.json.Json.parseToJsonElement(m.toJsonLine()).jsonObject
+        assertEquals("telecrypt.call.metrics/v1", obj["schema"]!!.jsonPrimitive.content)
+        assertNotNull(obj["latency_ms"]!!.jsonObject["join_sent"])
+        assertEquals("1", obj["counters"]!!.jsonObject["key_sent"]!!.jsonPrimitive.content)
+        // an un-marked phase serializes as JSON null
+        assertTrue(obj["latency_ms"]!!.jsonObject["call_end"] is kotlinx.serialization.json.JsonNull)
     }
 
     @Test

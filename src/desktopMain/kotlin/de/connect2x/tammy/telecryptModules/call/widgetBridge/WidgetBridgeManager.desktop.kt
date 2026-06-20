@@ -153,6 +153,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 if (metrics.phaseMs(CallPhase.CALL_END) == null) {
                     metrics.mark(CallPhase.CALL_END)
                     metrics.summaryLines().forEach { callLog(it) }
+                    appendMetricsLine(metrics.toJsonLine())
                 }
                 runCatching { server.close() }
             }
@@ -532,3 +533,19 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
 
 private val kotlinx.serialization.json.JsonPrimitive.contentOrNull: String?
     get() = if (this is kotlinx.serialization.json.JsonNull) null else content
+
+/**
+ * Appends a per-call metrics JSON line for offline aggregation. Path defaults to
+ * ~/.telecrypt/call-metrics.jsonl and can be overridden via TELECRYPT_METRICS_FILE.
+ * Best-effort: failures are logged and never affect call teardown.
+ */
+private fun appendMetricsLine(jsonLine: String) {
+    runCatching {
+        val path = System.getenv("TELECRYPT_METRICS_FILE")
+            ?: (System.getProperty("user.home") + "/.telecrypt/call-metrics.jsonl")
+        val file = java.io.File(path)
+        file.parentFile?.mkdirs()
+        file.appendText(jsonLine + "\n")
+        callLog("[WidgetBridgeManager] call metrics appended -> $path")
+    }.onFailure { callLog("[WidgetBridgeManager] metrics export failed (non-fatal): ${it.message}") }
+}

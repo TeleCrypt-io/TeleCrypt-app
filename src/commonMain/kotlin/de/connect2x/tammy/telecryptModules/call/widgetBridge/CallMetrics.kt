@@ -1,5 +1,10 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
 import kotlin.time.TimeSource
 
 /** Phases of a call, timestamped once each (ms since bridge start). */
@@ -55,6 +60,22 @@ class CallMetrics {
     fun count(counter: CallCounter): Long = counters[counter.ordinal]
 
     fun phaseMs(phase: CallPhase): Long? = phaseAt[phase.ordinal]
+
+    /**
+     * One-line JSON record of this call (JSON Lines format) for offline
+     * aggregation across many calls. Phases are ms-since-bridge-start or null.
+     */
+    fun toJsonLine(): String = buildJsonObject {
+        put("schema", JsonPrimitive("telecrypt.call.metrics/v1"))
+        putJsonObject("latency_ms") {
+            for (p in CallPhase.entries) {
+                put(p.name.lowercase(), phaseAt[p.ordinal]?.let { JsonPrimitive(it) } ?: JsonNull)
+            }
+        }
+        putJsonObject("counters") {
+            for (c in CallCounter.entries) put(c.name.lowercase(), JsonPrimitive(counters[c.ordinal]))
+        }
+    }.toString()
 
     /** Render the metrics as aligned lines suitable for a log block / slide. */
     fun summaryLines(): List<String> {
