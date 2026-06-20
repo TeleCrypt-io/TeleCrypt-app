@@ -114,6 +114,13 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             widgetId = widgetId,
             elementCallUrl = "about:blank",
             handlerFactory = handlerFactory,
+            onWebRtcStats = { text ->
+                runCatching {
+                    val arr = Json.parseToJsonElement(text).jsonObject["stats"]
+                        as? kotlinx.serialization.json.JsonArray
+                    if (arr != null) metrics.recordQuality(WebRtcStatsParser.parse(arr))
+                }
+            },
         )
         server.start()
 

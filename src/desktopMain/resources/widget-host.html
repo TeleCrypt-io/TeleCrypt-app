@@ -156,6 +156,11 @@
     // Сообщения от iframe (EC) → Kotlin
     window.addEventListener('message', (ev) => {
       if (!ev.data || typeof ev.data !== 'object') return;
+      // WebRTC quality stats from the injected collector (any frame) → bridge.
+      if (ev.data.type === 'telecrypt-webrtc-stats') {
+        sendToBridge(ev.data);
+        return;
+      }
       // Принимаем только сообщения, у которых есть widget-api маркеры.
       if (ev.data.api !== 'fromWidget' && ev.data.api !== 'toWidget') {
         // Логируем «чужие» сообщения только если они от нашего iframe — поможет отлаживать.

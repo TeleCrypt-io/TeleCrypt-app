@@ -50,6 +50,22 @@ class CallMetricsTest {
     }
 
     @Test
+    fun recordedQualityAppearsInJsonAndSummary() {
+        val m = CallMetrics()
+        m.recordQuality(
+            WebRtcQuality(
+                rttMs = 40.0, jitterMs = 5.0, packetsReceived = 990, packetsLost = 10,
+                framesPerSecond = 30.0, frameWidth = 1280, frameHeight = 720,
+            ),
+        )
+        val q = kotlinx.serialization.json.Json.parseToJsonElement(m.toJsonLine())
+            .jsonObject["quality"]!!.jsonObject
+        assertEquals("40.0", q["rtt_ms"]!!.jsonPrimitive.content)
+        assertEquals("1280x720", q["resolution"]!!.jsonPrimitive.content)
+        assertTrue(m.summaryLines().any { it.contains("WebRTC") })
+    }
+
+    @Test
     fun summaryReflectsCountersAndPhases() {
         val m = CallMetrics()
         m.inc(CallCounter.KEY_SENT)

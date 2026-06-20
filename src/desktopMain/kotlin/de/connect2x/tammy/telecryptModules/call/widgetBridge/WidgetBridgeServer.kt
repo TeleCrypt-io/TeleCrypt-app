@@ -33,6 +33,9 @@ class WidgetBridgeServer(
     @Volatile private var elementCallUrl: String,
     private val handlerFactory: () -> WidgetApiHandler,
     private val onConnected: (WidgetSession) -> Unit = {},
+    // Receives raw WebRTC stats envelopes ({"type":"telecrypt-webrtc-stats",...})
+    // forwarded by the host page; routed out-of-band from the Widget API.
+    private val onWebRtcStats: (String) -> Unit = {},
 ) : AutoCloseable {
 
     fun setElementCallUrl(url: String) {
@@ -349,6 +352,10 @@ class WidgetBridgeServer(
                         if (frame.opcode == 0x8) break
                         if (frame.opcode == 0x1 || frame.opcode == 0x0) {
                             val text = String(frame.payload, StandardCharsets.UTF_8)
+                            if (text.contains("telecrypt-webrtc-stats")) {
+                                runCatching { onWebRtcStats(text) }
+                                continue
+                            }
                             val replies = runCatching { handler.handleMessage(text) }
                                 .getOrElse {
                                     callLog("[WidgetBridge] handler error: ${it.message}")
