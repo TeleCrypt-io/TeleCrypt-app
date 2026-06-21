@@ -311,21 +311,29 @@ class CallCoordinatorImpl(
         roomId: RoomId,
         endForAll: Boolean,
     ): Boolean {
-        val session = activeCalls.remove(roomId) ?: return false
+        val session = activeCalls.remove(roomId)
         // Unregister from forwarding registry BEFORE closing the bridge.
-        if (session.bridgeSession != null) {
+        if (session?.bridgeSession != null) {
             bridgeRegistry.unregister(matrixClient.userId, roomId)
         }
         // Tear down widget bridge (closes WS server, releases port).
-        runCatching { session.bridgeSession?.close() }
+        runCatching { session?.bridgeSession?.close() }
             .onFailure { callLog("[Call] bridgeSession.close() failed: ${it.message}") }
-        // No member disconnect event needed — Element Call sends its own disconnect
-        // when the browser tab/window closes.
-        if (endForAll) {
+        // Stop the Element Call browser so it can't keep our membership alive or
+        // re-publish it right after we clear it below.
+        runCatching { callLauncher.hangUp() }
+        // Force-clear our own m.call.member so `localJoined` drops immediately and
+        // the room header returns to "start/join" — even when EC didn't send a
+        // clean disconnect (browser force-killed, or the app-side End-call button).
+        // Runs even with no tracked session, so End-call always recovers a stuck
+        // "joined" state.
+        runCatching { clearOwnGhostMembership(matrixClient, roomId) }
+            .onFailure { callLog("[Call] stopActiveSession: clearOwnGhostMembership failed: ${it.message}") }
+        if (endForAll && session != null) {
             // Close the slot to signal "call ended for everyone"
             publishSlot(matrixClient, roomId, session.slotId, null)
         }
-        return true
+        return session != null
     }
 
     /**

@@ -36,6 +36,13 @@ interface CallLauncher {
     }
 
     /**
+     * Tear down the current call browser/window, if any. Used on leave so the
+     * embedded Element Call stops and can no longer re-publish our membership.
+     * Default no-op for platforms that manage their call surface differently.
+     */
+    fun hangUp() {}
+
+    /**
      * Check if Element Call is available for the given room
      * @param roomId The Matrix room ID to check
      * @return true if Element Call can be launched for this room
