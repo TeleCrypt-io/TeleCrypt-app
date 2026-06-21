@@ -36,6 +36,20 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         widgetEcUrlBuilder: (parentUrl: String, widgetId: String) -> String,
     ): WidgetBridgeManager.BridgeSession {
         val metrics = CallMetrics()
+        // Flush per-call metrics to the JSONL file exactly once, no matter which
+        // teardown path fires first (EC hang-up via io.element.close, or the
+        // app-side bridge close). Without the once-guard the CALL_END marker set
+        // by the handler would make close() skip the file write.
+        val metricsFlushed = java.util.concurrent.atomic.AtomicBoolean(false)
+        val flushMetrics = {
+            if (metricsFlushed.compareAndSet(false, true)) {
+                if (metrics.phaseMs(CallPhase.CALL_END) == null) {
+                    metrics.mark(CallPhase.CALL_END)
+                    metrics.summaryLines().forEach { callLog(it) }
+                }
+                appendMetricsLine(metrics.toJsonLine())
+            }
+        }
         // Clear any stale m.call.member left by a previous crash of this device.
         // Runs before the bridge server starts, so EC hasn't connected yet and
         // cannot race with its own join event.
@@ -105,7 +119,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
                 matrixSendMessageEvent = sendMessageEvent,
                 matrixReadStateEvents = readStateEvents,
                 matrixGetOpenIdToken = getOpenIdToken,
-                onClose = { ElementCallLauncherImpl.closeCurrent() },
+                onClose = { flushMetrics(); ElementCallLauncherImpl.closeCurrent() },
                 metrics = metrics,
             )
         }
@@ -157,11 +171,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             }
 
             override fun close() {
-                if (metrics.phaseMs(CallPhase.CALL_END) == null) {
-                    metrics.mark(CallPhase.CALL_END)
-                    metrics.summaryLines().forEach { callLog(it) }
-                    appendMetricsLine(metrics.toJsonLine())
-                }
+                flushMetrics()
                 runCatching { server.close() }
             }
         }
