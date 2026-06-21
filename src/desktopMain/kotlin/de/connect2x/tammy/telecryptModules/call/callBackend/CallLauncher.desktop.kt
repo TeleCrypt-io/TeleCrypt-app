@@ -14,6 +14,45 @@ import kotlin.concurrent.thread
 
 private const val CALL_WINDOW_TITLE = "TeleCrypt Call"
 
+/**
+ * Injected (via CDP, at document-start, into every frame) WebRTC quality
+ * collector. Wraps RTCPeerConnection to track instances, polls getStats() every
+ * 2s, and posts a compact stats array to window.top — the host page forwards it
+ * to the bridge. Self-contained and defensive: any failure is swallowed so the
+ * call is never affected.
+ */
+private val WEBRTC_STATS_COLLECTOR_JS = """
+(function () {
+  try {
+    if (window.__telecryptStatsHooked) return;
+    window.__telecryptStatsHooked = true;
+    var Orig = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+    if (!Orig) return;
+    var pcs = [];
+    var Wrapped = function () {
+      var pc = Reflect.construct(Orig, arguments);
+      pcs.push(pc);
+      return pc;
+    };
+    Wrapped.prototype = Orig.prototype;
+    try { Object.assign(Wrapped, Orig); } catch (e) {}
+    window.RTCPeerConnection = Wrapped;
+    setInterval(function () {
+      pcs.forEach(function (pc) {
+        if (!pc || !pc.getStats) return;
+        pc.getStats(null).then(function (report) {
+          var arr = [];
+          report.forEach(function (s) { arr.push(s); });
+          if (arr.length) {
+            try { window.top.postMessage({ type: 'telecrypt-webrtc-stats', stats: arr }, '*'); } catch (e) {}
+          }
+        }).catch(function () {});
+      });
+    }, 2000);
+  } catch (e) {}
+})();
+""".trimIndent()
+
 fun openUrlInBrowser(url: String) {
     val os = System.getProperty("os.name").lowercase()
 
@@ -507,6 +546,19 @@ private fun injectSessionViaCdp(
         val addScriptParams = """{"source":"$escapedScript"}"""
         val addScriptResult = cdpConnection.sendCommand(2, "Page.addScriptToEvaluateOnNewDocument", addScriptParams)
         callLog("[Call] CDP: addScriptToEvaluateOnNewDocument result: $addScriptResult")
+
+        // Step 2b: Inject the WebRTC stats collector. It runs in every frame
+        // (including the cross-origin Element Call iframe), wraps RTCPeerConnection
+        // and posts getStats() snapshots to window.top, which the host page
+        // forwards to the bridge over the widget WebSocket. Non-fatal.
+        runCatching {
+            val collectorEscaped = WEBRTC_STATS_COLLECTOR_JS
+                .replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            cdpConnection.sendCommand(
+                22, "Page.addScriptToEvaluateOnNewDocument", """{"source":"$collectorEscaped"}""",
+            )
+            callLog("[Call] CDP: WebRTC stats collector injected")
+        }.onFailure { callLog("[Call] CDP: stats collector inject failed (non-fatal): ${it.message}") }
 
         // Step 3: Navigate to the actual Element Call URL
         callLog("[Call] CDP: Navigating to $targetUrl")

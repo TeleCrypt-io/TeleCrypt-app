@@ -1,5 +1,11 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+import kotlin.concurrent.Volatile
 import kotlin.time.TimeSource
 
 /** Phases of a call, timestamped once each (ms since bridge start). */
@@ -39,8 +45,18 @@ class CallMetrics {
     private val phaseAt = arrayOfNulls<Long>(CallPhase.entries.size)
     private val counters = LongArray(CallCounter.entries.size)
 
+    @Volatile
+    private var lastQuality: WebRtcQuality? = null
+    private var qualitySamples = 0L
+
     init {
         mark(CallPhase.BRIDGE_START)
+    }
+
+    /** Records the latest WebRTC connection-quality snapshot (from the EC frame). */
+    fun recordQuality(quality: WebRtcQuality) {
+        lastQuality = quality
+        qualitySamples++
     }
 
     fun mark(phase: CallPhase) {
@@ -55,6 +71,34 @@ class CallMetrics {
     fun count(counter: CallCounter): Long = counters[counter.ordinal]
 
     fun phaseMs(phase: CallPhase): Long? = phaseAt[phase.ordinal]
+
+    /**
+     * One-line JSON record of this call (JSON Lines format) for offline
+     * aggregation across many calls. Phases are ms-since-bridge-start or null.
+     */
+    fun toJsonLine(): String = buildJsonObject {
+        put("schema", JsonPrimitive("telecrypt.call.metrics/v1"))
+        putJsonObject("latency_ms") {
+            for (p in CallPhase.entries) {
+                put(p.name.lowercase(), phaseAt[p.ordinal]?.let { JsonPrimitive(it) } ?: JsonNull)
+            }
+        }
+        putJsonObject("counters") {
+            for (c in CallCounter.entries) put(c.name.lowercase(), JsonPrimitive(counters[c.ordinal]))
+        }
+        lastQuality?.let { q ->
+            putJsonObject("quality") {
+                put("samples", JsonPrimitive(qualitySamples))
+                put("rtt_ms", q.rttMs?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("jitter_ms", q.jitterMs?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("packet_loss_pct", JsonPrimitive(q.packetLossPct))
+                put("fps", q.framesPerSecond?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("resolution", q.resolution?.let { JsonPrimitive(it) } ?: JsonNull)
+                put("inbound_bytes", JsonPrimitive(q.inboundBytes))
+                put("outbound_bytes", JsonPrimitive(q.outboundBytes))
+            }
+        }
+    }.toString()
 
     /** Render the metrics as aligned lines suitable for a log block / slide. */
     fun summaryLines(): List<String> {
@@ -71,6 +115,11 @@ class CallMetrics {
         lines += "  call end               : ${ms(CallPhase.CALL_END)}"
         lines += "E2EE keys: sent=${count(CallCounter.KEY_SENT)} received=${count(CallCounter.KEY_RECEIVED)}"
         lines += "Reliability: sync restarts=${count(CallCounter.SYNC_RESTART)} self-echoes=${count(CallCounter.SELF_ECHO)}"
+        lastQuality?.let { q ->
+            lines += "WebRTC (last of $qualitySamples): rtt=${q.rttMs?.let { "${it}ms" } ?: "—"} " +
+                "jitter=${q.jitterMs?.let { "${it}ms" } ?: "—"} loss=${q.packetLossPct}% " +
+                "fps=${q.framesPerSecond ?: "—"} res=${q.resolution ?: "—"}"
+        }
         lines += "Widget API: read_events=${count(CallCounter.READ_EVENTS)} " +
             "send_event=${count(CallCounter.SEND_EVENT)} (state=${count(CallCounter.SEND_STATE_EVENT)}) " +
             "send_to_device=${count(CallCounter.SEND_TO_DEVICE)} " +

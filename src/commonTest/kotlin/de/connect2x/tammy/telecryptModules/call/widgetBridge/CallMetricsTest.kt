@@ -1,5 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -32,6 +34,35 @@ class CallMetricsTest {
         val first = m.phaseMs(CallPhase.JOIN_SENT)
         m.mark(CallPhase.JOIN_SENT)
         assertEquals(first, m.phaseMs(CallPhase.JOIN_SENT))
+    }
+
+    @Test
+    fun jsonLineHasSchemaLatencyAndCounters() {
+        val m = CallMetrics()
+        m.mark(CallPhase.JOIN_SENT)
+        m.inc(CallCounter.KEY_SENT)
+        val obj = kotlinx.serialization.json.Json.parseToJsonElement(m.toJsonLine()).jsonObject
+        assertEquals("telecrypt.call.metrics/v1", obj["schema"]!!.jsonPrimitive.content)
+        assertNotNull(obj["latency_ms"]!!.jsonObject["join_sent"])
+        assertEquals("1", obj["counters"]!!.jsonObject["key_sent"]!!.jsonPrimitive.content)
+        // an un-marked phase serializes as JSON null
+        assertTrue(obj["latency_ms"]!!.jsonObject["call_end"] is kotlinx.serialization.json.JsonNull)
+    }
+
+    @Test
+    fun recordedQualityAppearsInJsonAndSummary() {
+        val m = CallMetrics()
+        m.recordQuality(
+            WebRtcQuality(
+                rttMs = 40.0, jitterMs = 5.0, packetsReceived = 990, packetsLost = 10,
+                framesPerSecond = 30.0, frameWidth = 1280, frameHeight = 720,
+            ),
+        )
+        val q = kotlinx.serialization.json.Json.parseToJsonElement(m.toJsonLine())
+            .jsonObject["quality"]!!.jsonObject
+        assertEquals("40.0", q["rtt_ms"]!!.jsonPrimitive.content)
+        assertEquals("1280x720", q["resolution"]!!.jsonPrimitive.content)
+        assertTrue(m.summaryLines().any { it.contains("WebRTC") })
     }
 
     @Test

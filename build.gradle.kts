@@ -26,6 +26,7 @@ plugins {
     alias(sharedLibs.plugins.google.services)
     alias(libs.plugins.download.plugin)
     alias(sharedLibs.plugins.c2xConventions)
+    alias(sharedLibs.plugins.kotlinx.kover)
     de.connect2x.tammy.plugins.flatpak
 }
 
@@ -891,5 +892,47 @@ tasks.configureEach {
         val outputDir =
             javaClass.getMethod("getOutputDir").invoke(this) as? org.gradle.api.file.DirectoryProperty
         outputDir?.set(layout.buildDirectory.dir("compose/resources/${name}"))
+    }
+}
+
+// Coverage focuses on the call feature we built — the inherited messenger code
+// would otherwise dilute the figure. UI (Compose), Koin DI wiring and the
+// platform I/O hosts (bridge server/manager, browser launcher) are excluded as
+// they are validated by integration/manual runs, not unit tests.
+kover {
+    reports {
+        filters {
+            includes {
+                classes(
+                    "de.connect2x.tammy.telecryptModules.call.*",
+                    "de.connect2x.tammy.trixnity.callRtc.*",
+                )
+            }
+            excludes {
+                classes(
+                    // Compose UI and Koin DI wiring.
+                    "de.connect2x.tammy.telecryptModules.call.callUi.*",
+                    "*ModuleKt",
+                    // Platform I/O hosts (browser launch, WebView, local HTTP/WS bridge, CDP).
+                    "*WidgetBridgeServer*",
+                    "*WidgetBridgeManager*",
+                    "*CallLauncher*",
+                    "*CdpConnection*",
+                    "*ElementCallActivity*",
+                    "*ElementCallLauncher*",
+                    // Orchestration coupled to a live MatrixClient / sync stream / HTTP —
+                    // exercised by integration (real multi-device call) runs, not unit tests.
+                    "*CallCoordinatorImpl*",
+                    "*MatrixRtcSyncEventHandler*",
+                    "*IncomingCallManager*",
+                    "*MatrixRtcAutoStart*",
+                    "*MatrixRtcClientServerApiClientFactory*",
+                    "*MatrixRtcSyncFilterConfigurer*",
+                    "*MatrixRtcTransports*",
+                    "*ElementCallSession*",
+                )
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
     }
 }
