@@ -4,10 +4,18 @@ TeleCrypt is our branded fork of the Tammy Matrix client (Kotlin Multiplatform +
 This repository contains the TeleCrypt flavour, branding automation, and GitLab CI that builds
 Android, Desktop, and Web artefacts on every merge request and on `main`.
 
+## Features
+- **E2EE audio/video calls** via MatrixRTC (MSC4143/MSC4354) — end-to-end encrypted calls on macOS, Windows, Linux, and Android from a single codebase.
+- **Unified crypto context** — Element Call runs as a widget inside TeleCrypt; Olm/Megolm keys stay in the host app (no split-brain).
+- **Kotlin Multiplatform** — shared call signaling and UI logic across all platforms via Compose Multiplatform.
+
 ## Repository Highlights
 - `branding/branding.json` — declarative branding data (app name, Android/iOS identifiers, icon bundle).
 - `tools/brandify.sh` / `tools/brandify.kts` — idempotent branding scripts used locally and in CI.
 - `.github/workflows/ci.yml` — GitHub Actions workflow orchestrating Android, desktop (Linux/Windows/macOS) and optional iOS builds.
+- `TeleCrypt/docs/CALLS.md` — call feature overview and current status.
+- `TeleCrypt/docs/ARCHITECTURE.md` — component architecture and call signaling layer.
+- `TeleCrypt/docs/CALLS_PROTOCOL.md` — MatrixRTC protocol details (events, state machine, transport).
 
 ## Prerequisites
 - JDK 21 (toolchain resolved automatically via Gradle).

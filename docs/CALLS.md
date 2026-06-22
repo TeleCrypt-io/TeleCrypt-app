@@ -38,5 +38,5 @@ See `docs/CALLS_PROTOCOL.md` for:
 Match Telegram-style calls:
 - [x] Start call -> ring recipient, allow accept/decline.
 - [x] Full-screen incoming call UI with animation.
+- [x] Group call -> open call room and wait for participants.
 - [ ] Ringtone for incoming calls.
-- [ ] Group call -> open call room and wait for participants.
