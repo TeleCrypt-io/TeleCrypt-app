@@ -1288,6 +1288,11 @@ class ElementCallLauncherImpl : CallLauncher {
         openCallWindow(url, session)
     }
 
+    override fun hangUp() {
+        callLog("[Call] hangUp: tearing down call browser window")
+        closeCurrent()
+    }
+
     /**
      * Widget‑mode: open the host URL directly in a Chromium‑based browser via
      * `--app=<hostUrl>` without any CDP injection. EC inside the iframe gets

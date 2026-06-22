@@ -1,6 +1,6 @@
 # MatrixRTC Protocol Notes (TeleCrypt)
 
-This doc formalizes the call signaling layer we must implement in Tammy.
+This doc describes the call signaling layer implemented in TeleCrypt.
 Media transport is handled by Element Call; MatrixRTC provides signaling.
 
 ## Scope
@@ -86,9 +86,9 @@ Implementation note (TeleCrypt v1):
   The watcher accepts both sticky (ephemeral) and state-event forms.
 
 TTL and refresh:
-- Sticky events expire; the client must refresh before expiry.
-- Refresh cadence should be comfortably below TTL (example: 1/2 TTL).
-- TODO: confirm exact TTL field names and defaults from MSC4143.
+- Sticky events expire; the client refreshes before expiry.
+- Refresh cadence is 1/2 of the sticky duration.
+- TTL is set via the `org.matrix.msc4354.sticky_duration_ms` query parameter on the send request; there is no separate TTL field in the event content itself.
 
 Example (join/refresh):
 ```json
@@ -214,28 +214,28 @@ Optional "end call for everyone":
   - `im.vector.hangup`
   - `io.element.close`
 
-## Implementation map (Tammy)
-We will add two services and wire them into existing call UI and backend:
+## Implementation map (TeleCrypt)
+Two services were added and wired into existing call UI and backend:
 
 Read sources:
 - Room state stream (for `m.rtc.slot` state events).
-- Sticky event stream (for `m.rtc.member`) - may arrive as sticky/ephemeral
+- Sticky event stream (for `m.rtc.member`) - arrives as sticky/ephemeral
   or as a regular room message event depending on SDK support.
 
 Write targets:
 - State events (`m.rtc.slot`) written by coordinator.
 - Sticky events (`m.rtc.member`) written and refreshed by coordinator.
 
-Integration points in current code:
-- `CallRoomHeader` should call `CallCoordinator.start(roomId)` or
-  `CallCoordinator.join(roomId)` instead of launching a URL directly.
-- `ElementCallLauncherImpl` remains the platform launcher for the call view.
+Integration points:
+- `CallRoomHeader` calls `CallCoordinator.start(roomId)` or
+  `CallCoordinator.join(roomId)`.
+- `ElementCallLauncherImpl` is the platform launcher for the call view.
 - `callModule` (Koin) registers:
   - `MatrixRtcWatcher`
   - `CallCoordinator`
   - storage for `lastSeenCallId`
 
-We keep URL building in `ElementCallUrl.kt`, but it becomes a detail of
+URL building lives in `ElementCallUrl.kt` as a detail of
 the coordinator rather than UI.
 
 ## References
