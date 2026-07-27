@@ -84,7 +84,7 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
                 layout.buildDirectory.dir("generatedSrc/${targetName}Main/kotlin")
             doLast {
                 val outputFile = generatedSrc.get()
-                    .dir(appId.replace(".", "/"))
+                    .dir("de/connect2x/tammy")
                     .file("BuildConfig.kt")
                 val quotes = "\"\"\""
                 val licencesString = licenseTask.get().outputFile.get().asFile.readText()
@@ -93,10 +93,7 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
 
                 val buildConfigString =
                     """
-            package $appId
-
-            import de.connect2x.tammy.CommonBuildConfig
-            import de.connect2x.tammy.Flavor
+            package de.connect2x.tammy
 
             actual val BuildConfig: CommonBuildConfig = object : CommonBuildConfig {
                 override val version: String = "$version"
