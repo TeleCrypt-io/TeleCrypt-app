@@ -18,8 +18,8 @@ data class MatrixRtcTransport(
 )
 
 suspend fun discoverRtcTransports(matrixClient: MatrixClient): List<MatrixRtcTransport> {
-    val client = matrixClient.api.baseClient.baseClient
-    val baseUrl = matrixClient.api.baseClient.baseUrl ?: return emptyList()
+    val client = matrixClient.api.baseClient
+    val baseUrl = matrixClient.api.baseUrl ?: return emptyList()
     val json = matrixClient.api.json
     val stable = fetchRtcTransports(client, baseUrl, json, STABLE_PATH)
     if (stable.isNotEmpty()) {
