@@ -1,6 +1,6 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-import de.connect2x.trixnity.clientserverapi.model.users.Filters
+import de.connect2x.trixnity.clientserverapi.model.user.Filters
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
