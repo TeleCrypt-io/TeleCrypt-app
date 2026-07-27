@@ -176,6 +176,7 @@ kotlin {
                     implementation(compose.desktop.currentOs)
                 }
                 implementation(sharedLibs.kotlinx.coroutines.swing)
+                implementation("com.github.winterreisender:webviewko:0.6.0")
             }
         }
         iosMain {

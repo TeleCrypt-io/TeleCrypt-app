@@ -3,7 +3,7 @@ package de.connect2x.tammy.telecryptModules.call.callRtc
 import de.connect2x.tammy.telecryptModules.call.callLog
 import de.connect2x.trixnity.messenger.ConfigureMatrixClientConfiguration
 import de.connect2x.trixnity.client.MatrixClientConfiguration
-import de.connect2x.trixnity.clientserverapi.model.users.Filters
+import de.connect2x.trixnity.clientserverapi.model.user.Filters
 
 class MatrixRtcSyncFilterConfigurer : ConfigureMatrixClientConfiguration {
     override fun MatrixClientConfiguration.invoke() {
