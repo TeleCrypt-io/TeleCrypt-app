@@ -17,16 +17,16 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import net.folivo.trixnity.client.store.AccountStore
-import net.folivo.trixnity.clientserverapi.client.SyncApiClient
-import net.folivo.trixnity.core.EventHandler
-import net.folivo.trixnity.core.model.RoomId
-import net.folivo.trixnity.core.model.UserId
-import net.folivo.trixnity.core.model.events.ClientEvent
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.core.subscribeEachEventAsFlow
-import net.folivo.trixnity.crypto.olm.DecryptedOlmEventContainer
-import net.folivo.trixnity.crypto.olm.OlmDecrypter
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.clientserverapi.client.SyncApiClient
+import de.connect2x.trixnity.core.EventHandler
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.UserId
+import de.connect2x.trixnity.core.model.events.ClientEvent
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.subscribeEachEventAsFlow
+import de.connect2x.trixnity.crypto.olm.DecryptedOlmEventContainer
+import de.connect2x.trixnity.crypto.olm.OlmDecrypter
 import kotlin.concurrent.Volatile
 import kotlin.runCatching
 
@@ -367,7 +367,7 @@ class MatrixRtcSyncEventHandler(
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = "",
             stickyKey = disconnectKey,
-            userId = net.folivo.trixnity.core.model.UserId(userId),
+            userId = de.connect2x.trixnity.core.model.UserId(userId),
             deviceId = deviceIdFromKey,
             expiresAtMs = 0L,
             connected = false,
@@ -389,9 +389,9 @@ class MatrixRtcSyncEventHandler(
      */
     private fun parseSingleMembershipFromContent(
         content: JsonObject,
-        roomId: net.folivo.trixnity.core.model.RoomId,
+        roomId: de.connect2x.trixnity.core.model.RoomId,
         stateKey: String,
-        sender: net.folivo.trixnity.core.model.UserId,
+        sender: de.connect2x.trixnity.core.model.UserId,
         originTimestamp: Long?,
     ) {
         val deviceId = content.string("device_id")
@@ -442,7 +442,7 @@ class MatrixRtcSyncEventHandler(
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = effectiveCallId,
             stickyKey = stickyKey,
-            userId = net.folivo.trixnity.core.model.UserId(userId),
+            userId = de.connect2x.trixnity.core.model.UserId(userId),
             deviceId = deviceId,
             expiresAtMs = expiresAtMs,
             connected = hasTransport,
@@ -586,7 +586,7 @@ class MatrixRtcSyncEventHandler(
             slotId = MATRIX_RTC_DEFAULT_SLOT_ID,
             callId = "",
             stickyKey = disconnectKey,
-            userId = net.folivo.trixnity.core.model.UserId(userId),
+            userId = de.connect2x.trixnity.core.model.UserId(userId),
             deviceId = null,
             expiresAtMs = 0L,
             connected = false,

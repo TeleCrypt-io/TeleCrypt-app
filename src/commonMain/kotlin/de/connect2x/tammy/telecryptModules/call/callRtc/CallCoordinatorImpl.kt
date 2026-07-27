@@ -13,9 +13,9 @@ import de.connect2x.tammy.telecryptModules.call.widgetBridge.WidgetBridgeManager
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.core.model.RoomId
 import kotlin.random.Random
 
 /**

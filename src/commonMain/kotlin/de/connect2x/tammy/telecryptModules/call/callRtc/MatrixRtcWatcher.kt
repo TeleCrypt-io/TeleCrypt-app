@@ -4,7 +4,7 @@ import de.connect2x.tammy.trixnity.callRtc.MatrixRtcRoomState
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import net.folivo.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.RoomId
 
 interface MatrixRtcWatcher {
     fun roomState(roomId: RoomId): StateFlow<MatrixRtcRoomState>

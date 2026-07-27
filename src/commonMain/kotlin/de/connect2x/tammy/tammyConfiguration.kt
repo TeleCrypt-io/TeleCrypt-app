@@ -1,6 +1,6 @@
 package de.connect2x.tammy
 
-import de.connect2x.messenger.compose.view.notifications.notificationsModule
+import de.connect2x.trixnity.messenger.compose.view.notifications.notificationsModule
 import de.connect2x.tammy.telecryptModules.call.callModule
 import de.connect2x.tammy.generated.resources.Res
 import de.connect2x.tammy.generated.resources.status_icon

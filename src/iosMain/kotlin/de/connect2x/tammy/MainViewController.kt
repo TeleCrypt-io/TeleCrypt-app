@@ -1,7 +1,7 @@
 package de.connect2x.tammy
 
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
-import de.connect2x.messenger.compose.view.startMessenger
+import de.connect2x.trixnity.messenger.compose.view.startMessenger
 import platform.UIKit.UIViewController
 
 private fun unexpectedStartMessengerResult(result: Any?): Nothing =
