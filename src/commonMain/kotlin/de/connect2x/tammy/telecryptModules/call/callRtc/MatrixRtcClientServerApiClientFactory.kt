@@ -6,14 +6,13 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.http.Url
 import kotlin.coroutines.CoroutineContext
 import kotlinx.serialization.json.Json
-import de.connect2x.trixnity.clientserverapi.client.MatrixAuthProvider
+import de.connect2x.trixnity.clientserverapi.client.MatrixClientAuthProvider
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClient
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClientFactory
 import de.connect2x.trixnity.clientserverapi.client.SyncBatchTokenStore
 import de.connect2x.trixnity.core.model.events.UnknownEventContent
 import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
 import de.connect2x.trixnity.core.serialization.events.UnknownEventContentSerializer
-import de.connect2x.trixnity.core.serialization.events.createEventContentSerializerMappings
 import de.connect2x.trixnity.core.serialization.events.ephemeralOf
 import de.connect2x.trixnity.core.serialization.events.messageOf
 import de.connect2x.trixnity.core.serialization.events.roomAccountDataOf
@@ -24,27 +23,58 @@ class MatrixRtcClientServerApiClientFactory(
     private val delegate: MatrixClientServerApiClientFactory,
 ) : MatrixClientServerApiClientFactory {
     override fun create(
-        baseUrl: Url?,
-        authProvider: MatrixAuthProvider,
+        baseUrl: Url,
         eventContentSerializerMappings: EventContentSerializerMappings,
         json: Json,
         syncBatchTokenStore: SyncBatchTokenStore,
         syncErrorDelayConfig: RetryFlowDelayConfig,
         coroutineContext: CoroutineContext,
+        userHandle: String?,
+        userHomePath: String?,
         httpClientEngine: HttpClientEngine?,
         httpClientConfig: (HttpClientConfig<*>.() -> Unit)?,
     ): MatrixClientServerApiClient {
         val rtcMappings = buildRtcMappings()
         val combined = eventContentSerializerMappings.plus(rtcMappings)
-        callLog("[Call] MatrixClientServerApiClientFactory.create added RTC mappings")
+        callLog("[Call] MatrixClientServerApiClientFactory.create (Url) added RTC mappings")
         return delegate.create(
             baseUrl = baseUrl,
+            eventContentSerializerMappings = combined,
+            json = json,
+            syncBatchTokenStore = syncBatchTokenStore,
+            syncErrorDelayConfig = syncErrorDelayConfig,
+            coroutineContext = coroutineContext,
+            userHandle = userHandle,
+            userHomePath = userHomePath,
+            httpClientEngine = httpClientEngine,
+            httpClientConfig = httpClientConfig,
+        )
+    }
+
+    override fun create(
+        authProvider: MatrixClientAuthProvider,
+        eventContentSerializerMappings: EventContentSerializerMappings,
+        json: Json,
+        syncBatchTokenStore: SyncBatchTokenStore,
+        syncErrorDelayConfig: RetryFlowDelayConfig,
+        coroutineContext: CoroutineContext,
+        userHandle: String?,
+        userHomePath: String?,
+        httpClientEngine: HttpClientEngine?,
+        httpClientConfig: (HttpClientConfig<*>.() -> Unit)?,
+    ): MatrixClientServerApiClient {
+        val rtcMappings = buildRtcMappings()
+        val combined = eventContentSerializerMappings.plus(rtcMappings)
+        callLog("[Call] MatrixClientServerApiClientFactory.create (auth) added RTC mappings")
+        return delegate.create(
             authProvider = authProvider,
             eventContentSerializerMappings = combined,
             json = json,
             syncBatchTokenStore = syncBatchTokenStore,
             syncErrorDelayConfig = syncErrorDelayConfig,
             coroutineContext = coroutineContext,
+            userHandle = userHandle,
+            userHomePath = userHomePath,
             httpClientEngine = httpClientEngine,
             httpClientConfig = httpClientConfig,
         )
@@ -52,7 +82,7 @@ class MatrixRtcClientServerApiClientFactory(
 }
 
 private fun buildRtcMappings(): EventContentSerializerMappings =
-    createEventContentSerializerMappings {
+    EventContentSerializerMappings {
         val slotTypes = listOf(
             MatrixRtcEventTypes.SLOT,
             MatrixRtcEventTypes.UNSTABLE_SLOT,

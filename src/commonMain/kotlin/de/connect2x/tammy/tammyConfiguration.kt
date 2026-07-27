@@ -1,9 +1,7 @@
 package de.connect2x.tammy
 
-import de.connect2x.trixnity.messenger.compose.view.notifications.notificationsModule
 import de.connect2x.tammy.telecryptModules.call.callModule
-import de.connect2x.tammy.generated.resources.Res
-import de.connect2x.tammy.generated.resources.status_icon
+import de.connect2x.tammy.telecryptModules.call.callRtc.configureForRtc
 import de.connect2x.trixnity.messenger.compose.view.DrawableResourceAppIcon
 import de.connect2x.trixnity.messenger.compose.view.composeViewModule
 import de.connect2x.trixnity.messenger.compose.view.typography.nunito.addNunitoThemeTypography
@@ -20,11 +18,9 @@ import org.koin.dsl.module
 fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     customConfig: MatrixMultiMessengerConfiguration.() -> Unit = {}
 ) {
-    val notificationsDebugEnabled = BuildConfig.flavor == Flavor.DEV
     appName = BuildConfig.appName
     appId = BuildConfig.appId
     appVersion = BuildConfig.version
-    urlProtocol = BuildConfig.appId
     privacyInfo = BuildConfig.privacyInfo
     imprint = BuildConfig.imprint
     licenses = BuildConfig.licenses
@@ -70,9 +66,11 @@ fun MatrixMultiMessengerConfiguration.tammyConfiguration(
                 socketTimeoutMillis = 60000
             }
         }
+        clientConfiguration {
+            configureForRtc()
+        }
         modulesFactories += listOf(
             { composeViewModule(this) },
-            { notificationsModule(this, notificationsDebugEnabled) },
             ::callModule,
             ::tammyThemeModule
         )
