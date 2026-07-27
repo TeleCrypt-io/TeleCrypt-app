@@ -88,55 +88,63 @@
         <div class="download-container">
             <div class="download-card animated fadeInLeft">
                 <h3>{{ i18n "download.android.title" }}</h3>
-                <a href="https://play.google.com/store/apps/details?id=de.connect2x.tammy" class="download-button">
+                <a href="https://play.google.com/store/apps/details?id=io.telecrypt.app" class="download-button">
                     {{ i18n "download.android.store" }}
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyAndroiduniversalapk }}" class="download-button">
-                    {{ i18n "download.android.apk" }}
+                <a href="{{ .Site.Params.downloads.TeleCryptAndroidGooglePlayapk }}" class="download-button">
+                    {{ i18n "download.android.apk" }} {{ i18n "download.android.flavor.googlePlay" }}
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyAndroiduniversalaab }}" class="download-button">
-                    {{ i18n "download.android.aab" }}
+                <a href="{{ .Site.Params.downloads.TeleCryptAndroidGooglePlayaab }}" class="download-button">
+                    {{ i18n "download.android.aab" }} {{ i18n "download.android.flavor.googlePlay" }}
+                </a>
+                <a href="{{ .Site.Params.downloads.TeleCryptAndroidLibreapk }}" class="download-button">
+                    {{ i18n "download.android.apk" }} {{ i18n "download.android.flavor.libre" }}
+                </a>
+                <a href="{{ .Site.Params.downloads.TeleCryptAndroidLibreaab }}" class="download-button">
+                    {{ i18n "download.android.aab" }} {{ i18n "download.android.flavor.libre" }}
+                </a>
+            </div>
+            <div class="download-card animated fadeInLeft">
+                <h3>{{ i18n "download.ios.title" }}</h3>
+                <a href="https://apps.apple.com/app/tammy-chat/id6760345615" class="download-button">
+                    {{ i18n "download.ios.store" }}
                 </a>
             </div>
             <div class="download-card animated fadeInLeft">
                 <h3>{{ i18n "download.linux.title" }}</h3>
-                <a href="{{ .Site.Params.downloads.TammyLinuxx64flatpak }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptLinuxx64flatpak }}" class="download-button">
                     {{ i18n "download.linux.flatpak" }} (x64)
                 </a>
             </div>
             <div class="download-card animated fadeInLeft">
                 <h3>{{ i18n "download.windows.title" }}</h3>
-                <a href="{{ .Site.BaseURL }}Tammy-Windows-x64.appinstaller" class="download-button">
+                <a href="{{ .Site.BaseURL }}TeleCrypt-Windows-x64.appinstaller" class="download-button">
                     {{ i18n "download.windows.appinstaller" }} (x64)
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyWindowsx64msix }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptWindowsx64msix }}" class="download-button">
                     {{ i18n "download.windows.msix" }} (x64)
                 </a>
             </div>
             <div class="download-card animated fadeInLeft">
                 <h3>{{ i18n "download.mac.title" }}</h3>
-                <a href="{{ .Site.Params.downloads.TammyMacOSarm64dmg }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptMacOSarm64dmg }}" class="download-button">
                     {{ i18n "download.mac.dmg" }} (arm64)
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyMacOSx64dmg }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptMacOSx64dmg }}" class="download-button">
                     {{ i18n "download.mac.dmg" }} (x64)
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyMacOSarm64zip }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptMacOSarm64zip }}" class="download-button">
                     {{ i18n "download.mac.zip" }} (arm64)
                 </a>
-                <a href="{{ .Site.Params.downloads.TammyMacOSx64zip }}" class="download-button">
+                <a href="{{ .Site.Params.downloads.TeleCryptMacOSx64zip }}" class="download-button">
                     {{ i18n "download.mac.zip" }} (x64)
                 </a>
             </div>
             <div class="download-card animated fadeInLeft">
                 <h3>{{ i18n "download.web.title" }}</h3>
-                <a href="https://app.tammy.connect2x.de" class="download-button">
+                <a href="https://app.telecrypt.io" class="download-button">
                     {{ i18n "download.web.app" }}
                 </a>
-            </div>
-            <div class="download-card animated fadeInLeft">
-                <h3>{{ i18n "download.ios.title" }}</h3>
-                <p>{{ i18n "download.ios.soon" }}</p>
             </div>
         </div>
     </section>
@@ -145,8 +153,8 @@
 <footer>
     <nav>
         <ul>
-            <li><a href='matrix:r/tammy:imbitbu.de'>#tammy:imbitbu.de</a></li>
-            <li><a href='https://gitlab.com/connect2x/tammy'>{{ i18n "sourcecode" }}</a></li>
+            <li><a href='https://github.com/TeleCrypt-io/TeleCrypt-app/discussions'>TeleCrypt Discussions</a></li>
+            <li><a href='https://github.com/TeleCrypt-io/TeleCrypt-app'>{{ i18n "sourcecode" }}</a></li>
             <li><a href='{{ absLangURL "privacy" }}'>{{ i18n "privacy" }}</a></li>
             <li><a href='{{ absLangURL "imprint" }}'>{{ i18n "imprint" }}</a></li>
         </ul>

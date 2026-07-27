@@ -5,12 +5,12 @@ title: "Datenschutz"
 Im Folgenden möchten wir Sie aufklären, wie Ihre Daten von uns verarbeitet werden.
 
 **Verantwortlich im Sinne der DSGVO ist:**  
-connect2x GmbH\
-<!-- TODO: Rechtsform, Adresse und Registereintrag von connect2x GmbH ergänzen -->\
-Email: kontakt@connect2x.de\
+TeleCrypt.IO\
+<!-- TODO: Rechtsform, Adresse und Registereintrag von TeleCrypt.IO ergänzen -->\
+Email: support@telecrypt.io\
 
 **Unseren Datenschutzbeauftragten erreichen sie unter:**  
-<!-- TODO: Datenschutzbeauftragte(r) für connect2x GmbH noch nicht benannt -->
+<!-- TODO: Datenschutzbeauftragte(r) für TeleCrypt.IO noch nicht benannt -->
 
 ## Kontaktaufnahme
 

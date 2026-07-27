@@ -7,6 +7,7 @@ interface CommonBuildConfig {
     val flavor: Flavor
     val appName: String
     val appId: String
+    val oAuth2ClientUrl: String
     val licenses: String
     val privacyInfo: String
     val imprint: String

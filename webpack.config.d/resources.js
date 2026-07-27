@@ -8,6 +8,12 @@ config.resolve.fallback = {
     url: false,
 };
 
+config.module.rules =
+        [
+            ...(config.module?.rules || []),
+            {test: /\.wasm$/, type: "asset/resource"},
+        ]
+
 // Minification
 if (config.mode === "production") {
     const TerserPlugin = require("terser-webpack-plugin");
@@ -33,17 +39,18 @@ if (config.mode === "production") {
     };
 }
 
-
+// Copy dependencies
 const CopyPlugin = require("copy-webpack-plugin");
 config.plugins.push(
-    new CopyPlugin({
-        patterns: [
-            {from: "../../node_modules/@matrix-org/olm/olm.wasm", to: "."},
-            {from: "../../node_modules/pdfjs-dist/build/pdf.worker.mjs", to: "."},
-        ],
-    })
+        new CopyPlugin({
+            patterns: [
+                // Required by the pdfjs runtime.
+                {from: "../../node_modules/pdfjs-dist/build/pdf.worker.mjs", to: "."},
+            ],
+        })
 )
 
+// Dev Server
 if (config.devServer) {
     config.devServer.historyApiFallback = {
         disableDotRule: true,
@@ -54,7 +61,7 @@ if (config.devServer) {
     }
     config.devServer.headers = {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET",
-        "Access-Control-Allow-Headers": "content-type"
+        "Access-Control-Allow-Methods": "*",
+        "Access-Control-Allow-Headers": "*"
     }
 }

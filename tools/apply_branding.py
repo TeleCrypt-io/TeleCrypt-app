@@ -65,6 +65,8 @@ def apply(config: dict, mode: str):
     bg = REPO / "build.gradle.kts"
     replace_in_file(bg, r'val appName = "[^"]*"', f'val appName = "{app_name}"')
     replace_in_file(bg, r'val appIdentifier = "[^"]*"', f'val appIdentifier = "{android_app_id}"')
+    replace_in_file(bg, r'val appId = "[^"]*"', f'val appId = "{android_app_id}"')
+    replace_in_file(bg, r'val appHomepage = "[^"]*"', f'val appHomepage = "{homepage}"')
     replace_in_file(bg, r'baseName = "[^"]*"', f'baseName = "{base_name}"')
     replace_in_file(bg, r'homepage = "[^"]*"', f'homepage = "{homepage}"')
     replace_in_file(bg, r'val websiteBaseUrl = "[^"]*"', f'val websiteBaseUrl = "{website_base_url}"')
@@ -108,8 +110,8 @@ def apply(config: dict, mode: str):
     for src in [
         REPO / "src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/call/CallDeepLink.kt",
         REPO / "src/commonTest/kotlin/de/connect2x/tammy/telecryptModules/call/CallDeepLinkTest.kt",
-        REPO / "src/desktopMain/kotlin/de/connect2x/tammy/desktop/Main.kt",
-        REPO / "src/desktopMain/kotlin/de/connect2x/tammy/desktop/SsoCallbackServer.kt",
+        REPO / "src/jvmMain/kotlin/de/connect2x/tammy/Main.kt",
+        REPO / "src/jvmMain/kotlin/de/connect2x/tammy/SsoCallbackServer.kt",
     ]:
         replace_in_file(src, scheme_re, f"{deep_link_scheme}://")
 

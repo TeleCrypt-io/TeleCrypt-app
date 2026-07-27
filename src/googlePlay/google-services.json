@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425288609371",
+    "project_id": "tammy-compose-app",
+    "storage_bucket": "tammy-compose-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425288609371:android:20686bedc4b3d0d358997e",
+        "android_client_info": {
+          "package_name": "de.connect2x.tammy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWeJ39PB79332NFbW9JjwJzY_CzfcF6-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

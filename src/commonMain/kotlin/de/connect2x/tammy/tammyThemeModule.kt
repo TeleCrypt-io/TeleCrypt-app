@@ -4,14 +4,14 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
-import de.connect2x.messenger.compose.view.common.deriveFromHue
-import de.connect2x.messenger.compose.view.common.hue
-import de.connect2x.messenger.compose.view.theme.DefaultAccentColor
-import de.connect2x.messenger.compose.view.theme.ThemeDarkColorScheme
-import de.connect2x.messenger.compose.view.theme.ThemeLightColorScheme
+import de.connect2x.trixnity.messenger.compose.view.common.deriveFromHue
+import de.connect2x.trixnity.messenger.compose.view.common.hue
+import de.connect2x.trixnity.messenger.compose.view.theme.DefaultAccentColor
+import de.connect2x.trixnity.messenger.compose.view.theme.ThemeDarkColorScheme
+import de.connect2x.trixnity.messenger.compose.view.theme.ThemeLightColorScheme
 import org.koin.dsl.module
 
-fun tammyModule() = module {
+fun tammyThemeModule() = module {
     single<DefaultAccentColor> {
         object : DefaultAccentColor {
             override val value = accentColor

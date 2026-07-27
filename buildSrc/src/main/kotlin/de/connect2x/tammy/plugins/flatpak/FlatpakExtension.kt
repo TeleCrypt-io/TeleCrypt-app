@@ -30,7 +30,7 @@ constructor(
             .convention("https://dl.flathub.org/repo/flathub.flatpakrepo")
     val flatpakRuntime = objectFactory.property<String>().convention("org.freedesktop.Platform")
     val flatpakSdk = objectFactory.property<String>().convention("org.freedesktop.Sdk")
-    val flatpakRuntimeVersion = objectFactory.property<String>().convention("24.08")
+    val flatpakRuntimeVersion = objectFactory.property<String>().convention("25.08")
     val flatpakDependencies = objectFactory.mapProperty<String, String>()
     val flatpakCacheDirectory =
         objectFactory
@@ -94,102 +94,102 @@ constructor(
 
     internal fun registerSetupDependencies() {
         val flatpakSetupDependencies by
-            taskContainer.registering(FlatpakSetup::class) {
-                remoteName = flatpakRemoteName
-                remoteLocation = flatpakRemoteLocation
-                packages = flatpakDependencies
-                flatpakHome = flatpakCacheDirectory
-            }
+        taskContainer.registering(FlatpakSetup::class) {
+            remoteName = flatpakRemoteName
+            remoteLocation = flatpakRemoteLocation
+            packages = flatpakDependencies
+            flatpakHome = flatpakCacheDirectory
+        }
         _flatpakHome.set(flatpakSetupDependencies.flatMap { it.flatpakHome })
     }
 
     internal fun registerExpandMetainfo() {
         val flatpakExpandMetainfo by
-            taskContainer.registering(ExpandTemplate::class) {
-                template = metainfoTemplate
-                variables = expansionVariables()
-                expandedFile =
-                    buildDirectory.zip(applicationId) { buildDir, appId ->
-                        buildDir.file("${appId}.metainfo.xml")
-                    }
-            }
+        taskContainer.registering(ExpandTemplate::class) {
+            template = metainfoTemplate
+            variables = expansionVariables()
+            expandedFile =
+                buildDirectory.zip(applicationId) { buildDir, appId ->
+                    buildDir.file("${appId}.metainfo.xml")
+                }
+        }
         _metainfoFile.set(flatpakExpandMetainfo.flatMap { it.expandedFile })
     }
 
     internal fun registerExpandManifest() {
         val flatpakExpandManifest by
-            taskContainer.registering(ExpandTemplate::class) {
-                template = manifestTemplate
-                variables = expansionVariables()
-                expandedFile =
-                    buildDirectory.zip(applicationId) { buildDir, appId ->
-                        buildDir.file("${appId}.json")
-                    }
-            }
+        taskContainer.registering(ExpandTemplate::class) {
+            template = manifestTemplate
+            variables = expansionVariables()
+            expandedFile =
+                buildDirectory.zip(applicationId) { buildDir, appId ->
+                    buildDir.file("${appId}.json")
+                }
+        }
         _manifestFile.set(flatpakExpandManifest.flatMap { it.expandedFile })
     }
 
     internal fun registerExpandDesktop() {
         val flatpakExpandDesktop by
-            taskContainer.registering(ExpandTemplate::class) {
-                template = desktopTemplate
-                variables = expansionVariables()
-                expandedFile =
-                    buildDirectory.zip(applicationId) { buildDir, appId ->
-                        buildDir.file("${appId}.desktop")
-                    }
-            }
+        taskContainer.registering(ExpandTemplate::class) {
+            template = desktopTemplate
+            variables = expansionVariables()
+            expandedFile =
+                buildDirectory.zip(applicationId) { buildDir, appId ->
+                    buildDir.file("${appId}.desktop")
+                }
+        }
         _desktopFile.set(flatpakExpandDesktop.flatMap { it.expandedFile })
     }
 
     internal fun registerBundleSources() {
         val flatpakBundleSources by
-            taskContainer.registering(AggregateSources::class) {
-                applicationId = this@FlatpakExtension.applicationId
-                icons = iconsDirectory
+        taskContainer.registering(AggregateSources::class) {
+            applicationId = this@FlatpakExtension.applicationId
+            icons = iconsDirectory
 
-                desktop = desktopFile
-                metainfo = metainfoFile
-                app = appDistributionDirectory
+            desktop = desktopFile
+            metainfo = metainfoFile
+            app = appDistributionDirectory
 
-                destination = buildDirectory.map { it.dir("sources") }
-            }
+            destination = buildDirectory.map { it.dir("sources") }
+        }
         _sourcesDirectory.set(flatpakBundleSources.flatMap { it.destination })
     }
 
     internal fun registerArchiveSources() {
         val flatpakArchiveSources by
-            taskContainer.registering(Zip::class) {
-                from(sourcesDirectory)
-                archiveBaseName = applicationName.map { "$it-flatpak-sources" }
-                destinationDirectory = buildDirectory
-            }
+        taskContainer.registering(Zip::class) {
+            from(sourcesDirectory)
+            archiveBaseName = applicationName.map { "$it-flatpak-sources" }
+            destinationDirectory = buildDirectory
+        }
         _sourcesZip.set(flatpakArchiveSources.flatMap { it.archiveFile })
     }
 
     internal fun registerBuildApp() {
         val flatpakBuildApp by
-            taskContainer.registering(FlatpakBuild::class) {
-                flatpakHome = this@FlatpakExtension.flatpakHome
-                manifest = manifestFile
-                sources = sourcesDirectory
+        taskContainer.registering(FlatpakBuild::class) {
+            flatpakHome = this@FlatpakExtension.flatpakHome
+            manifest = manifestFile
+            sources = sourcesDirectory
 
-                repository = buildDirectory.map { it.dir("repo") }
-            }
+            repository = buildDirectory.map { it.dir("repo") }
+        }
         _repoDirectory.set(flatpakBuildApp.flatMap { it.repository })
     }
 
     internal fun registerBundleApp() {
         val flatpakBundleApp by
-            taskContainer.registering(FlatpakBundle::class) {
-                applicationId = this@FlatpakExtension.applicationId
-                repository = repoDirectory
+        taskContainer.registering(FlatpakBundle::class) {
+            applicationId = this@FlatpakExtension.applicationId
+            repository = repoDirectory
 
-                bundle =
-                    buildDirectory.zip(applicationId) { buildDir, appId ->
-                        buildDir.file("${appId}.flatpak")
-                    }
-            }
+            bundle =
+                buildDirectory.zip(applicationId) { buildDir, appId ->
+                    buildDir.file("${appId}.flatpak")
+                }
+        }
         _bundleFile.set(flatpakBundleApp.flatMap { it.bundle })
     }
 }
