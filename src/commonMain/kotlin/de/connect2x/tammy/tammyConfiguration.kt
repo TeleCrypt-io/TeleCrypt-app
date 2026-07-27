@@ -20,10 +20,10 @@ fun tammyConfiguration(
     appVersion = BuildConfig.version
     urlProtocol = BuildConfig.appId
     licenses = BuildConfig.licenses
-    sendLogsEmailAddress = "support@telecrypt.io"
+    sendLogsEmailAddress = null
     privacyInfo = BuildConfig.privacyInfo
     imprint = BuildConfig.imprint
-    pushUrl = "TODO: replace with TeleCrypt Sygnal push gateway URL"
+    pushUrl = "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify"
     multiProfile = false
     val notificationsDebugEnabled = BuildConfig.flavor == Flavor.DEV
 

@@ -5,12 +5,12 @@ title: "Privacy"
 Below, we would like to inform you about how your data is processed by us.
 
 **Responsible under the GDPR:**  
-TeleCrypt.IO\
+connect2x GmbH\
 <!-- TODO: add legal entity name, address, registration details -->\
-Email: support@telecrypt.io\
+Email: contact@connect2x.de\
 
 **You can reach our Data Protection Officer at:**  
-<!-- TODO: TeleCrypt.IO Data Protection Officer not yet appointed -->
+<!-- TODO: connect2x GmbH Data Protection Officer not yet appointed -->
 
 ## Contact
 

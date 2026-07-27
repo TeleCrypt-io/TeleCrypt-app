@@ -70,7 +70,7 @@ object SsoCallbackServer {
             }
             
             // Save callback URL to temp file for next startup
-            val callbackUrl = "telecrypt://localhost/sso?state=$state&loginToken=$loginToken"
+            val callbackUrl = "de.connect2x.tammy://localhost/sso?state=$state&loginToken=$loginToken"
             
             // Inject into runtime flow immediately
             scope.launch {

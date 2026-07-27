@@ -9,7 +9,7 @@ class CallDeepLinkTest {
     @Test
     fun buildsTelecryptSchemeWithEncodedParams() {
         val link = buildTelecryptCallDeepLink("!abc:example.org", "Team Room", CallMode.VIDEO)
-        assertTrue(link.startsWith("telecrypt://call?"), link)
+        assertTrue(link.startsWith("de.connect2x.tammy://call?"), link)
         assertContains(link, "roomId=%21abc%3Aexample.org")
         assertContains(link, "roomName=Team%20Room")
         assertContains(link, "mode=video")

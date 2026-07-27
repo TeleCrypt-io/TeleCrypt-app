@@ -2,7 +2,7 @@
 title: "Impressum"
 ---
 
-TeleCrypt.IO\
-<!-- TODO: Rechtsform, Adresse und Registereintrag von TeleCrypt.IO ergänzen -->\
-Email: support@telecrypt.io\
+connect2x GmbH\
+<!-- TODO: Rechtsform, Adresse und Registereintrag von connect2x GmbH ergänzen -->\
+Email: kontakt@connect2x.de\
 <!-- TODO: Telefon falls zutreffend ergänzen -->

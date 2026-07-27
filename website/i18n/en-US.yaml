@@ -1,6 +1,6 @@
-title: TeleCrypt Messenger
+title: Tammy
 subtitle: A fast and secure Matrix messenger.
-company: TeleCrypt.IO
+company: connect2x GmbH
 
 sourcecode: Source Code
 privacy: Privacy
@@ -28,7 +28,7 @@ features:
     desc: Developers can start with an out of the box working messenger that can be modified to their requirements.
 
 download:
-  title: Download TeleCrypt Messenger
+  title: Download Tammy
   android:
     title: Android
     store: PlayStore
