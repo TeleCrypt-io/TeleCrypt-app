@@ -11,10 +11,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.client.store.AccountStore
-import net.folivo.trixnity.core.model.UserId
-import net.folivo.trixnity.crypto.olm.OlmDecrypter
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.core.model.UserId
+import de.connect2x.trixnity.crypto.olm.OlmDecrypter
 
 class MatrixRtcAutoStart(
     private val matrixClients: MatrixClients,

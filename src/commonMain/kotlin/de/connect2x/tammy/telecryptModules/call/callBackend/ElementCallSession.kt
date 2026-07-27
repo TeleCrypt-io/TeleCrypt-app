@@ -1,7 +1,7 @@
 package de.connect2x.tammy.telecryptModules.call.callBackend
 
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.client.store.AccountStore
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.client.store.AccountStore
 
 data class ElementCallSession(
     val userId: String,

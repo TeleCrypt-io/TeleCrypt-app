@@ -9,16 +9,16 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.core.model.RoomId
-import net.folivo.trixnity.core.model.UserId
-import net.folivo.trixnity.core.model.events.ClientEvent
-import net.folivo.trixnity.core.model.events.MessageEventContent
-import net.folivo.trixnity.core.model.events.StateEventContent
-import net.folivo.trixnity.core.model.events.ToDeviceEventContent
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.core.serialization.events.EventContentSerializerMappings
-import net.folivo.trixnity.core.serialization.events.StateEventContentSerializerMapping
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.UserId
+import de.connect2x.trixnity.core.model.events.ClientEvent
+import de.connect2x.trixnity.core.model.events.MessageEventContent
+import de.connect2x.trixnity.core.model.events.StateEventContent
+import de.connect2x.trixnity.core.model.events.ToDeviceEventContent
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
+import de.connect2x.trixnity.core.serialization.events.StateEventContentSerializerMapping
 
 import de.connect2x.tammy.telecryptModules.call.callBackend.ElementCallLauncherImpl
 import java.util.concurrent.ConcurrentHashMap
@@ -208,7 +208,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         messages: JsonObject,
         encrypted: Boolean,
     ): Boolean {
-        val olmEncryptionService = matrixClient.di.get<net.folivo.trixnity.crypto.olm.OlmEncryptionService>()
+        val olmEncryptionService = matrixClient.di.get<de.connect2x.trixnity.crypto.olm.OlmEncryptionService>()
         val converted = mutableMapOf<UserId, Map<String, ToDeviceEventContent>>()
         for ((userKey, devicesElem) in messages) {
             val devices = devicesElem as? JsonObject ?: continue

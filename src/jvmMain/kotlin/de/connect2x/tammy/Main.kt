@@ -26,8 +26,8 @@ import kotlinx.io.asSource
 import kotlinx.io.buffered
 import java.io.File
 import kotlin.system.exitProcess
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.clientserverapi.model.authentication.LoginType
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.clientserverapi.model.authentication.LoginType
 import org.koin.core.Koin
 import org.koin.core.scope.Scope
 import org.koin.dsl.module

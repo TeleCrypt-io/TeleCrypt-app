@@ -1,8 +1,8 @@
 package de.connect2x.tammy.telecryptModules.call.widgetBridge
 
 import kotlinx.serialization.json.JsonObject
-import net.folivo.trixnity.client.MatrixClient
-import net.folivo.trixnity.core.model.RoomId
+import de.connect2x.trixnity.client.MatrixClient
+import de.connect2x.trixnity.core.model.RoomId
 
 /**
  * Cross‑platform abstraction поверх локального WebSocket‑моста для widget‑режима EC.

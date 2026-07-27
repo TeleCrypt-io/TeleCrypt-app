@@ -3,7 +3,7 @@ package de.connect2x.tammy.telecryptModules.call.callRtc
 import de.connect2x.tammy.trixnity.callRtc.InMemoryMatrixRtcCallStateStore
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcService
 import de.connect2x.tammy.trixnity.callRtc.MatrixRtcSlotEvent
-import net.folivo.trixnity.core.model.RoomId
+import de.connect2x.trixnity.core.model.RoomId
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull

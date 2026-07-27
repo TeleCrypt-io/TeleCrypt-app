@@ -6,19 +6,19 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.http.Url
 import kotlin.coroutines.CoroutineContext
 import kotlinx.serialization.json.Json
-import net.folivo.trixnity.clientserverapi.client.MatrixAuthProvider
-import net.folivo.trixnity.clientserverapi.client.MatrixClientServerApiClient
-import net.folivo.trixnity.clientserverapi.client.MatrixClientServerApiClientFactory
-import net.folivo.trixnity.clientserverapi.client.SyncBatchTokenStore
-import net.folivo.trixnity.core.model.events.UnknownEventContent
-import net.folivo.trixnity.core.serialization.events.EventContentSerializerMappings
-import net.folivo.trixnity.core.serialization.events.UnknownEventContentSerializer
-import net.folivo.trixnity.core.serialization.events.createEventContentSerializerMappings
-import net.folivo.trixnity.core.serialization.events.ephemeralOf
-import net.folivo.trixnity.core.serialization.events.messageOf
-import net.folivo.trixnity.core.serialization.events.roomAccountDataOf
-import net.folivo.trixnity.core.serialization.events.stateOf
-import net.folivo.trixnity.utils.RetryFlowDelayConfig
+import de.connect2x.trixnity.clientserverapi.client.MatrixAuthProvider
+import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClient
+import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClientFactory
+import de.connect2x.trixnity.clientserverapi.client.SyncBatchTokenStore
+import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
+import de.connect2x.trixnity.core.serialization.events.UnknownEventContentSerializer
+import de.connect2x.trixnity.core.serialization.events.createEventContentSerializerMappings
+import de.connect2x.trixnity.core.serialization.events.ephemeralOf
+import de.connect2x.trixnity.core.serialization.events.messageOf
+import de.connect2x.trixnity.core.serialization.events.roomAccountDataOf
+import de.connect2x.trixnity.core.serialization.events.stateOf
+import de.connect2x.trixnity.utils.RetryFlowDelayConfig
 
 class MatrixRtcClientServerApiClientFactory(
     private val delegate: MatrixClientServerApiClientFactory,
