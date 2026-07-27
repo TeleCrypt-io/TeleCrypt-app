@@ -213,6 +213,10 @@ class SsoRuntimeHandler(
         return displayName.ifEmpty { matrixClient?.userId?.full ?: "TeleCrypt User" }
     }
 
+    private fun decodeParam(value: String): String {
+        return runCatching { java.net.URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
+    }
+
     private suspend fun <T : Any> awaitInstance(
         type: KClass<T>,
         timeoutMs: Long = 10000,

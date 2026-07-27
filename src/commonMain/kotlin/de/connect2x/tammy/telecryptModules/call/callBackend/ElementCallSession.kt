@@ -27,8 +27,13 @@ suspend fun resolveElementCallSession(matrixClient: MatrixClient?): ElementCallS
     if (accessToken.isEmpty() || homeserver.isEmpty()) {
         return null
     }
-    val displayNameFromClient = matrixClient.displayName.value?.trim().orEmpty()
-    val displayName = account.displayName?.trim().orEmpty().ifEmpty {
+    val displayNameFromClient = matrixClient.profile.value.let { profile ->
+        (profile[de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName.Key] as? de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName)?.value
+    }?.trim().orEmpty()
+    val displayNameFromProfile = account.profile?.let { acctProfile ->
+        (acctProfile[de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName.Key] as? de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName)?.value
+    }?.trim().orEmpty()
+    val displayName = displayNameFromProfile.ifEmpty {
         displayNameFromClient.ifEmpty { account.userId.full }
     }
     return ElementCallSession(
