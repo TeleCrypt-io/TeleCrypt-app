@@ -186,6 +186,8 @@ kotlin {
                 implementation(sharedLibs.androidx.lifecycle.livedata.ktx)
                 implementation(sharedLibs.androidx.activity.compose)
                 implementation(libs.trixnity.messenger.notification.unifiedpush)
+                implementation("io.insert-koin:koin-android:4.2.2")
+                implementation("androidx.browser:browser:1.8.0")
             }
         }
 
