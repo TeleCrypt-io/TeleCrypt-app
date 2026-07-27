@@ -2,6 +2,7 @@ package de.connect2x.tammy
 
 import de.connect2x.tammy.telecryptModules.call.callModule
 import de.connect2x.tammy.telecryptModules.call.callRtc.configureForRtc
+import de.connect2x.trixnity.messenger.compose.view.DrawableResourceAppIcon
 import de.connect2x.trixnity.messenger.compose.view.composeViewModule
 import de.connect2x.trixnity.messenger.compose.view.typography.nunito.addNunitoThemeTypography
 import de.connect2x.trixnity.messenger.i18n.DefaultLanguages
@@ -12,8 +13,12 @@ import de.connect2x.trixnity.messenger.multi.MatrixMultiMessengerConfiguration
 import de.connect2x.trixnity.messenger.platformMatrixMessengerSettingsHolderModule
 import de.connect2x.trixnity.messenger.util.RootPath
 import kotlinx.datetime.TimeZone
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.InternalResourceApi
+import org.jetbrains.compose.resources.ResourceItem
 import org.koin.dsl.module
 
+@OptIn(InternalResourceApi::class)
 fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     customConfig: MatrixMultiMessengerConfiguration.() -> Unit = {}
 ) {
@@ -23,7 +28,12 @@ fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     privacyInfo = BuildConfig.privacyInfo
     imprint = BuildConfig.imprint
     licenses = BuildConfig.licenses
-    icon = null
+    icon = DrawableResourceAppIcon(
+        DrawableResource(
+            "drawable:status_icon",
+            setOf(ResourceItem(setOf(), "composeResources/de.connect2x.telecrypt_messenger.generated.resources/drawable/status_icon.png", -1, -1))
+        )
+    )
     sendLogsEmailAddress = "support@telecrypt.io"
 
     appUri = "$appId:"

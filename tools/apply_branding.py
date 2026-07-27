@@ -12,6 +12,7 @@ branching on the current mode.
 """
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -37,6 +38,61 @@ def replace_in_file(path: Path, pattern: str, replacement: str, *, flags=0, all_
     new_text = re.sub(pattern, replacement, text, flags=flags)
     if new_text != text:
         path.write_text(new_text, encoding="utf-8")
+
+
+def _copy_icons(icon_dir: Path, repo: Path):
+    """Copy branded icons from branding/icons/ into the source tree.
+
+    Layout (only existing dirs/files are copied — missing sources are skipped):
+      branding/icons/desktop/{logo.png,logo.ico,logo_44.png,logo_155.png}
+          -> src/jvmMain/resources/
+      branding/icons/android/mipmap-{density}/{ic_launcher,ic_launcher_round,ic_launcher_foreground}.png
+          -> src/androidMain/res/mipmap-{density}/
+      branding/icons/android/ic_launcher-playstore.png
+          -> src/androidMain/ic_launcher-playstore.png
+      branding/icons/status_icon.png
+          -> src/commonMain/composeResources/drawable/status_icon.png
+    """
+    copied = 0
+
+    # Desktop (jvmMain) icons
+    desktop_src = icon_dir / "desktop"
+    desktop_dst = repo / "src/jvmMain/resources"
+    if desktop_src.is_dir() and desktop_dst.is_dir():
+        for name in ("logo.png", "logo.ico", "logo_44.png", "logo_155.png", "logo.icns"):
+            s = desktop_src / name
+            if s.exists():
+                shutil.copy2(s, desktop_dst / name)
+                copied += 1
+
+    # Android mipmap icons (per-density)
+    android_src = icon_dir / "android"
+    if android_src.is_dir():
+        for d in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
+            src_d = android_src / f"mipmap-{d}"
+            dst_d = repo / "src/androidMain/res" / f"mipmap-{d}"
+            if src_d.is_dir() and dst_d.is_dir():
+                for name in ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png"):
+                    s = src_d / name
+                    if s.exists():
+                        shutil.copy2(s, dst_d / name)
+                        copied += 1
+        # Play store icon
+        ps = android_src / "ic_launcher-playstore.png"
+        if ps.exists():
+            shutil.copy2(ps, repo / "src/androidMain/ic_launcher-playstore.png")
+            copied += 1
+
+    # Compose Resources status_icon (used by tammyConfiguration.kt app icon)
+    si = icon_dir / "status_icon.png"
+    if si.exists():
+        dst = repo / "src/commonMain/composeResources/drawable/status_icon.png"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(si, dst)
+        copied += 1
+
+    if copied:
+        print(f"[apply_branding] copied {copied} icon file(s) from {icon_dir}")
 
 
 def apply(config: dict, mode: str):
@@ -123,6 +179,34 @@ def apply(config: dict, mode: str):
     tc = REPO / "src/commonMain/kotlin/de/connect2x/tammy/tammyConfiguration.kt"
     replace_in_file(tc, r'sendLogsEmailAddress = [^\n]*', f'sendLogsEmailAddress = {send_logs_lit}')
     replace_in_file(tc, r'pushUrl = [^\n]*', f'pushUrl = {push_url_lit}')
+
+    # 10b. tammyConfiguration.kt — app icon line
+    # Post: set the DrawableResourceAppIcon(...) form (bypasses internal Res accessor).
+    # Pre:  revert to upstream's Res.drawable.status_icon form.
+    if is_post:
+        icon_line = (
+            'icon = DrawableResourceAppIcon(\n'
+            '        DrawableResource(\n'
+            '            "drawable:status_icon",\n'
+            '            setOf(ResourceItem(setOf(), "composeResources/de.connect2x.telecrypt_messenger.generated.resources/drawable/status_icon.png", -1, -1))\n'
+            '        )\n'
+            '    )'
+        )
+    else:
+        icon_line = 'icon = DrawableResourceAppIcon(Res.drawable.status_icon)'
+    # Match `icon = ` followed by anything up to the next top-level statement line
+    # (the icon block is always followed by `sendLogsEmailAddress` or another assignment).
+    replace_in_file(
+        tc,
+        r'icon = [^\n]*(?:\n\s+[^\n]*\n?)*?(?=\n\s+sendLogsEmailAddress|\n\s+\w+\s*=|\n\s+\})',
+        icon_line,
+    )
+
+    # 10c. Copy icon files from branding/icons/ into the source tree (post-merge only).
+    # Pre-merge leaves upstream's icons in place; they'll be overwritten on next post_merge.
+    if is_post:
+        icon_dir = REPO / config.get("iconDir", "branding/icons")
+        _copy_icons(icon_dir, REPO)
 
     # 11. website/hugo.yaml
     replace_in_file(REPO / "website/hugo.yaml", r'baseURL: .*', f'baseURL: {homepage}')
