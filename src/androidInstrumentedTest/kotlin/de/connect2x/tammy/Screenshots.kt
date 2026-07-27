@@ -13,13 +13,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.value.MutableValue
 import com.arkivanov.decompose.value.Value
-import de.connect2x.messenger.compose.view.*
-import de.connect2x.messenger.compose.view.root.Main
-import de.connect2x.messenger.compose.view.theme.IsFocusHighlighting
-import de.connect2x.messenger.compose.view.theme.MessengerTheme
-import de.connect2x.messenger.compose.view.theme.components
-import de.connect2x.messenger.compose.view.theme.components.ThemedSurface
-import de.connect2x.tammy.tammyModule
+import de.connect2x.trixnity.messenger.compose.view.*
+import de.connect2x.trixnity.messenger.compose.view.root.Main
+import de.connect2x.trixnity.messenger.compose.view.theme.IsFocusHighlighting
+import de.connect2x.trixnity.messenger.compose.view.theme.MessengerTheme
+import de.connect2x.trixnity.messenger.compose.view.theme.components
+import de.connect2x.trixnity.messenger.compose.view.theme.components.ThemedSurface
+import de.connect2x.tammy.tammyThemeModule
 import de.connect2x.trixnity.messenger.MatrixMessengerConfiguration
 import de.connect2x.trixnity.messenger.MatrixMessengerSettingsHolder
 import de.connect2x.trixnity.messenger.i18n.DefaultLanguages
@@ -157,7 +157,7 @@ fun ScreenshotView(locale: Locale = Locale.ENGLISH, isRoomShown: MutableStateFlo
                     }
                 },
                 composeViewModule(MatrixMessengerConfiguration()),
-                tammyModule(),
+                tammyThemeModule(),
             )
         }.koin
     }

@@ -1,1 +1,1 @@
-See CHANGELOG.md in the Tammy repository.
+See CHANGELOG.md in the TeleCrypt Messenger repository.

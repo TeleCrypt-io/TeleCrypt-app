@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Use gitlab shell runners
+- Update Trixnity Messenger to 4.8.2-SNAPSHOT.CI-20260706.074328
+
 ### Deprecated
 
 ### Removed
@@ -22,9 +25,122 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## 1.1.33
+## 26.6.3
+
+### Changed
+
+- Updated Trixnity Messenger to 4.8.0
+
+## 26.6.2
+
+### Changed
+
+- Updated Trixnity Messenger to 4.7.0
+
+### Fixed
+
+- Fixed wrongly logging DEBUG
+
+## 26.6.1
+
+### Changed
+
+- Updated Trixnity Messenger to 4.6.1
+
+## 26.4.2
+
+### Changed
+
+- Bump Trixnity Messenger to 4.5.2
+
+## 26.4.1
+
+### Changed
+
+- Bump Trixnity Messenger to 4.5.1
+
+## 26.4.0
+
+### Changed
+
+- Switch to new month based version schema
+- Bump Trixnity Messenger to 4.5.0
+
+## 2.2.0
+
+### Changed
+
+- Bump Trixnity Messenger to 4.4.0
+
+## 2.1.0
 
 ### Added
+
+- Add publishing on F-Droid
+- Support for Kotlin/WasmJs
+
+### Changed
+
+- Bump Trixnity Messenger to 4.3.1
+
+### Fixed
+
+- Use another gateway for UnifiedPush
+
+## 2.0.6
+
+### Changed
+
+- Bump trixnity-messenger to 4.2.1
+
+## 2.0.5
+
+### Changed
+
+- Use Azure Artifact Signing for Windows
+- Bump trixnity-messenger to 4.2.0
+
+## 2.0.4
+
+### Changed
+
+- Upgraded trixnity-messenger to 4.1.0
+
+## 2.0.3
+
+### Changed
+
+- Upgraded trixnity-messenger to 4.0.3
+
+### Fixed
+
+- Fix version not being shown in About panel
+
+## 2.0.2
+
+### Fixed
+
+- Fix Android Google Service push keys
+
+## 2.0.1
+
+### Fixed
+
+- Fix startup crash on windows by changing jvm vendor
+
+## 2.0.0
+
+### Changed
+
+- Upgraded trixnity-messenger to 4.0.2
+
+## 1.1.34
+
+### Changed
+
+- Upgraded trixnity-messenger to 3.10.0
+
+## 1.1.33
 
 ### Changed
 

@@ -1,4 +1,4 @@
-package de.connect2x.tammy.desktop
+package de.connect2x.tammy
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,14 +21,14 @@ import java.net.Socket
 object SingleInstanceManager {
     private const val PORT = 47823 // Random high port for IPC
     private var serverSocket: ServerSocket? = null
-    
+
     private val _deeplinkFlow = MutableSharedFlow<String>(extraBufferCapacity = 10)
-    
+
     /**
      * Flow of deeplink URLs received from other app instances
      */
     val deeplinkFlow: SharedFlow<String> = _deeplinkFlow
-    
+
     /**
      * Try to become the primary instance.
      * @return true if this is the primary instance, false if another instance is running
@@ -42,14 +42,14 @@ object SingleInstanceManager {
             false
         }
     }
-    
+
     /**
      * Start listening for deeplink URLs from other instances.
      * Call this only if tryAcquireLock() returned true.
      */
     fun startListening(scope: CoroutineScope) {
         val server = serverSocket ?: return
-        
+
         scope.launch(Dispatchers.IO) {
             while (!server.isClosed) {
                 try {
@@ -69,7 +69,7 @@ object SingleInstanceManager {
     suspend fun injectDeeplink(url: String) {
         _deeplinkFlow.emit(url)
     }
-    
+
     private suspend fun handleClient(client: Socket) {
         try {
             client.use { socket ->
@@ -84,7 +84,7 @@ object SingleInstanceManager {
             println("[SingleInstance] Error handling client: ${e.message}")
         }
     }
-    
+
     /**
      * Send a deeplink URL to the running instance and exit.
      * Call this if tryAcquireLock() returned false.
@@ -103,7 +103,7 @@ object SingleInstanceManager {
             false
         }
     }
-    
+
     /**
      * Clean up resources
      */

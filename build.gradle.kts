@@ -1,16 +1,12 @@
-import de.connect2x.conventions.configureJava
-import de.connect2x.conventions.registerMultiplatformLicensesTasks
+import de.connect2x.conventions.*
 import org.gradle.internal.extensions.stdlib.capitalized
 import org.gradle.nativeplatform.platform.internal.DefaultArchitecture
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.gradle.nativeplatform.platform.internal.DefaultOperatingSystem
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.internal.ensureParentDirsCreated
-import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
+import java.io.ByteArrayOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -23,9 +19,9 @@ plugins {
     alias(sharedLibs.plugins.compose.multiplatform)
     alias(sharedLibs.plugins.compose.compiler)
     alias(sharedLibs.plugins.aboutLibraries.plugin)
-    alias(sharedLibs.plugins.google.services)
     alias(libs.plugins.download.plugin)
     alias(sharedLibs.plugins.c2xConventions)
+    alias(sharedLibs.plugins.google.services)
     alias(sharedLibs.plugins.kotlinx.kover)
     de.connect2x.tammy.plugins.flatpak
 }
@@ -34,37 +30,41 @@ configureJava(sharedLibs.versions.targetJvm)
 
 val appVersion = libs.versions.appVersion.get()
 val appPublishedVersion = libs.versions.appPublishedVersion.get()
-if (isRelease)
+if (CI.isRelease)
     require(appVersion == appPublishedVersion) {
         "when creating a release, the appVersion ($appVersion) must the same as the appPublishedVersion($appPublishedVersion)"
     }
-val appSuffixedVersion = withVersionSuffix(appVersion)
-val appName = "Tammy"
-val appIdentifier = "de.connect2x.tammy"
-val appPackage = "de.connect2x.tammy"
-val privacyInfo = rootDir.resolve("website/content/privacy.de-DE.md")
-    .readText()
-    .substringAfterMarkdownFrontMatter()
-val imprint = rootDir.resolve("website/content/imprint.de-DE.md")
-    .readText()
-    .substringAfterMarkdownFrontMatter()
+val appSuffixedVersion = withVersionSuffix(libs.versions.appVersion)
+val appName = "TeleCrypt Messenger"
+val appId = "io.telecrypt.app"
+val appHomepage = "https://telecrypt.io"
+
+fun String.substringAfterMarkdownFrontMatter(): String {
+    return this.substringAfter("---").substringAfter("---")
+}
+
+val privacyInfo =
+    File("website/content/privacy.de-DE.md").readText().substringAfterMarkdownFrontMatter()
+val imprint =
+    File("website/content/imprint.de-DE.md").readText().substringAfterMarkdownFrontMatter()
 
 group = "de.connect2x"
 version = appSuffixedVersion
 
 val distributionDir: Provider<Directory> =
     compose.desktop.nativeApplication.distributions.outputBaseDir.map { it.dir("main-release") }
+
+val webDistributionDir: Provider<Directory> = project.layout.buildDirectory.dir("dist")
 val appDistributionDir: Provider<Directory> = distributionDir.map { it.dir("app") }
 
 val os: DefaultOperatingSystem = DefaultNativePlatform.getCurrentOperatingSystem()
-val arch: DefaultArchitecture = DefaultArchitecture(DefaultNativePlatform.getCurrentArchitecture().name)
+val arch: DefaultArchitecture =
+    DefaultArchitecture(DefaultNativePlatform.getCurrentArchitecture().name)
 
 enum class BuildFlavor { PROD, DEV }
 
 val buildFlavor =
-    BuildFlavor.valueOf(System.getenv("TAMMY_BUILD_FLAVOR") ?: if (isCI) "PROD" else "DEV")
-val skipIosSimulatorTargets =
-    (System.getenv("CI_SKIP_IOS_SIMULATORS") ?: "false").equals("true", ignoreCase = true)
+    BuildFlavor.valueOf(System.getenv("TAMMY_BUILD_FLAVOR") ?: if (CI.isCI) "PROD" else "DEV")
 
 registerMultiplatformLicensesTasks { licenseTask, target, variant ->
     // TODO: move this into c2x-conventions eventually
@@ -77,7 +77,7 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
                 layout.buildDirectory.dir("generatedSrc/${targetName}Main/kotlin")
             doLast {
                 val outputFile = generatedSrc.get()
-                    .dir(appPackage.replace(".", "/"))
+                    .dir(appId.replace(".", "/"))
                     .file("BuildConfig.kt")
                 val quotes = "\"\"\""
                 val licencesString = licenseTask.get().outputFile.get().asFile.readText()
@@ -86,13 +86,14 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
 
                 val buildConfigString =
                     """
-            package $appPackage
+            package $appId
 
             actual val BuildConfig: CommonBuildConfig = object : CommonBuildConfig {
                 override val version: String = "$version"
                 override val flavor: Flavor = Flavor.valueOf("$buildFlavor")
                 override val appName: String = "$appName"
-                override val appId: String = "$appIdentifier"
+                override val appId: String = "$appId"
+                override val oAuth2ClientUrl: String = "$appHomepage"
                 override val licenses: String = $quotes$licencesString$quotes
                 override val privacyInfo: String = $quotes$privacyInfo$quotes
                 override val imprint: String = $quotes$imprint$quotes
@@ -112,39 +113,30 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
 }
 
 kotlin {
-    androidTarget {
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
-        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-    }
-    jvm("desktop")
-    js("web", IR) {
-        browser {
+    defaultCompilerOptions()
+    withAndroid(minSdk = libs.versions.androidMinSdk)
+    withJvm()
+    withWeb {
+        withBrowser {
+            commonWebpackConfig {
+                showProgress = true
+            }
             runTask {
-                mainOutputFileName = "$appIdentifier.js"
+                mainOutputFileName.set("$appId.js")
             }
             webpackTask {
-                mainOutputFileName = "$appIdentifier.js"
-            }
-            @OptIn(ExperimentalDistributionDsl::class)
-            distribution {
-                outputDirectory.set(distributionDir.map { it.dir("web") })
+                mainOutputFileName.set("$appId.js")
             }
         }
         binaries.executable()
+        useEsModules()
     }
-    val iosTargets = mutableListOf<KotlinNativeTarget>().apply {
-        add(iosArm64())
-        if (!skipIosSimulatorTargets) {
-            add(iosSimulatorArm64())
-            add(iosX64())
-        }
-    }
-    iosTargets.forEach { target ->
-        target.binaries.framework {
+    withIos {
+        binaries.framework {
             export(sharedLibs.essenty.lifecycle)
-            export(libs.trixnity.messenger.view)
-            baseName = "TammyUI"
-            isStatic = false
+            export(libs.trixnity.messenger.compose.view)
+            baseName = "TeleCryptUI"
+            isStatic = true
         }
     }
     applyDefaultHierarchyTemplate()
@@ -154,13 +146,17 @@ kotlin {
         }
         commonMain {
             dependencies {
-                api(libs.trixnity.messenger.view)
+                api(libs.trixnity.messenger.compose.view)
                 implementation(libs.trixnity.messenger)
+                implementation(libs.trixnity.messenger.compose.view.typography.nunito)
                 implementation(compose.components.resources)
+                implementation(sharedLibs.lognity.core)
+                implementation(sharedLibs.lognity.config)
+                implementation(sharedLibs.lognity.core.config)
             }
             //kotlin.srcDir(buildConfigGenerator.map { it.outputs })
         }
-        val desktopMain by getting {
+        jvmMain {
             dependencies {
                 // this is needed to create lock files working on all machines
                 if (System.getProperty("bundleAll") == "true") {
@@ -172,15 +168,13 @@ kotlin {
                 } else {
                     implementation(compose.desktop.currentOs)
                 }
-                implementation(libs.logback.classic)
                 implementation(sharedLibs.kotlinx.coroutines.swing)
-
-                implementation("com.github.winterreisender:webviewko:0.6.0")
             }
         }
         iosMain {
             dependencies {
                 api(sharedLibs.essenty.lifecycle) // Needed for export as iOS framework
+                implementation(libs.trixnity.messenger.notification.apns)
             }
         }
         androidMain {
@@ -190,15 +184,11 @@ kotlin {
                 implementation(sharedLibs.androidx.work.runtime.ktx)
                 implementation(sharedLibs.androidx.lifecycle.livedata.ktx)
                 implementation(sharedLibs.androidx.activity.compose)
-                implementation(libs.logback.android)
-                implementation(libs.slf4j.api)
-                implementation(sharedLibs.firebase.messaging)
-                implementation("androidx.browser:browser:1.8.0")
-                implementation("io.insert-koin:koin-android:3.5.6")
+                implementation(libs.trixnity.messenger.notification.unifiedpush)
             }
         }
 
-        val webMain by getting {
+        webMain {
             dependencies {
                 implementation(npm("copy-webpack-plugin", libs.versions.copyWebpackPlugin.get()))
             }
@@ -220,22 +210,21 @@ dependencies {
     debugImplementation(sharedLibs.compose.ui.test.android.manifest)
 }
 
-val distributionJavaHome = System.getenv("DIST_JAVA_HOME")
-    ?: System.getenv("JAVA_HOME")
-    ?: javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(sharedLibs.versions.distributionJvm.get().toInt())
-        vendor = JvmVendorSpec.AZUL
+val distributionJavaHome = runCatching {
+    javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }.get().metadata.installationPath.asFile.absolutePath
+}.getOrDefault(System.getenv("JAVA_HOME") ?: "/usr/lib/jvm/java-21-openjdk-amd64")
 
 compose {
     desktop {
         application {
-            mainClass = "$appPackage.desktop.MainKt"
+            mainClass = "$appId.Main"
             javaHome = distributionJavaHome
             jvmArgs("-Xmx2G")
 
             buildTypes.release.proguard {
-                isEnabled = false // TODO
+                isEnabled.set(false) // TODO
             }
             nativeDistributions {
                 modules("java.net.http", "java.sql", "java.naming", "jdk.accessibility")
@@ -251,40 +240,40 @@ compose {
                 packageVersion = appVersion
 
                 linux {
-                    iconFile.set(project.file("src/desktopMain/resources/logo.png"))
+                    iconFile.set(project.file("src/jvmMain/resources/logo.png"))
                     modules("jdk.security.auth")
                 }
                 windows {
                     menu = true
-                    iconFile.set(project.file("src/desktopMain/resources/logo.ico"))
+                    iconFile.set(project.file("src/jvmMain/resources/logo.ico"))
                     upgradeUuid = "8D41E87A-4F88-41A3-BAD9-9D4E8279B7E9"
                 }
                 macOS {
                     val appleKeychainFile = file("apple_keychain.keychain")
                     if (appleKeychainFile.exists()) {
-                        bundleID = appIdentifier
+                        bundleID = appId
                         signing {
-                            sign = true
-                            keychain = "apple_keychain.keychain"
-                            identity = "connect2x GmbH"
+                            sign.set(true)
+                            keychain.set("apple_keychain.keychain")
+                            identity.set("connect2x GmbH")
                         }
                         notarization {
-                            teamID = System.getenv("APPLE_TEAM_ID")
-                            appleID = System.getenv("APPLE_ID")
-                            password = System.getenv("APPLE_NOTARIZATION_PASSWORD")
+                            teamID.set(System.getenv("APPLE_TEAM_ID"))
+                            appleID.set(System.getenv("APPLE_ID"))
+                            password.set(System.getenv("APPLE_NOTARIZATION_PASSWORD"))
                         }
                     }
-                    iconFile.set(project.file("src/desktopMain/resources/logo.icns"))
+                    iconFile.set(project.file("src/jvmMain/resources/logo.icns"))
                     infoPlist {
                         extraKeysRawXml = """
                             <key>CFBundleURLTypes</key>
                               <array>
                                 <dict>
                                   <key>CFBundleURLName</key>
-                                    <string>$appName</string>
-                                    <key>CFBundleURLSchemes</key>
-                                    <array>
-                                    <string>$appIdentifier</string>
+                                  <string>$appName</string>
+                                  <key>CFBundleURLSchemes</key>
+                                  <array>
+                                    <string>$appId</string>
                                   </array>
                                 </dict>
                               </array>
@@ -297,30 +286,39 @@ compose {
 }
 
 android {
-    namespace = appPackage
+    namespace = appId
     buildFeatures {
         compose = true
     }
-    val compileSdkStr = sharedLibs.versions.androidCompileSDK.get()
-    compileSdk = compileSdkStr.toIntOrNull() ?: error("Invalid compileSdk: $compileSdkStr")
+    productFlavors {
+        flavorDimensions.add("version")
 
+        // This flavor requires the Google Play Services to be available on the target device. Apps built with this
+        // configuration can't be published in F-Droid.
+        register("googlePlay") {
+            dimension = "version"
+        }
+
+        // This flavor removes the requirement of Google Play Services to be available on the target device. Apps built
+        // with this configuration are intented to be published on F-Droid.
+        register("libre") {
+            dimension = "version"
+        }
+    }
     defaultConfig {
-        val minSdkStr = sharedLibs.versions.androidMinimalSDK.get()
-        minSdk = minSdkStr.toIntOrNull() ?: error("Invalid minSdk: $minSdkStr")
-        val targetSdkStr = sharedLibs.versions.androidTargetSDK.get()
-        targetSdk = targetSdkStr.toIntOrNull() ?: error("Invalid targetSdk: $targetSdkStr")
-        // Auto-increment versionCode in CI: prefer GitHub run number, then GitLab pipeline IID, else 1
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toInt()
             ?: System.getenv("CI_PIPELINE_IID")?.toInt()
             ?: 1
         versionName = appSuffixedVersion
-        applicationId = appIdentifier
-        setProperty("archivesBaseName", appName)
+        applicationId = appId
+
         resValue("string", "app_name", appName)
-        resValue("string", "scheme", appIdentifier)
+        resValue("string", "scheme", appId)
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-
+    base {
+        archivesName.set(appName)
+    }
     signingConfigs {
         create("release") {
             val keystoreFile = file("android_keystore.jks")
@@ -354,18 +352,37 @@ android {
             excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
+}
 
-    when (buildFlavor) {
-        BuildFlavor.PROD -> {}
-        BuildFlavor.DEV -> {
-            flavorDimensions += "version"
-            productFlavors {
-                create(buildFlavor.name) {
-                    dimension = "version"
-                    applicationIdSuffix = ".dev"
-                    versionNameSuffix = "-DEV"
-                }
+// This MUST be loaded after the Android extension code because "googlePlayImplementation" is available after the
+// Android code was loaded. This inserts the FCM notification provider of Trixnity Messenger into the Google Play
+// product flavor source set.
+dependencies {
+    "googlePlayImplementation"(libs.trixnity.messenger.notification.fcm)
+    "googlePlayImplementation"(sharedLibs.firebase.messaging)
+}
+
+tasks.register("scanAndroidLibreForNonFreeClasses", Exec::class) {
+    group = "verification"
+    description = "Scanning the libre APK for non-free components like Google Services"
+    dependsOn("assembleLibreDebug")
+
+    val file = layout.buildDirectory.file("outputs/apk/libre/debug/Tammy-libre-debug.apk")
+    inputs.file(file).withPropertyName("apkFile")
+    commandLine("fdroid", "scanner", file.get().asFile.absolutePath, "-v")
+
+    val outputStream = ByteArrayOutputStream()
+    errorOutput = outputStream
+    doLast {
+        val problemClasses = outputStream.toByteArray().toString(Charsets.UTF_8).split("\n")
+            .filter { it.contains("Problem: found class") }
+            .map { it.split(": ")[2].replace("found class ", "") }
+        if (problemClasses.isNotEmpty()) {
+            problemClasses.forEach {
+                println("Found problem in $it")
             }
+
+            throw GradleException("F-Droid scanner found ${problemClasses.size} problems")
         }
     }
 }
@@ -390,14 +407,24 @@ data class Distribution(
 
 val distributions = listOf(
     Distribution(
-        "aab", "Android", "universal",
-        listOf("bundleRelease"),
-        "$appName-release.aab"
+        "aab", "Android", "googlePlay",
+        listOf("bundleGooglePlayRelease"),
+        "$appName-googlePlay-release.aab"
     ),
     Distribution(
-        "apk", "Android", "universal",
-        listOf("assembleRelease"),
-        "$appName-release.apk"
+        "apk", "Android", "googlePlay",
+        listOf("assembleGooglePlayRelease"),
+        "$appName-googlePlay-release.apk"
+    ),
+    Distribution(
+        "aab", "Android", "libre",
+        listOf("bundleLibreRelease"),
+        "$appName-libre-release.aab"
+    ),
+    Distribution(
+        "apk", "Android", "libre",
+        listOf("assembleLibreRelease"),
+        "$appName-libre-release.apk"
     ),
     Distribution(
         "zip", "Linux", "x64",
@@ -448,7 +475,7 @@ val distributions = listOf(
 val appDescription = "Matrix Messenger Client"
 val misxDistribution = distributions.first { it.type == "msix" && it.platform == "Windows" }
 val publisherName = "connect2x GmbH"
-val publisherCN = "CN=connect2x GmbH, O=connect2x GmbH, L=Dippoldiswalde, S=Saxony, C=DE"
+val publisherCN = "CN=connect2x GmbH, O=connect2x GmbH, L=Dresden, C=DE"
 
 val logoFileName = "logo.png"
 val logo44FileName = "logo_44.png"
@@ -475,7 +502,7 @@ val createMsixManifest by tasks.registering {
                   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
                   IgnorableNamespaces="uap10 rescap">
-                  <Identity Name="$appIdentifier" Publisher="$publisherCN" Version="${appVersion.toMsix()}" ProcessorArchitecture="x64" />
+                  <Identity Name="$appId" Publisher="$publisherCN" Version="${appVersion.toMsix()}" ProcessorArchitecture="x64" />
                   <Properties>
                     <DisplayName>$appName</DisplayName>
                     <PublisherDisplayName>$publisherName</PublisherDisplayName>
@@ -496,14 +523,14 @@ val createMsixManifest by tasks.registering {
                   </Capabilities>
                   <Applications>
                     <Application
-                      Id="$appIdentifier"
+                      Id="$appId"
                       Executable="$appName.exe"
                       EntryPoint="Windows.FullTrustApplication">
                       <uap:VisualElements DisplayName="$appName" Description="$appDescription"	Square150x150Logo="$logo155FileName"
                          Square44x44Logo="$logo44FileName" BackgroundColor="white" />
                       <Extensions>
                         <uap:Extension Category="windows.protocol">
-                          <uap:Protocol Name="$appIdentifier" />
+                          <uap:Protocol Name="$appId" />
                         </uap:Extension>
                       </Extensions>
                     </Application>
@@ -518,7 +545,7 @@ val createMsixManifest by tasks.registering {
 }
 
 val copyMsixLogos by tasks.registering(Copy::class) {
-    from(projectDir.resolve("src").resolve("desktopMain").resolve("resources")) {
+    from(projectDir.resolve("src").resolve("jvmMain").resolve("resources")) {
         include(logoFileName, logo44FileName, logo155FileName)
     }
     into(appDistributionDir.get().dir(appName).asFile)
@@ -546,9 +573,18 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
     executable = "signtool.exe"
     args(
         "sign",
+        "/v",
         "/debug",
-        "/fd", "sha256", // signature digest algorithm
-        "/td", "sha256" // timestamp digest algorithm
+        "/fd",
+        "SHA256",
+        "/tr",
+        "http://timestamp.acs.microsoft.com",
+        "/td",
+        "SHA256",
+        "/dlib",
+        "C:/MicrosoftArtifactSigningClientTools/Azure.CodeSigning.Dlib.dll",
+        "/dmdf",
+        project.layout.projectDirectory.file("azure_artifact_signing_metadata.json").asFile.absolutePath,
     )
     System.getenv("WINDOWS_CODE_SIGNING_TIMESTAMP_SERVER")
         ?.takeIf { it.isNotBlank() }
@@ -581,14 +617,14 @@ val notarizeReleaseMsix by tasks.registering(Exec::class) {
 // #####################################################################################################################
 
 flatpak {
-    applicationId = appIdentifier
-    applicationName = appName
+    applicationId.set(appId)
+    applicationName.set(appName)
 
-    flatpakRemoteName = "flathub"
-    flatpakRemoteLocation = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+    flatpakRemoteName.set("flathub")
+    flatpakRemoteLocation.set("https://dl.flathub.org/repo/flathub.flatpakrepo")
     // This is explicitly not in the build directory as this would bloat the cache by about 3GB without
     // actually being able to reuse anything.
-    flatpakCacheDirectory = layout.projectDirectory.dir(".flatpak-cache")
+    flatpakCacheDirectory.set(layout.projectDirectory.dir(".flatpak-cache"))
 
     // The map can be generated by running the following step locally
     //   - `flatpak remote-add --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo`
@@ -598,30 +634,32 @@ flatpak {
     // If you are actively using flatpak I would recommend to run this in a fresh docker image
     // so that these results are not influenced by local settings.
 
-    flatpakDependencies = mapOf(
-        "runtime/org.freedesktop.Sdk/x86_64/24.08" to "59c3595a1607f4ad20479c722ed7338d99caea341e99aaaa0a93c3fafc46df41",
-        "runtime/org.freedesktop.Platform.GL.default/x86_64/24.08" to "26a4590b6101c284ab29ad9464eda4734f73c3c046d559bfa129dadad328de26",
-        "runtime/org.freedesktop.Sdk.Locale/x86_64/24.08" to "afe701cc3d8a64c41d9890dcbf7180662958fb2d63ab76e7848ea308087d8247",
-        "runtime/org.freedesktop.Platform.openh264/x86_64/2.5.1" to "0f52621e4540863ee86b1fe26216fff78fefa1096f367079692344139228e474",
-        "runtime/org.freedesktop.Platform.GL.default/x86_64/24.08extra" to "8eb83bf36c17d9b633e25ef86688a55d9a61cf50879f92da8ee48cea96f9f746",
-        "runtime/org.freedesktop.Platform/x86_64/24.08" to "e2cda5d7700bf0f02c764e151918a6e93def2634e8df9dc0dec52c4a1923ef88",
-        "runtime/org.freedesktop.Platform.Locale/x86_64/24.08" to "ffc8323f2585746bd8170cda64d5afd41c8467296f59a839a72faca67a9c63f0",
+    flatpakDependencies.set(
+        mapOf(
+            "runtime/org.freedesktop.Sdk/x86_64/25.08" to "d1eb1c10d166e7a611e0f26d2332aa9265ce2d048b054dca07f7919258ee1a0b",
+            "runtime/org.freedesktop.Platform.GL.default/x86_64/25.08" to "68b343b37bb6ddfa82518be6c32e28428f36179f1c8536d33d6fff6bc5fc79f1",
+            "runtime/org.freedesktop.Sdk.Locale/x86_64/25.08" to "65e3c95b6a2bd2e81271c76822eb0e16e2573b05b253c9a222da36674f387d43",
+            "runtime/org.freedesktop.Platform.codecs-extra/x86_64/25.08-extra" to "7116be6864f5bfe54ccf6311a20d43616f910a3fb05c2f578a1b3dc4dc09dc0f",
+            "runtime/org.freedesktop.Platform.GL.default/x86_64/25.08-extra" to "c3bb4d072d8f2a5b6cee1566fd3becf5b817e6358cefda5aabbfc86d7608ff32",
+            "runtime/org.freedesktop.Platform/x86_64/25.08" to "a0b687431459280667d830df5c9d0f25e47b9b7d78f212a858eefac086ed2909",
+            "runtime/org.freedesktop.Platform.Locale/x86_64/25.08" to "40d64910991e3e290580e161c3719128cfe8227fbcd8a260e540c5239517c942",
+        )
     )
 
-    desktopTemplate = file("flatpak/app.desktop.tmpl")
-    manifestTemplate = file("flatpak/manifest.json.tmpl")
-    metainfoTemplate = file("flatpak/metainfo.xml.tmpl")
-    iconsDirectory = layout.projectDirectory.dir("flatpak/icons")
+    desktopTemplate.set(file("flatpak/app.desktop.tmpl"))
+    manifestTemplate.set(file("flatpak/manifest.json.tmpl"))
+    metainfoTemplate.set(file("flatpak/metainfo.xml.tmpl"))
+    iconsDirectory.set(layout.projectDirectory.dir("flatpak/icons"))
 
-    appDistributionDirectory = provider {
+    appDistributionDirectory.set(provider {
         tasks
             .named<AbstractJPackageTask>("createReleaseDistributable")
             .flatMap { it.destinationDir.dir(appName) }
-    }.flatMap { it }
+    }.flatMap { it })
 
-    developerName = publisherName
-    publishedVersion = appVersion
-    homepage = "https://tammy.connect2x.de"
+    developerName.set(publisherName)
+    publishedVersion.set(appVersion)
+    homepage.set(appHomepage)
 }
 
 val flatpakBundleDistribution =
@@ -703,8 +741,8 @@ val packageReleasePlatformZip by tasks.creating(Zip::class) {
     group = "compose desktop"
     from(appDistributionDir)
 
-    archiveFileName = platformZipDistribution.originalFileName
-    destinationDirectory = zipDistributionDir
+    archiveFileName.set(platformZipDistribution.originalFileName)
+    destinationDirectory.set(zipDistributionDir)
     dependsOn.addAll(
         listOf(
             "createReleaseDistributable",
@@ -715,12 +753,12 @@ val packageReleasePlatformZip by tasks.creating(Zip::class) {
 
 val webZipDistribution = distributions.first { it.type == "zip" && it.platform == "Web" }
 
-val packageReleaseWebZip by tasks.creating(Zip::class) {
+val packageReleaseWebZip by tasks.registering(Zip::class) {
     group = "compose desktop"
-    from(distributionDir.map { it.dir("web") })
-    archiveFileName = webZipDistribution.originalFileName
-    destinationDirectory = zipDistributionDir
-    dependsOn.add("webBrowserDistribution")
+    from(webDistributionDir.map { it.dir("composeWebCompatibility/productionExecutable") })
+    archiveFileName.set(webZipDistribution.originalFileName)
+    destinationDirectory.set(zipDistributionDir)
+    dependsOn.add("composeCompatibilityBrowserDistribution")
 }
 
 val uploadWebZipDistributable by tasks.registering {
@@ -745,22 +783,28 @@ val uploadPlatformDistributable by tasks.registering {
 
 val uploadAndroidDistributable by tasks.registering {
     group = "release"
-    val aabDistribution = distributions.first { it.type == "aab" && it.platform == "Android" }
-    val apkDistribution = distributions.first { it.type == "apk" && it.platform == "Android" }
+    val aabDistributions = distributions.filter { it.type == "aab" && it.platform == "Android" }
+    val apkDistributions = distributions.filter { it.type == "apk" && it.platform == "Android" }
     doLast {
-        uploadToPackageRegistry(
-            layout.buildDirectory.get()
-                .file("outputs/bundle/release/${aabDistribution.originalFileName}").asFile.toPath(),
-            aabDistribution
-        )
-        uploadToPackageRegistry(
-            layout.buildDirectory.get()
-                .file("outputs/apk/release/${apkDistribution.originalFileName}").asFile.toPath(),
-            apkDistribution
-        )
+        for (distribution in aabDistributions) {
+            val path =
+                "outputs/bundle/${distribution.architecture}Release/${distribution.originalFileName}"
+            uploadToPackageRegistry(
+                layout.buildDirectory.get().file(path).asFile.toPath(),
+                distribution
+            )
+        }
+        for (distribution in apkDistributions) {
+            val path =
+                "outputs/apk/${distribution.architecture}/release/${distribution.originalFileName}"
+            uploadToPackageRegistry(
+                layout.buildDirectory.get().file(path).asFile.toPath(),
+                distribution
+            )
+        }
     }
-    dependsOn.addAll(aabDistribution.tasks)
-    dependsOn.addAll(apkDistribution.tasks)
+    dependsOn.addAll(aabDistributions.flatMap { it.tasks })
+    dependsOn.addAll(apkDistributions.flatMap { it.tasks })
 }
 
 // #####################################################################################################################
@@ -786,7 +830,7 @@ val createWebsiteDownloadLinks by tasks.registering {
 }
 
 fun createWebsiteMsixAppinstaller(architecture: String) {
-    val websiteBaseUrl = "https://tammy.connect2x.de"
+    val websiteBaseUrl = "https://telecrypt.io"
     val appinstallerFileName = "$appName-Windows-$architecture.appinstaller"
     val msixDistribution =
         distributions.first { it.platform == "Windows" && it.type == "msix" && it.architecture == architecture }
@@ -805,7 +849,7 @@ fun createWebsiteMsixAppinstaller(architecture: String) {
                             Version="${appPublishedVersion.toMsix()}"
                             Uri="$websiteBaseUrl/$appinstallerFileName">
                             <MainPackage
-                                Name="$appIdentifier"
+                                Name="$appId"
                                 Publisher="$publisherCN"
                                 Version="${appPublishedVersion.toMsix()}"
                                 ProcessorArchitecture="x64"
@@ -883,56 +927,5 @@ val createGitLabRelease by tasks.registering {
             )
             .build()
         httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-    }
-}
-
-tasks.configureEach {
-    if (javaClass.name.contains("SyncComposeResourcesForIosTask")) {
-        @Suppress("UNCHECKED_CAST")
-        val outputDir =
-            javaClass.getMethod("getOutputDir").invoke(this) as? org.gradle.api.file.DirectoryProperty
-        outputDir?.set(layout.buildDirectory.dir("compose/resources/${name}"))
-    }
-}
-
-// Coverage focuses on the call feature we built — the inherited messenger code
-// would otherwise dilute the figure. UI (Compose), Koin DI wiring and the
-// platform I/O hosts (bridge server/manager, browser launcher) are excluded as
-// they are validated by integration/manual runs, not unit tests.
-kover {
-    reports {
-        filters {
-            includes {
-                classes(
-                    "de.connect2x.tammy.telecryptModules.call.*",
-                    "de.connect2x.tammy.trixnity.callRtc.*",
-                )
-            }
-            excludes {
-                classes(
-                    // Compose UI and Koin DI wiring.
-                    "de.connect2x.tammy.telecryptModules.call.callUi.*",
-                    "*ModuleKt",
-                    // Platform I/O hosts (browser launch, WebView, local HTTP/WS bridge, CDP).
-                    "*WidgetBridgeServer*",
-                    "*WidgetBridgeManager*",
-                    "*CallLauncher*",
-                    "*CdpConnection*",
-                    "*ElementCallActivity*",
-                    "*ElementCallLauncher*",
-                    // Orchestration coupled to a live MatrixClient / sync stream / HTTP —
-                    // exercised by integration (real multi-device call) runs, not unit tests.
-                    "*CallCoordinatorImpl*",
-                    "*MatrixRtcSyncEventHandler*",
-                    "*IncomingCallManager*",
-                    "*MatrixRtcAutoStart*",
-                    "*MatrixRtcClientServerApiClientFactory*",
-                    "*MatrixRtcSyncFilterConfigurer*",
-                    "*MatrixRtcTransports*",
-                    "*ElementCallSession*",
-                )
-                annotatedBy("androidx.compose.runtime.Composable")
-            }
-        }
     }
 }
