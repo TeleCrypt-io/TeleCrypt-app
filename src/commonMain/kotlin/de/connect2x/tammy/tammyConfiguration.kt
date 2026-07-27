@@ -1,10 +1,7 @@
 package de.connect2x.tammy
 
-import org.jetbrains.compose.resources.InternalResourceApi
 import de.connect2x.tammy.telecryptModules.call.callModule
-import de.connect2x.telecrypt_messenger.generated.resources.Res
 import de.connect2x.tammy.telecryptModules.call.callRtc.configureForRtc
-import de.connect2x.trixnity.messenger.compose.view.DrawableResourceAppIcon
 import de.connect2x.trixnity.messenger.compose.view.composeViewModule
 import de.connect2x.trixnity.messenger.compose.view.typography.nunito.addNunitoThemeTypography
 import de.connect2x.trixnity.messenger.i18n.DefaultLanguages
@@ -17,7 +14,6 @@ import de.connect2x.trixnity.messenger.util.RootPath
 import kotlinx.datetime.TimeZone
 import org.koin.dsl.module
 
-@OptIn(InternalResourceApi::class)
 fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     customConfig: MatrixMultiMessengerConfiguration.() -> Unit = {}
 ) {
@@ -27,7 +23,7 @@ fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     privacyInfo = BuildConfig.privacyInfo
     imprint = BuildConfig.imprint
     licenses = BuildConfig.licenses
-    icon = DrawableResourceAppIcon(Res.drawable.status_icon)
+    icon = null
     sendLogsEmailAddress = "support@telecrypt.io"
 
     appUri = "$appId:"
