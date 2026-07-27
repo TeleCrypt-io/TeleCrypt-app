@@ -1,6 +1,7 @@
 package de.connect2x.tammy
 
 import de.connect2x.tammy.telecryptModules.call.callModule
+import de.connect2x.telecrypt_messenger.generated.resources.Res
 import de.connect2x.tammy.telecryptModules.call.callRtc.configureForRtc
 import de.connect2x.trixnity.messenger.compose.view.DrawableResourceAppIcon
 import de.connect2x.trixnity.messenger.compose.view.composeViewModule
