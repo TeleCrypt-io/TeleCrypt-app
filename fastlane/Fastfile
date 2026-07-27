@@ -126,7 +126,7 @@ platform :ios do
 
     ipa_path = build_app(
       project: "iosApp/iosApp.xcodeproj",
-      scheme: "Tammy for iOS",
+      scheme: "TeleCrypt for iOS",
       export_method: "app-store",
       output_directory: "iosApp/build",
       output_name: "TeleCrypt",
@@ -157,7 +157,7 @@ platform :ios do
     sh(
       "xcodebuild -showBuildTimingSummary " \
       "-project iosApp/iosApp.xcodeproj " \
-      "-scheme 'Tammy for iOS' " \
+      "-scheme 'TeleCrypt for iOS' " \
       "-configuration Release " \
       "-derivedDataPath iosApp/build/DerivedData || true"
     )
@@ -236,7 +236,7 @@ platform :android do
 
     supply(
       json_key: service_account_path,
-      package_name: "com.zendev.telecrypt",
+      package_name: "io.telecrypt.app",
       track: "internal",
       aab: aab_path,
       skip_upload_apk: true,

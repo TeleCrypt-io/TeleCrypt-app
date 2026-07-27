@@ -1,5 +1,5 @@
 # TeleCrypt URL Protocol Registration Script
-# Run this script as Administrator to register the com.zendev.telecrypt:// URL scheme
+# Run this script as Administrator to register the telecrypt:// URL scheme
 
 $ErrorActionPreference = "Stop"
 
@@ -19,10 +19,10 @@ if (-not (Test-Path $HandlerPath)) {
 $HandlerPathEscaped = $HandlerPath.Replace('\', '\\')
 
 # Create registry entries
-Write-Host "Registering URL protocol: com.zendev.telecrypt://" -ForegroundColor Green
+Write-Host "Registering URL protocol: telecrypt://" -ForegroundColor Green
 
 # Create the protocol key
-$protocolKey = "HKCU:\Software\Classes\com.zendev.telecrypt"
+$protocolKey = "HKCU:\Software\Classes\telecrypt"
 New-Item -Path $protocolKey -Force | Out-Null
 Set-ItemProperty -Path $protocolKey -Name "(Default)" -Value "URL:TeleCrypt Protocol"
 Set-ItemProperty -Path $protocolKey -Name "URL Protocol" -Value ""
@@ -40,4 +40,4 @@ Write-Host ""
 Write-Host "Handler path: $HandlerPath" -ForegroundColor Cyan
 Write-Host "Command: $command" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "You can now use com.zendev.telecrypt:// URLs" -ForegroundColor Yellow
+Write-Host "You can now use telecrypt:// URLs" -ForegroundColor Yellow

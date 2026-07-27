@@ -70,7 +70,7 @@ object SsoCallbackServer {
             }
             
             // Save callback URL to temp file for next startup
-            val callbackUrl = "com.zendev.telecrypt://localhost/sso?state=$state&loginToken=$loginToken"
+            val callbackUrl = "telecrypt://localhost/sso?state=$state&loginToken=$loginToken"
             
             // Inject into runtime flow immediately
             scope.launch {

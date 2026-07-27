@@ -1,7 +1,19 @@
 {
   "appName": "TeleCrypt Messenger",
-  "androidAppId": "com.zendev.telecrypt",
-  "iosBundleId": "io.telecrypt.messenger",
+  "androidAppId": "io.telecrypt.app",
+  "iosBundleId": "io.telecrypt.app",
   "iconDir": "branding/icons",
-  "appleTeamId": "F6CHJX72K5"
+  "appleTeamId": "F6CHJX72K5",
+  "iosScheme": "TeleCrypt for iOS",
+  "baseName": "TeleCryptUI",
+  "homepage": "https://telecrypt.io",
+  "websiteBaseUrl": "https://telecrypt.io",
+  "sendLogsEmailAddress": "support@telecrypt.io",
+  "pushUrl": "TODO: replace with TeleCrypt Sygnal push gateway URL",
+  "deepLinkScheme": "telecrypt",
+  "company": "TeleCrypt.IO",
+  "sourceUrl": "https://github.com/TeleCrypt-io/TeleCrypt-app",
+  "webAppUrl": "https://app.telecrypt.io",
+  "downloadTitleEn": "Download TeleCrypt Messenger",
+  "downloadTitleDe": "TeleCrypt Messenger herunterladen"
 }

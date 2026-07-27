@@ -1,4 +1,4 @@
-package de.conenct2x.tammy
+package de.connect2x.tammy
 
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize

@@ -4,7 +4,7 @@ This doc describes the call signaling layer implemented in TeleCrypt.
 Media transport is handled by Element Call; MatrixRTC provides signaling.
 
 ## Scope
-- Client side only (Tammy).
+- Client side only (TeleCrypt).
 - Focus on event types, derived state, and client flow.
 - Server side (LiveKit + auth) is assumed to exist.
 

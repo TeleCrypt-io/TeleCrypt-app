@@ -1,1 +1,1 @@
-See https://gitlab.com/connect2x/trixnity-messenger/trixnity-messenger/-/blob/main/CHANGELOG.md
+See CHANGELOG.md in the TeleCrypt Messenger repository.

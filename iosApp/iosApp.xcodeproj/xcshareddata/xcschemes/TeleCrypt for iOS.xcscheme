@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "B9DA97B02DC1472C00A4DA20"
-               BuildableName = "Tammy.app"
-               BlueprintName = "Tammy for iOS"
+               BuildableName = "TeleCrypt.app"
+               BlueprintName = "TeleCrypt for iOS"
                ReferencedContainer = "container:iosApp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -44,8 +44,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "B9DA97B02DC1472C00A4DA20"
-            BuildableName = "Tammy.app"
-            BlueprintName = "Tammy for iOS"
+            BuildableName = "TeleCrypt.app"
+            BlueprintName = "TeleCrypt for iOS"
             ReferencedContainer = "container:iosApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

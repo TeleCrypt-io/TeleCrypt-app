@@ -10,6 +10,7 @@ we mirror it into the GitHub wiki.
 - CALLS_PROTOCOL.md: MatrixRTC signaling notes and call state model
 - ANDROID_WIDGET_TESTING.md: how to build, install and test calls on Android
 - CI.md: CI pipelines and required secrets
+- FORK_MAINTENANCE.md: fork-maintenance conventions and merge workflow (SchildiChat-style)
 
 ## Contributing
 - Keep changes small and focused.

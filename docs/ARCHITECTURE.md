@@ -1,13 +1,29 @@
 # Architecture Overview
 
+## Layering
+
+TeleCrypt sits on four layers (bottom → top):
+
+| Layer | Packages | Maven / upstream | Provides |
+|-------|----------|------------------|---------|
+| **Trixnity** (Matrix SDK) | `net.folivo.trixnity.*` | gitlab.com/connect2x/trixnity (project 26519650) | Matrix CS API, sync loop, Olm/Megolm crypto, event/serialization models |
+| **trixnity-messenger** (messenger framework) | `de.connect2x.trixnity.messenger.*`, `de.connect2x.messenger.compose.view.*` | `de.connect2x:trixnity-messenger:3.9.0`, `de.connect2x:trixnity-messenger-compose-view:3.9.0` (gitlab project 47538655) | `MatrixMultiMessengerConfiguration`, ViewModels, i18n, settings, notifications, `composeViewModule` |
+| **Tammy** (app shell — this codebase) | `de.connect2x.tammy.*` | gitlab.com/connect2x/tammy.git | Platform configs, BuildConfig, tammyModule, FlatpakPlugin |
+| **TeleCrypt** (branding + features) | still `de.connect2x.tammy.*` (NOT renamed — merge hygiene) | this repo | `telecryptModules/call/`, `trixnity/callRtc/`, branding via `pre_merge.sh`/`post_merge.sh` |
+
+**Why packages are NOT renamed:** TeleCrypt keeps `de.connect2x.tammy.*` source packages to ensure clean `git merge` from upstream Tammy. Renaming would cause conflicts on every source file on every upstream release. Users never see package names — they see app id `io.telecrypt.app` and URL scheme `telecrypt://`. See `docs/FORK_MAINTENANCE.md`.
+
+## Direct-Trixnity RTC Side-Channel
+
+`de.connect2x.tammy.trixnity.callRtc.*` and `de.connect2x.tammy.telecryptModules.call.callRtc.*` bypass trixnity-messenger and talk to Trixnity directly (`MatrixClient`, `SyncApiClient`, `OlmDecrypter`, `EventContentSerializerMappings`, sync `Filters`). This is intentional and temporary — trixnity-messenger does not yet expose MatrixRTC support. See comments in `src/commonMain/kotlin/de/connect2x/tammy/trixnity/callRtc/MatrixRtcModels.kt:13-23`. Once trixnity-messenger moves onto the `de.connect2x.trixnity` fork and exposes MatrixRTC, this side-channel can be replaced by the upstream types plus a thin mapping layer.
+
 ## Stack
-- Kotlin Multiplatform + Compose.
-- Matrix client stack from Tammy/Trixnity.
-- Koin for DI.
+- Kotlin Multiplatform + Compose Multiplatform
+- Matrix client stack: Trixnity → trixnity-messenger → Tammy (this codebase) → TeleCrypt (branding + features)
+- Koin for DI
 
 ## Main Entry Points
-- `src/commonMain/kotlin/de/connect2x/tammy/tammyConfiguration.kt`:
-  registers common modules.
+- `src/commonMain/kotlin/de/connect2x/tammy/tammyConfiguration.kt`: registers common modules (`composeViewModule`, `notificationsModule`, `tammyModule`, `callModule`).
 - Platform-specific configs:
   - `src/desktopMain/kotlin/de/connect2x/tammy/tammyConfiguration.desktop.kt`
   - `src/androidMain/kotlin/de/connect2x/tammy/tammyConfiguration.android.kt`
@@ -18,8 +34,7 @@
 Custom TeleCrypt features live under:
 `src/commonMain/kotlin/de/connect2x/tammy/telecryptModules/`
 
-Example: calls live in `telecryptModules/call` with
-common interfaces and platform-specific implementations.
+Example: calls live in `telecryptModules/call` with common interfaces and platform-specific implementations.
 
 ## Call Signaling Layer (implemented)
 We implement MatrixRTC signaling in a small call stack that lives in
@@ -71,5 +86,4 @@ Koin module wiring:
 - platform `callBackendModule.*.kt`
 
 ## Branding
-Branding is generated from `branding/branding.json`
-via `tools/brandify.sh` or `tools/brandify.kts`.
+Branding is generated from `branding/branding.json` via `tools/post_merge.sh` (re-applies TeleCrypt branding after upstream merge or in CI) and `tools/pre_merge.sh` (reverts branded files to upstream state before merge). See `docs/FORK_MAINTENANCE.md` for the full fork-maintenance workflow.

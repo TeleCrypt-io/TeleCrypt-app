@@ -1,1 +1,1 @@
-Tammy ist ein schneller, einfacher und sicherer Matrix-Messenger.
+TeleCrypt Messenger ist ein schneller, einfacher und sicherer Matrix-Messenger mit E2EE-Anrufen.

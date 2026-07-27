@@ -224,7 +224,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Prepare signing keystore
         if: env.ANDROID_RELEASE_STORE_FILE_BASE64 != ''
@@ -294,7 +294,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Build desktop and web distributions (Linux)
         run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip
@@ -386,7 +386,7 @@ jobs:
 
       - name: Apply branding
         shell: bash
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Build desktop distributions (Windows)
         shell: bash
@@ -462,7 +462,7 @@ jobs:
           save-always: true
 
       - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Build desktop distributions (macOS)
         run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseDmg
@@ -521,7 +521,7 @@ jobs:
           save-always: true
 
       - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Detect iOS SDK version
         run: |
@@ -612,7 +612,7 @@ jobs:
             ${{ runner.os }}-konan-
 
       - name: Apply branding
-        run: tools/brandify.sh branding/branding.json
+        run: tools/post_merge.sh branding/branding.json
 
       - name: Cache Xcode DerivedData
         uses: actions/cache@v4

@@ -1,4 +1,4 @@
-app_identifier("io.telecrypt.messenger")
+app_identifier("io.telecrypt.app")
 itc_team_id(ENV["APPLE_TEAM_ID"])
 team_id(ENV["APPLE_TEAM_ID"])
 json_key_file("./android_service-account.json")

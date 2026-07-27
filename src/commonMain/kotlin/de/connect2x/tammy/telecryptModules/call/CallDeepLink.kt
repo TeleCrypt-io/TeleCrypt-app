@@ -4,7 +4,7 @@ fun buildTelecryptCallDeepLink(roomId: String, roomName: String, mode: CallMode)
     val encodedRoomId = encodeQueryComponent(roomId)
     val encodedRoomName = encodeQueryComponent(roomName)
     val encodedMode = encodeQueryComponent(mode.name.lowercase())
-    return "com.zendev.telecrypt://call?roomId=$encodedRoomId&roomName=$encodedRoomName&mode=$encodedMode"
+    return "telecrypt://call?roomId=$encodedRoomId&roomName=$encodedRoomName&mode=$encodedMode"
 }
 
 private fun encodeQueryComponent(value: String): String {

@@ -5,7 +5,9 @@ DEFAULT_BRANCH="main"
 UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-upstream}"
 UPSTREAM_URL="${UPSTREAM_URL:-https://gitlab.com/connect2x/tammy.git}"
 BRANDING_CONFIG="${BRANDING_CONFIG:-branding/branding.json}"
-BRANDIFY_SCRIPT="${BRANDIFY_SCRIPT:-tools/brandify.sh}"
+PRE_MERGE_SCRIPT="${PRE_MERGE_SCRIPT:-tools/pre_merge.sh}"
+POST_MERGE_SCRIPT="${POST_MERGE_SCRIPT:-tools/post_merge.sh}"
+UPSTREAM_CONFIG="${UPSTREAM_CONFIG:-branding/upstream.json}"
 PUSH_UPDATES_DEFAULT="${PUSH_UPDATES:-}"
 AUTO_COMMIT_DEFAULT="${AUTO_COMMIT:-}"
 ALLOW_REBASE_DEFAULT="${ALLOW_REBASE:-}"
@@ -25,8 +27,8 @@ usage() {
 Usage: tools/upstream_sync.sh [options] [branch]
 
 Options:
-  --auto-commit       автоматически коммитить изменения после brandify
-  --no-auto-commit    оставить изменения после brandify неподтверждёнными
+  --auto-commit       автоматически коммитить изменения после брендинга
+  --no-auto-commit    оставить изменения после брендинга неподтверждёнными
   --push              выполнять git push (поведение по умолчанию)
   --no-push           пропустить git push
   --rebase            пробовать git rebase, если fast-forward невозможен (по умолчанию)
@@ -167,7 +169,7 @@ if [[ -z "$AUTO_COMMIT" ]]; then
   if [[ "$is_interactive" == true ]]; then
     AUTO_COMMIT="$(ask_bool \
       "Автоматический коммит брендинга" \
-      "Скрипт запишет изменения от brandify сразу после выполнения. Это обеспечивает чистую историю и избавляет от ручного git add/commit." \
+      "Скрипт запишет изменения от post_merge сразу после выполнения. Это обеспечивает чистую историю и избавляет от ручного git add/commit." \
       "Включить автоматический commit?" \
       "true")"
   else
@@ -237,6 +239,14 @@ if [[ -n "$(git status --porcelain)" ]]; then
   abort "branch '$DEFAULT_BRANCH' has local modifications; aborting merge"
 fi
 
+info "reverting branded files to upstream state before merge"
+if [[ -x "$PRE_MERGE_SCRIPT" && -f "$UPSTREAM_CONFIG" ]]; then
+  info "reverting branding via $PRE_MERGE_SCRIPT"
+  "$PRE_MERGE_SCRIPT" "$UPSTREAM_CONFIG"
+else
+  info "pre_merge script or upstream config missing; skip revert"
+fi
+
 info "fast-forward merging $UPSTREAM_REMOTE/$DEFAULT_BRANCH into $DEFAULT_BRANCH"
 rebased=false
 if git merge --ff-only "$UPSTREAM_REMOTE/$DEFAULT_BRANCH"; then
@@ -255,11 +265,11 @@ else
   fi
 fi
 
-if [[ -x "$BRANDIFY_SCRIPT" && -f "$BRANDING_CONFIG" ]]; then
-  info "reapplying branding via $BRANDIFY_SCRIPT"
-  "$BRANDIFY_SCRIPT" "$BRANDING_CONFIG"
+if [[ -x "$POST_MERGE_SCRIPT" && -f "$BRANDING_CONFIG" ]]; then
+  info "reapplying branding via $POST_MERGE_SCRIPT"
+  "$POST_MERGE_SCRIPT" "$BRANDING_CONFIG"
 else
-  info "branding script or config missing; skip rebranding"
+  info "post_merge script or branding config missing; skip rebranding"
 fi
 
 if [[ -n "$(git status --porcelain)" ]]; then

@@ -29,7 +29,7 @@ This builds and runs the desktop app for your current OS.
 - iOS archive (manual):
   ```
   cd iosApp
-  xcodebuild -workspace iosApp.xcworkspace -scheme "Tammy for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive
+  xcodebuild -workspace iosApp.xcworkspace -scheme "TeleCrypt for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive
   ```
 
 ## Logs

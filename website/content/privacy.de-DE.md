@@ -5,17 +5,12 @@ title: "Datenschutz"
 Im Folgenden möchten wir Sie aufklären, wie Ihre Daten von uns verarbeitet werden.
 
 **Verantwortlich im Sinne der DSGVO ist:**  
-connect2x GmbH\
-Geschäftsführerende: Benedict Benken, Michael Thiele\
-Kraftwerk Mitte 7\
-01067 Dresden\
-Amtsgericht Dresden HRB 43737\
-Email: kontakt@connect2x.de\
-Telefon: +491725199172
+TeleCrypt.IO\
+<!-- TODO: Rechtsform, Adresse und Registereintrag von TeleCrypt.IO ergänzen -->\
+Email: support@telecrypt.io\
 
 **Unseren Datenschutzbeauftragten erreichen sie unter:**  
-Benedict Benken\
-Email: datenschutz@connect2x.de
+<!-- TODO: Datenschutzbeauftragte(r) für TeleCrypt.IO noch nicht benannt -->
 
 ## Kontaktaufnahme
 

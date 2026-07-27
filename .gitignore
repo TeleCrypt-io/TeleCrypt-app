@@ -44,3 +44,19 @@ logs/
 .tmp/
 .tmp-element-call/
 hs_err_pid*.log
+
+# IDE / user-specific
+.idea/
+iosApp/iosApp.xcodeproj/xcuserdata/
+
+# Auto-generated
+fastlane/metadata/android/screenshots.html
+
+# Local-only planning docs (do not commit)
+upgrading_cleanup.md
+
+# Per-environment credentials (re-add when we have a real Firebase project)
+google-services.json
+
+# Accidental debug logs
+*.log

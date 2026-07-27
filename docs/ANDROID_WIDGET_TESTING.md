@@ -7,7 +7,7 @@ Click the green ▶ Run button in the toolbar, select the Pixel 7 device. The ap
 
 **Option B — Via command line:**
 ```bash
-cd /Users/dsrusanov/HSE-stuff/nir
+cd <repo-root>
 ~/Library/Android/sdk/platform-tools/adb install -r \
   "TeleCrypt/build/outputs/apk/DEV/debug/TeleCrypt Messenger-DEV-debug.apk"
 ```

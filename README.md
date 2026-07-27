@@ -1,8 +1,12 @@
 # TeleCrypt Messenger
 
-TeleCrypt is our branded fork of the Tammy Matrix client (Kotlin Multiplatform + Compose).  
-This repository contains the TeleCrypt flavour, branding automation, and GitLab CI that builds
+TeleCrypt is our branded fork of the Tammy Matrix client (Kotlin Multiplatform + Compose).
+This repository contains the TeleCrypt flavour, branding automation, and GitHub Actions CI that builds
 Android, Desktop, and Web artefacts on every merge request and on `main`.
+
+TeleCrypt sits on four layers: Trixnity (Matrix SDK) → trixnity-messenger (messenger framework) →
+Tammy (app shell, this codebase) → TeleCrypt (branding + `telecryptModules/` features).
+See `docs/ARCHITECTURE.md` for the full layering and `docs/FORK_MAINTENANCE.md` for fork-maintenance conventions.
 
 ## Features
 - **E2EE audio/video calls** via MatrixRTC (MSC4143/MSC4354) — end-to-end encrypted calls on macOS, Windows, Linux, and Android from a single codebase.
@@ -11,7 +15,7 @@ Android, Desktop, and Web artefacts on every merge request and on `main`.
 
 ## Repository Highlights
 - `branding/branding.json` — declarative branding data (app name, Android/iOS identifiers, icon bundle).
-- `tools/brandify.sh` / `tools/brandify.kts` — idempotent branding scripts used locally and in CI.
+- `tools/post_merge.sh` — re-applies TeleCrypt branding after upstream merge or in CI. `tools/pre_merge.sh` — reverts branded files to upstream state before merge.
 - `.github/workflows/ci.yml` — GitHub Actions workflow orchestrating Android, desktop (Linux/Windows/macOS) and optional iOS builds.
 - `TeleCrypt/docs/CALLS.md` — call feature overview and current status.
 - `TeleCrypt/docs/ARCHITECTURE.md` — component architecture and call signaling layer.
@@ -29,15 +33,14 @@ Android, Desktop, and Web artefacts on every merge request and on `main`.
    - `androidAppId` — Android `applicationId` (dev builds get `.dev` appended automatically).
    - `iosBundleId` — optional (falls back to the Android id).
    - `iconDir` — root folder with Android/iOS/Desktop icons.
-2. Run the branding script (shell or Kotlin variant):
+2. Run the branding script:
    ```bash
-   tools/brandify.sh branding/branding.json
-   # or
-   tools/brandify.kts branding/branding.json
+   tools/post_merge.sh branding/branding.json
    ```
 3. The script:
    - Updates `build.gradle.kts`, `settings.gradle.kts` (slugified project name), `fastlane/Appfile`,
-     iOS config files, Flatpak templates, and `google-services.json`.
+      `fastlane/Fastfile`, iOS config files, the deep-link scheme in source, website files, and the
+      Windows URL-protocol scripts.
    - Keeps Kotlin source packages (`de.connect2x.tammy`) unchanged to avoid massive refactors.
    - Replaces launcher icons across Android/iOS/Desktop from `branding/icons`.
 
@@ -53,7 +56,7 @@ Use a project-local Gradle cache to keep the workspace self-contained:
 | Desktop extras | `./gradlew packageReleaseDmg packageReleaseMsix packageReleaseFlatpakBundle packageReleaseFlatpakSources packageReleaseWebZip` | DMG/MSIX/Flatpak/Web bundles under `build/compose/binaries/main-release/**` |
 | Web dev | `./gradlew webBrowserDevelopmentRun` | Runs dev server |
 | Web distributable | `./gradlew uploadWebZipDistributable` | Upload-ready zip (also used in CI) |
-| iOS archive (manual) | `cd iosApp && xcodebuild -workspace iosApp.xcworkspace -scheme "Tammy for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive` | `iosApp/build/TeleCrypt.xcarchive` |
+| iOS archive (manual) | `cd iosApp && xcodebuild -workspace iosApp.xcworkspace -scheme "TeleCrypt for iOS" -configuration Release -archivePath build/TeleCrypt.xcarchive archive` | `iosApp/build/TeleCrypt.xcarchive` |
 
 > Android tasks require a configured SDK when run locally. On shared runners the Docker image already ships with it.
 
@@ -99,7 +102,7 @@ accounts/devices are authorised in their consoles.
 ```bash
 bash tools/upstream_sync.sh            # sync main branch, auto-push to origin
 UPSTREAM_REMOTE=upstream-dev \
-UPSTREAM_URL=git@github.com:connect2x/tammy.git \
+UPSTREAM_URL=git@gitlab.com:connect2x/tammy.git \
 PUSH_UPDATES=false \
   bash tools/upstream_sync.sh develop  # custom remote/branch without pushing
 ```
@@ -107,4 +110,4 @@ PUSH_UPDATES=false \
 Requirements:
 - Clean working tree (script aborts if there are uncommitted changes).
 - Upstream remote is added automatically if missing.
-- Branding is reapplied via `tools/brandify.sh` when `branding/branding.json` exists.
+- Branding is reapplied via `tools/post_merge.sh` when `branding/branding.json` exists.

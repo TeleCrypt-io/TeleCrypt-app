@@ -1,0 +1,18 @@
+{
+  "appName": "Tammy",
+  "androidAppId": "de.connect2x.tammy",
+  "iosBundleId": "de.connect2x.tammy",
+  "projectSlug": "tammy",
+  "baseName": "TammyUI",
+  "homepage": "https://tammy.connect2x.de",
+  "websiteBaseUrl": "https://tammy.connect2x.de",
+  "sendLogsEmailAddress": null,
+  "pushUrl": "https://sygnal.demo.timmy-messenger.de/_matrix/push/v1/notify",
+  "deepLinkScheme": "de.connect2x.tammy",
+  "company": "connect2x GmbH",
+  "sourceUrl": "https://gitlab.com/connect2x/tammy",
+  "webAppUrl": "https://app.tammy.connect2x.de",
+  "iosScheme": "Tammy for iOS",
+  "downloadTitleEn": "Download Tammy",
+  "downloadTitleDe": "Lade Tammy herunter"
+}
