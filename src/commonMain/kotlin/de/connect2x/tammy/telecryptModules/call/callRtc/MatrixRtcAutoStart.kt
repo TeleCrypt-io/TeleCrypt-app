@@ -73,15 +73,15 @@ class MatrixRtcAutoStart(
         val account = accountStore.getAccount() ?: return
         val userId = account.userId
         val userApi = client.api.user
-        var newFilterId = account.filter.syncFilterId
-        var newBackgroundFilterId = account.filter.syncOnceFilterId
+        var newFilterId = account.filter!!.syncFilterId
+        var newBackgroundFilterId = account.filter!!.syncOnceFilterId
         var changed = false
 
         // DIAGNOSTIC: Log filter IDs to detect if filter patching is ever attempted
-        callLogDebug("[Call][DIAG] ensureRtcFilters user=$userKey filterId=${account.filter.syncFilterId} backgroundFilterId=${account.filter.syncOnceFilterId}")
+        callLogDebug("[Call][DIAG] ensureRtcFilters user=$userKey filterId=${account.filter!!.syncFilterId} backgroundFilterId=${account.filter!!.syncOnceFilterId}")
 
-        if (account.filter.syncFilterId != null) {
-            val current = runCatching { userApi.getFilter(userId, account.filter.syncFilterId!!) }.getOrNull()?.getOrNull()
+        if (account.filter!!.syncFilterId != null) {
+            val current = runCatching { userApi.getFilter(userId, account.filter!!.syncFilterId!!) }.getOrNull()?.getOrNull()
             callLogDebug("[Call][DIAG] Current sync filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
@@ -97,7 +97,7 @@ class MatrixRtcAutoStart(
                     }
                 }
             } else {
-                callLogDebug("[Call][DIAG] Could not fetch current filter for user=$userKey filterId=${account.filter.syncFilterId}")
+                callLogDebug("[Call][DIAG] Could not fetch current filter for user=$userKey filterId=${account.filter!!.syncFilterId}")
             }
         } else {
             // No filterId set yet — the server uses no filter, so all events (including RTC)
@@ -106,8 +106,8 @@ class MatrixRtcAutoStart(
             callLogDebug("[Call][DIAG] No filterId set for user=$userKey — no filter to patch (all events pass through)")
         }
 
-        if (account.filter.syncOnceFilterId != null) {
-            val current = runCatching { userApi.getFilter(userId, account.filter.syncOnceFilterId!!) }.getOrNull()?.getOrNull()
+        if (account.filter!!.syncOnceFilterId != null) {
+            val current = runCatching { userApi.getFilter(userId, account.filter!!.syncOnceFilterId!!) }.getOrNull()?.getOrNull()
             callLogDebug("[Call][DIAG] Current background filter for user=$userKey: ${current?.room?.state?.types} notTypes=${current?.room?.state?.notTypes}")
             if (current != null) {
                 val patched = patchFiltersForRtc(current)
@@ -130,7 +130,7 @@ class MatrixRtcAutoStart(
             return
         }
         accountStore.updateAccount { current ->
-            current!!.copy(filter = current.filter.copy(syncFilterId = newFilterId, syncOnceFilterId = newBackgroundFilterId))
+            current!!.copy(filter = current.filter!!.copy(syncFilterId = newFilterId, syncOnceFilterId = newBackgroundFilterId))
         }
         runCatching {
             client.api.sync.stop()

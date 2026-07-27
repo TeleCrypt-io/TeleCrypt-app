@@ -27,7 +27,7 @@ suspend fun resolveElementCallSession(matrixClient: MatrixClient?): ElementCallS
     if (accessToken.isEmpty() || homeserver.isEmpty()) {
         return null
     }
-    val displayNameFromClient = matrixClient.profile.value.let { profile ->
+    val displayNameFromClient = matrixClient.profile.value?.let { profile ->
         (profile[de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName.Key] as? de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName)?.value
     }?.trim().orEmpty()
     val displayNameFromProfile = account.profile?.let { acctProfile ->

@@ -455,7 +455,7 @@ class CallCoordinatorImpl(
 
 private fun resolveDisplayName(matrixClient: MatrixClient, sessionName: String): String {
     val displayName = sessionName.trim().ifEmpty {
-        matrixClient.profile.value.let { profile ->
+        matrixClient.profile.value?.let { profile ->
             (profile[de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName.Key] as? de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName)?.value
         }?.trim().orEmpty()
     }
