@@ -78,7 +78,7 @@ Icons:
 ```bash
 tools/upstream_sync.sh main
 ```
-This runs: `pre_merge.sh` (revert branded files) → `git merge` or `git rebase` → `post_merge.sh` (re-apply TeleCrypt branding) → `git commit` → `git push`.
+This runs: `pre_merge.sh` (revert branded files) → `git commit` (the reverted, unbranded state — required so the merge/rebase runs on a clean tree) → `git merge` or `git rebase` → `post_merge.sh` (re-apply TeleCrypt branding) → `git commit` → `git push`.
 
 Options:
 - `--no-push` — don't push to origin (review changes locally first)

@@ -12,6 +12,7 @@ PUSH_UPDATES_DEFAULT="${PUSH_UPDATES:-}"
 AUTO_COMMIT_DEFAULT="${AUTO_COMMIT:-}"
 ALLOW_REBASE_DEFAULT="${ALLOW_REBASE:-}"
 BRANDING_COMMIT_MESSAGE="${BRANDING_COMMIT_MESSAGE:-chore: apply TeleCrypt branding}"
+PRE_MERGE_COMMIT_MESSAGE="${PRE_MERGE_COMMIT_MESSAGE:-chore: revert branding for upstream merge}"
 
 info() {
   printf '[upstream_sync] %s\n' "$*"
@@ -245,6 +246,18 @@ if [[ -x "$PRE_MERGE_SCRIPT" && -f "$UPSTREAM_CONFIG" ]]; then
   "$PRE_MERGE_SCRIPT" "$UPSTREAM_CONFIG"
 else
   info "pre_merge script or upstream config missing; skip revert"
+fi
+
+# The pre_merge revert leaves the working tree dirty. Both `git merge --ff-only`
+# and `git rebase` refuse to run on a dirty tree (and a plain merge would tangle
+# the reverts into the merge commit), so commit the reverted state first.
+info "committing reverted (unbranded) state before merge"
+if [[ -n "$(git status --porcelain)" ]]; then
+  git add -A
+  git commit -m "$PRE_MERGE_COMMIT_MESSAGE"
+  info "revert committed"
+else
+  info "no branding changes to revert; tree clean"
 fi
 
 info "fast-forward merging $UPSTREAM_REMOTE/$DEFAULT_BRANCH into $DEFAULT_BRANCH"
