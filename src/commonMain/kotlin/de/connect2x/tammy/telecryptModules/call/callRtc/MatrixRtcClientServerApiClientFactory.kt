@@ -10,13 +10,9 @@ import de.connect2x.trixnity.clientserverapi.client.MatrixClientAuthProvider
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClient
 import de.connect2x.trixnity.clientserverapi.client.MatrixClientServerApiClientFactory
 import de.connect2x.trixnity.clientserverapi.client.SyncBatchTokenStore
+import de.connect2x.trixnity.core.model.UserId
 import de.connect2x.trixnity.core.model.events.UnknownEventContent
-import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
-import de.connect2x.trixnity.core.serialization.events.UnknownEventContentSerializer
-import de.connect2x.trixnity.core.serialization.events.ephemeralOf
-import de.connect2x.trixnity.core.serialization.events.messageOf
-import de.connect2x.trixnity.core.serialization.events.roomAccountDataOf
-import de.connect2x.trixnity.core.serialization.events.stateOf
+import de.connect2x.trixnity.core.serialization.events.*
 import de.connect2x.trixnity.utils.RetryFlowDelayConfig
 
 class MatrixRtcClientServerApiClientFactory(
@@ -29,8 +25,8 @@ class MatrixRtcClientServerApiClientFactory(
         syncBatchTokenStore: SyncBatchTokenStore,
         syncErrorDelayConfig: RetryFlowDelayConfig,
         coroutineContext: CoroutineContext,
-        userHandle: String?,
-        userHomePath: String?,
+        asUserId: UserId?,
+        asDeviceId: String?,
         httpClientEngine: HttpClientEngine?,
         httpClientConfig: (HttpClientConfig<*>.() -> Unit)?,
     ): MatrixClientServerApiClient {
@@ -38,16 +34,16 @@ class MatrixRtcClientServerApiClientFactory(
         val combined = eventContentSerializerMappings.plus(rtcMappings)
         callLog("[Call] MatrixClientServerApiClientFactory.create (Url) added RTC mappings")
         return delegate.create(
-            baseUrl = baseUrl,
-            eventContentSerializerMappings = combined,
-            json = json,
-            syncBatchTokenStore = syncBatchTokenStore,
-            syncErrorDelayConfig = syncErrorDelayConfig,
-            coroutineContext = coroutineContext,
-            userHandle = userHandle,
-            userHomePath = userHomePath,
-            httpClientEngine = httpClientEngine,
-            httpClientConfig = httpClientConfig,
+            baseUrl,
+            combined,
+            json,
+            syncBatchTokenStore,
+            syncErrorDelayConfig,
+            coroutineContext,
+            asUserId,
+            asDeviceId,
+            httpClientEngine,
+            httpClientConfig,
         )
     }
 
@@ -58,8 +54,8 @@ class MatrixRtcClientServerApiClientFactory(
         syncBatchTokenStore: SyncBatchTokenStore,
         syncErrorDelayConfig: RetryFlowDelayConfig,
         coroutineContext: CoroutineContext,
-        userHandle: String?,
-        userHomePath: String?,
+        asUserId: UserId?,
+        asDeviceId: String?,
         httpClientEngine: HttpClientEngine?,
         httpClientConfig: (HttpClientConfig<*>.() -> Unit)?,
     ): MatrixClientServerApiClient {
@@ -67,16 +63,16 @@ class MatrixRtcClientServerApiClientFactory(
         val combined = eventContentSerializerMappings.plus(rtcMappings)
         callLog("[Call] MatrixClientServerApiClientFactory.create (auth) added RTC mappings")
         return delegate.create(
-            authProvider = authProvider,
-            eventContentSerializerMappings = combined,
-            json = json,
-            syncBatchTokenStore = syncBatchTokenStore,
-            syncErrorDelayConfig = syncErrorDelayConfig,
-            coroutineContext = coroutineContext,
-            userHandle = userHandle,
-            userHomePath = userHomePath,
-            httpClientEngine = httpClientEngine,
-            httpClientConfig = httpClientConfig,
+            authProvider,
+            combined,
+            json,
+            syncBatchTokenStore,
+            syncErrorDelayConfig,
+            coroutineContext,
+            asUserId,
+            asDeviceId,
+            httpClientEngine,
+            httpClientConfig,
         )
     }
 }
