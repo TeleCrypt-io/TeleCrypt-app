@@ -1,5 +1,6 @@
 package de.connect2x.tammy
 
+import org.jetbrains.compose.resources.InternalResourceApi
 import de.connect2x.tammy.telecryptModules.call.callModule
 import de.connect2x.telecrypt_messenger.generated.resources.Res
 import de.connect2x.tammy.telecryptModules.call.callRtc.configureForRtc
@@ -16,6 +17,7 @@ import de.connect2x.trixnity.messenger.util.RootPath
 import kotlinx.datetime.TimeZone
 import org.koin.dsl.module
 
+@OptIn(InternalResourceApi::class)
 fun MatrixMultiMessengerConfiguration.tammyConfiguration(
     customConfig: MatrixMultiMessengerConfiguration.() -> Unit = {}
 ) {
