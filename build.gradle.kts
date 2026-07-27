@@ -88,6 +88,9 @@ registerMultiplatformLicensesTasks { licenseTask, target, variant ->
                     """
             package $appId
 
+            import de.connect2x.tammy.CommonBuildConfig
+            import de.connect2x.tammy.Flavor
+
             actual val BuildConfig: CommonBuildConfig = object : CommonBuildConfig {
                 override val version: String = "$version"
                 override val flavor: Flavor = Flavor.valueOf("$buildFlavor")
