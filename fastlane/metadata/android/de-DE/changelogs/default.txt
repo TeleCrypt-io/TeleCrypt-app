@@ -1,1 +1,1 @@
-Siehe CHANGELOG.md im TeleCrypt Messenger Repository.
+Siehe CHANGELOG.md im Tammy Repository.

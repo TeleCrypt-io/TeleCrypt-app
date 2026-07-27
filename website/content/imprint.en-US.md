@@ -2,7 +2,7 @@
 title: "Imprint"
 ---
 
-TeleCrypt.IO\
+connect2x GmbH\
 <!-- TODO: add legal entity name, address, registration details -->\
-Email: support@telecrypt.io\
+Email: contact@connect2x.de\
 <!-- TODO: add telephone if applicable -->

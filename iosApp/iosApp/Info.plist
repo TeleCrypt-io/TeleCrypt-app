@@ -10,10 +10,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>io.telecrypt.app</string>
+			<string>de.connect2x.tammy</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>telecrypt</string>
+				<string>de.connect2x.tammy</string>
 			</array>
 		</dict>
 	</array>

@@ -1,1 +1,1 @@
-TeleCrypt Messenger is a fast, simple, and secure Matrix messenger with E2EE calls.
+Tammy is a fast, simple, and secure Matrix messenger with E2EE calls.

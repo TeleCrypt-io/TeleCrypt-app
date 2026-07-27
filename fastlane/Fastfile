@@ -126,7 +126,7 @@ platform :ios do
 
     ipa_path = build_app(
       project: "iosApp/iosApp.xcodeproj",
-      scheme: "TeleCrypt for iOS",
+      scheme: "Tammy for iOS",
       export_method: "app-store",
       output_directory: "iosApp/build",
       output_name: "TeleCrypt",
@@ -236,7 +236,7 @@ platform :android do
 
     supply(
       json_key: service_account_path,
-      package_name: "io.telecrypt.app",
+      package_name: "de.connect2x.tammy",
       track: "internal",
       aab: aab_path,
       skip_upload_apk: true,

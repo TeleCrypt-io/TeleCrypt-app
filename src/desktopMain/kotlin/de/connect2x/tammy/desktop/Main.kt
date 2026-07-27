@@ -53,7 +53,7 @@ fun main(args: Array<String>) {
     } else null
     
     // Check command line for deeplink
-    val deeplinkUrl = args.firstOrNull { it.startsWith("telecrypt://") }
+    val deeplinkUrl = args.firstOrNull { it.startsWith("de.connect2x.tammy://") }
         ?: pendingCallback
     
     // Try to become the primary instance unless explicitly disabled.
@@ -135,7 +135,7 @@ class SsoRuntimeHandler(
                 if (url.contains("loginToken")) {
                     println("[SsoRuntimeHandler] Received SSO callback: $url")
                     handleSsoCallback(url)
-                } else if (url.startsWith("telecrypt://call")) {
+                } else if (url.startsWith("de.connect2x.tammy://call")) {
                     println("[SsoRuntimeHandler] Received call deeplink: $url")
                     handleCallDeepLink(url)
                 }

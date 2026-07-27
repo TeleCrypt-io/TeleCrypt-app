@@ -39,8 +39,8 @@ if (isRelease)
         "when creating a release, the appVersion ($appVersion) must the same as the appPublishedVersion($appPublishedVersion)"
     }
 val appSuffixedVersion = withVersionSuffix(appVersion)
-val appName = "TeleCrypt Messenger"
-val appIdentifier = "io.telecrypt.app"
+val appName = "Tammy"
+val appIdentifier = "de.connect2x.tammy"
 val appPackage = "de.connect2x.tammy"
 val privacyInfo = rootDir.resolve("website/content/privacy.de-DE.md")
     .readText()
@@ -143,7 +143,7 @@ kotlin {
         target.binaries.framework {
             export(sharedLibs.essenty.lifecycle)
             export(libs.trixnity.messenger.view)
-            baseName = "TeleCryptUI"
+            baseName = "TammyUI"
             isStatic = false
         }
     }
@@ -621,7 +621,7 @@ flatpak {
 
     developerName = publisherName
     publishedVersion = appVersion
-    homepage = "https://telecrypt.io"
+    homepage = "https://tammy.connect2x.de"
 }
 
 val flatpakBundleDistribution =
@@ -786,7 +786,7 @@ val createWebsiteDownloadLinks by tasks.registering {
 }
 
 fun createWebsiteMsixAppinstaller(architecture: String) {
-    val websiteBaseUrl = "https://telecrypt.io"
+    val websiteBaseUrl = "https://tammy.connect2x.de"
     val appinstallerFileName = "$appName-Windows-$architecture.appinstaller"
     val msixDistribution =
         distributions.first { it.platform == "Windows" && it.type == "msix" && it.architecture == architecture }
