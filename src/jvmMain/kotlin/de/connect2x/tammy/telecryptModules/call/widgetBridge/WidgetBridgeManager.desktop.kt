@@ -292,7 +292,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val result = runCatching {
             matrixClient.api.room.sendMessageEvent(
                 roomId,
-                UnknownEventContent(content, eventType) as MessageEventContent,
+                UnknownEventContent(content, EventContentBlocks(), eventType) as MessageEventContent,
                 txnId,
             )
         }
