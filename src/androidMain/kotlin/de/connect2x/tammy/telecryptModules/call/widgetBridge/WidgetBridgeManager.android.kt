@@ -64,6 +64,7 @@ class AndroidWidgetBridgeManager(
                 roomId,
                 de.connect2x.trixnity.core.model.events.UnknownEventContent(
                     buildJsonObject {},
+                    de.connect2x.trixnity.core.model.events.block.EventContentBlocks(),
                     "org.matrix.msc3401.call.member",
                 ),
                 localStateKey,
