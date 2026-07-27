@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.model.events.block.EventContentBlocks
 import de.connect2x.trixnity.client.MatrixClient
 import de.connect2x.trixnity.core.model.RoomId
 import kotlin.random.Random
@@ -193,7 +194,7 @@ class CallCoordinatorImpl(
             val ok = runCatching {
                 matrixClient.api.room.sendStateEvent(
                     roomId,
-                    UnknownEventContent(JsonObject(emptyMap()), typeStr),
+                    UnknownEventContent(JsonObject(emptyMap()), EventContentBlocks(), typeStr),
                     stateKey,
                 )
                 true
@@ -417,7 +418,7 @@ class CallCoordinatorImpl(
         content: JsonObject,
         eventType: String,
     ): Boolean {
-        val event = UnknownEventContent(content, eventType)
+        val event = UnknownEventContent(content, EventContentBlocks(), eventType)
         return runCatching {
             matrixClient.api.room.sendStateEvent(roomId, event, slotId)
             true
@@ -454,7 +455,9 @@ class CallCoordinatorImpl(
 
 private fun resolveDisplayName(matrixClient: MatrixClient, sessionName: String): String {
     val displayName = sessionName.trim().ifEmpty {
-        matrixClient.displayName.value?.trim().orEmpty()
+        matrixClient.profile.value.let { profile ->
+            (profile[de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName.Key] as? de.connect2x.trixnity.clientserverapi.model.user.ProfileField.DisplayName)?.value
+        }?.trim().orEmpty()
     }
     return displayName.ifEmpty { matrixClient.userId.full }
 }

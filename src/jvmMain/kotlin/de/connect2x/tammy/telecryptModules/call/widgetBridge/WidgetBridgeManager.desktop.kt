@@ -17,6 +17,7 @@ import de.connect2x.trixnity.core.model.events.MessageEventContent
 import de.connect2x.trixnity.core.model.events.StateEventContent
 import de.connect2x.trixnity.core.model.events.ToDeviceEventContent
 import de.connect2x.trixnity.core.model.events.UnknownEventContent
+import de.connect2x.trixnity.core.model.events.block.EventContentBlocks
 import de.connect2x.trixnity.core.serialization.events.EventContentSerializerMappings
 import de.connect2x.trixnity.core.serialization.events.StateEventContentSerializerMapping
 
@@ -57,7 +58,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         runCatching {
             matrixClient.api.room.sendStateEvent(
                 roomId,
-                UnknownEventContent(buildJsonObject {}, "org.matrix.msc3401.call.member"),
+                UnknownEventContent(buildJsonObject {}, EventContentBlocks(), "org.matrix.msc3401.call.member"),
                 localStateKey,
             )
             callLog("[WidgetBridgeManager] pre-cleared stale m.call.member stateKey=$localStateKey")
@@ -216,7 +217,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
             val userId = UserId(userKey)
             for ((deviceKey, contentElem) in devices) {
                 val contentObj = (contentElem as? JsonObject) ?: continue
-                val rawContent = UnknownEventContent(contentObj, eventType)
+                val rawContent = UnknownEventContent(contentObj, EventContentBlocks(), eventType)
                 if (encrypted) {
                     val encryptResult = olmEncryptionService.encryptOlm(
                         content = rawContent,
@@ -266,7 +267,7 @@ class DesktopWidgetBridgeManager : WidgetBridgeManager {
         val result = runCatching {
             matrixClient.api.room.sendStateEvent(
                 roomId,
-                UnknownEventContent(content, eventType),
+                UnknownEventContent(content, EventContentBlocks(), eventType),
                 stateKey,
             )
         }
