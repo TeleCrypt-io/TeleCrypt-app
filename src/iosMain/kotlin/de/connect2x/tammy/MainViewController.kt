@@ -1,18 +1,19 @@
 package de.connect2x.tammy
 
+import androidx.compose.ui.window.ComposeUIViewController
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
-import de.connect2x.trixnity.messenger.compose.view.startMessenger
 import platform.UIKit.UIViewController
-
-private fun unexpectedStartMessengerResult(result: Any?): Nothing =
-    error("Unexpected startMessenger result: ${result?.let { it::class.qualifiedName } ?: "null"}")
 
 @Suppress("Unused", "FunctionName")
 fun MainViewController(lifecycle: LifecycleRegistry): UIViewController {
-    val result = startMessenger(lifecycle, tammyConfiguration())
-    return when (result) {
-        is Pair<*, *> -> result.second as? UIViewController
-        is UIViewController -> result
-        else -> null
-    } ?: unexpectedStartMessengerResult(result)
+    return ComposeUIViewController {
+        TeleCryptApp()
+    }
+}
+
+@androidx.compose.runtime.Composable
+fun TeleCryptApp() {
+    de.connect2x.trixnity.messenger.compose.view.startMultiMessenger {
+        tammyConfiguration()
+    }
 }
