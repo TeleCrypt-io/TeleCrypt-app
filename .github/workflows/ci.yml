@@ -61,7 +61,7 @@ jobs:
     needs: setup
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -69,16 +69,16 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: test-reports
           path: build/reports/tests/
@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: coverage-report
           path: build/reports/kover/
@@ -137,7 +137,7 @@ jobs:
     needs: setup
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -145,16 +145,16 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -165,7 +165,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -176,7 +176,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -187,7 +187,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -198,7 +198,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -209,12 +209,12 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4.0.1
         with:
           packages: tools platform-tools platforms;android-35 build-tools;35.0.0
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -235,7 +235,7 @@ jobs:
         run: ./gradlew --stacktrace bundleRelease assembleRelease
 
       - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: android-artifacts
           path: |
@@ -244,7 +244,7 @@ jobs:
 
       - name: Setup Ruby (Fastlane)
         if: env.UPLOAD_TO_STORES == 'true'
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@v1.321.0
         with:
           ruby-version: '3.2'
 
@@ -262,7 +262,7 @@ jobs:
     needs: setup
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -270,13 +270,13 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Install system dependencies
         run: |
@@ -284,7 +284,7 @@ jobs:
           sudo apt-get install -y flatpak zip
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -300,13 +300,13 @@ jobs:
         run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseWebZip
 
       - name: Upload Linux desktop artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-linux-artifacts
           path: build/compose/binaries/main-release/**
 
       - name: Upload web artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: web-artifacts
           path: build/compose/binaries/main-release/zip/*.zip
@@ -348,21 +348,21 @@ jobs:
           where makeappx.exe
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -374,7 +374,7 @@ jobs:
           save-always: true
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -405,13 +405,13 @@ jobs:
         run: ./gradlew --stacktrace notarizeReleaseMsix
 
       - name: Upload Windows desktop artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-windows-artifacts
           path: build/compose/binaries/main-release/**
 
       - name: Upload Windows MSIX installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: windows-msix-artifacts
           path: build/compose/binaries/main-release/**/*.msix
@@ -422,7 +422,7 @@ jobs:
     needs: setup
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -430,16 +430,16 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -451,7 +451,7 @@ jobs:
           save-always: true
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -468,7 +468,7 @@ jobs:
         run: ./gradlew --stacktrace createReleaseDistributable packageReleasePlatformZip packageReleaseDmg
 
       - name: Upload macOS desktop artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-macos-artifacts
           path: build/compose/binaries/main-release/**
@@ -481,7 +481,7 @@ jobs:
       CI_SKIP_IOS_SIMULATORS: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -489,16 +489,16 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Gradle state
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .gradle/caches
@@ -510,7 +510,7 @@ jobs:
           save-always: true
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -535,7 +535,7 @@ jobs:
 
       - name: Restore Generated Xcode frameworks (if any)
         id: xcode-fw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: build/xcode-frameworks
           key: ${{ runner.os }}-xcode-frameworks-${{ hashFiles('gradle/libs.versions.toml', 'iosApp/iosApp.xcodeproj/project.pbxproj', 'build.gradle.kts') }}
@@ -563,14 +563,14 @@ jobs:
 
       - name: Upload Gradle profile (embed step)
         if: steps.xcode-fw-cache.outputs.cache-hit != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: gradle-embed-profile
           path: build/reports/profile
           if-no-files-found: ignore
 
       - name: Upload prebuilt frameworks
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ios-prebuilt-frameworks
           if-no-files-found: error
@@ -585,7 +585,7 @@ jobs:
       CI_SKIP_IOS_SIMULATORS: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -593,16 +593,16 @@ jobs:
         run: chmod +x gradlew tools/*.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5.6.0
         with:
           distribution: temurin
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Cache Kotlin Native
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             .konan
@@ -615,7 +615,7 @@ jobs:
         run: tools/post_merge.sh branding/branding.json
 
       - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: iosApp/build/DerivedData
           key: ${{ runner.os }}-xcode-derived-${{ hashFiles('iosApp/iosApp.xcodeproj/project.pbxproj', 'gradle/libs.versions.toml', 'iosApp/scripts/embed_frameworks.sh') }}
@@ -655,7 +655,7 @@ jobs:
           PY
 
       - name: Download prebuilt iOS frameworks
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: ios-prebuilt-frameworks
           path: build/ios-prebuilt-frameworks
@@ -735,7 +735,7 @@ jobs:
           PY
 
       - name: Setup Ruby (Fastlane)
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@v1.321.0
         with:
           ruby-version: '3.2'
 
@@ -771,7 +771,7 @@ jobs:
         run: bundle exec fastlane ios beta
 
       - name: Upload iOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: ios-artifacts
           path: |
