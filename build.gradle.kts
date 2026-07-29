@@ -23,11 +23,17 @@ plugins {
     alias(sharedLibs.plugins.compose.multiplatform)
     alias(sharedLibs.plugins.compose.compiler)
     alias(sharedLibs.plugins.aboutLibraries.plugin)
-    alias(sharedLibs.plugins.google.services)
+    alias(sharedLibs.plugins.google.services) apply false
     alias(libs.plugins.download.plugin)
     alias(sharedLibs.plugins.c2xConventions)
     alias(sharedLibs.plugins.kotlinx.kover)
     de.connect2x.tammy.plugins.flatpak
+}
+
+// Firebase push is an optional distribution integration. Public and contributor builds must not
+// require a private google-services.json; release operators enable it by supplying that file.
+if (rootProject.file("google-services.json").isFile) {
+    pluginManager.apply("com.google.gms.google-services")
 }
 
 configureJava(sharedLibs.versions.targetJvm)
