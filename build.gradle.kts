@@ -40,7 +40,7 @@ if (CI.isRelease)
     require(appVersion == appPublishedVersion) {
         "when creating a release, the appVersion ($appVersion) must the same as the appPublishedVersion($appPublishedVersion)"
     }
-val appSuffixedVersion = withVersionSuffix(libs.versions.appVersion)
+val appSuffixedVersion = withVersionSuffix(appVersion)
 val appName = "TeleCrypt Messenger"
 val appId = "io.telecrypt.app"
 val appHomepage = "https://telecrypt.io"
