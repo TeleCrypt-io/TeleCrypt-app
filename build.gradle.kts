@@ -22,7 +22,6 @@ plugins {
     alias(sharedLibs.plugins.google.services) apply false
     alias(libs.plugins.download.plugin)
     alias(sharedLibs.plugins.c2xConventions)
-    alias(sharedLibs.plugins.google.services)
     alias(sharedLibs.plugins.kotlinx.kover)
     de.connect2x.tammy.plugins.flatpak
 }
