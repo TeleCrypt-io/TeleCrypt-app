@@ -1,3 +1,5 @@
 package de.connect2x.tammy.telecryptModules.call.callRtc
 
-actual fun currentTimeMillis(): Long = kotlin.js.Date.now().toLong()
+import kotlinx.datetime.Clock
+
+actual fun currentTimeMillis(): Long = Clock.System.now().toEpochMilliseconds()
