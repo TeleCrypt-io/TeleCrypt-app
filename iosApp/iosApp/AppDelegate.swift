@@ -1,6 +1,6 @@
 import Foundation
 import SwiftUI
-import TammyUI
+import TeleCryptUI
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     let lifecycleHolder: LifeCycleHolder = LifeCycleHolder()

@@ -1,6 +1,6 @@
 import UIKit
 import SwiftUI
-import TammyUI
+import TeleCryptUI
 
 struct MainView: UIViewControllerRepresentable {
     let lifecycle: LifecycleRegistry

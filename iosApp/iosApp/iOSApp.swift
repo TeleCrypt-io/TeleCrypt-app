@@ -1,5 +1,5 @@
 import SwiftUI
-import TammyUI
+import TeleCryptUI
 
 @main
 struct iOSApp: App {

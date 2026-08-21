@@ -1,5 +1,5 @@
 import Foundation
-import TammyUI
+import TeleCryptUI
 
 class LifeCycleHolder : ObservableObject {
     let lifecycle: LifecycleRegistry
