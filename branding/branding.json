@@ -1,7 +1,7 @@
 {
   "appName": "TeleCrypt Messenger",
   "androidAppId": "io.telecrypt.app",
-  "iosBundleId": "io.telecrypt.app",
+  "iosBundleId": "io.telecrypt.messenger",
   "iconDir": "branding/icons",
   "appleTeamId": "F6CHJX72K5",
   "iosScheme": "TeleCrypt for iOS",

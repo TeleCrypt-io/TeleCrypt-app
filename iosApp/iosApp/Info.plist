@@ -10,7 +10,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>io.telecrypt.app</string>
+			<string>io.telecrypt.messenger</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>telecrypt</string>
