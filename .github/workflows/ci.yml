@@ -558,7 +558,11 @@ jobs:
           PLATFORM_NAME: iphoneos
           ARCHS: arm64
           SDK_NAME: ${{ env.IOS_SDK_NAME || 'iphoneos' }}
-          CONFIGURATION: Release
+          # Debug build: skips all Kotlin/Native LTO passes, avoiding the
+          # memory-intensive graph building that OOMs the 14g runner when
+          # linking the release framework (linkReleaseFrameworkIosArm64).
+          # CI validation only needs the framework for embedding.
+          CONFIGURATION: Debug
           TARGET_BUILD_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
           FRAMEWORKS_FOLDER_PATH: Frameworks
           BUILT_PRODUCTS_DIR: ${{ github.workspace }}/iosApp/build/XcodePrebuild
