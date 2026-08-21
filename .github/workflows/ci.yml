@@ -490,7 +490,9 @@ jobs:
 
       - name: Raise Gradle heap for Kotlin/Native LTO
         run: echo "org.gradle.jvmargs=-Xmx1g -XX:MaxMetaspaceSize=256m -Dfile.encoding=UTF-8 --illegal-access=permit --add-opens=java.base/java.io=ALL-UNNAMED" >> gradle.properties
-          echo "kotlin.daemon.jvmargs=-Xmx12g -XX:MaxMetaspaceSize=512m" >> gradle.properties
+          echo "kotlin.daemon.jvmargs=-Xmx512m -XX:MaxMetaspaceSize=128m" >> gradle.properties
+          echo "kotlin.native.disableCompilerDaemon=true" >> gradle.properties
+          echo "kotlin.native.jvmArgs=-Xmx12g -XX:MaxMetaspaceSize=512m" >> gradle.properties
 
       - name: Setup Java
         uses: actions/setup-java@v5.6.0
