@@ -135,7 +135,11 @@ platform :ios do
       silent: true,
       build_path: "iosApp/build",
       derived_data_path: "iosApp/build/DerivedData",
-      configuration: "Release",
+      # Debug matches the prebuilt Debug frameworks from the ios_prebuild CI
+      # job (Release was switched to Debug to avoid Kotlin/Native LTO OOM).
+      # embed_frameworks.sh consumes Xcode's CONFIGURATION env var, so the
+      # archive must build Debug to find build/xcode-frameworks/Debug.
+      configuration: "Debug",
       codesigning_identity: "Apple Distribution",
       export_team_id: ENV["APPLE_TEAM_ID"],
       xcargs: [
@@ -158,7 +162,7 @@ platform :ios do
       "xcodebuild -showBuildTimingSummary " \
       "-project iosApp/iosApp.xcodeproj " \
       "-scheme 'TeleCrypt for iOS' " \
-      "-configuration Release " \
+      "-configuration Debug " \
       "-derivedDataPath iosApp/build/DerivedData || true"
     )
 
