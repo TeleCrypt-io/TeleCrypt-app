@@ -22,9 +22,9 @@ struct iOSApp: App {
                         @unknown default: break
                     }
                 }
-                .onOpenURL(perform: { url in
-                    StartMessengerKt.handleUrl(url: url.absoluteString)
-                })
+                // URL opening is handled by the Kotlin framework
+                // (UrlHandlingUIWindowSceneDelegate, registered by startMultiMessenger).
+                // The 3.x StartMessengerKt.handleUrl export was removed in the 4.x migration.
                 .ignoresSafeArea(.all)
         }
     }
