@@ -943,3 +943,12 @@ val createGitLabRelease by tasks.registering {
         httpClient.send(request, HttpResponse.BodyHandlers.ofString())
     }
 }
+
+tasks.configureEach {
+    if (javaClass.name.contains("SyncComposeResourcesForIosTask")) {
+        @Suppress("UNCHECKED_CAST")
+        val outputDir =
+            javaClass.getMethod("getOutputDir").invoke(this) as? org.gradle.api.file.DirectoryProperty
+        outputDir?.set(layout.buildDirectory.dir("compose/resources/${name}"))
+    }
+}
