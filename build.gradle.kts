@@ -143,6 +143,11 @@ kotlin {
             export(libs.trixnity.messenger.compose.view)
             baseName = "TeleCryptUI"
             isStatic = true
+            // The DevirtualizationAnalysis LTO pass builds a constraint graph that OOMs the
+            // forked konan JVM (12g) on the 14g macOS runner for this binary size
+            // (trixnity-messenger 4.x). Disable it and its downstream Devirtualization pass;
+            // phase names are matched against the name in LTO.kt, unknown names are ignored.
+            freeCompilerArgs += "-Xdisable-phases=DevirtualizationAnalysis,Devirtualization"
         }
     }
     applyDefaultHierarchyTemplate()
