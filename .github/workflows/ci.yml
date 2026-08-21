@@ -594,6 +594,11 @@ jobs:
     needs: [setup, desktop_macos, ios_prebuild]
     env:
       CI_SKIP_IOS_SIMULATORS: "true"
+      # Job-level override: submit every main build to TestFlight internal
+      # testing via the `fastlane ios beta` lane below, regardless of the
+      # workflow-level UPLOAD_TO_STORES secret (which also gates the Android
+      # Play upload and must stay disabled there).
+      UPLOAD_TO_STORES: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
