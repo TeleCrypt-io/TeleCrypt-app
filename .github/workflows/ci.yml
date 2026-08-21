@@ -239,8 +239,8 @@ jobs:
         with:
           name: android-artifacts
           path: |
-            build/outputs/apk/release/*.apk
-            build/outputs/bundle/release/*.aab
+            build/outputs/apk/*/release/*.apk
+            build/outputs/bundle/*Release/*.aab
 
       - name: Setup Ruby (Fastlane)
         if: env.UPLOAD_TO_STORES == 'true'
